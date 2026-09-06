@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import AdminNavbar from '../components/admin/AdminNavbar';
 import AdminSidebar from '../components/admin/AdminSidebar';
+import ManageExamsTab from '../components/admin/ManageExamsTab';
+import ManagePackagesTab from '../components/admin/ManagePackagesTab';
 import { authService, USER_ROLES } from '../services/authService';
 import { 
   testService, 
@@ -695,109 +697,18 @@ export default function AdminDashboardPage() {
           {/* ===================================================================== */}
           {/* TAB 2: COURSE SETUP — MANAGE EXAMS (ADMIN ONLY)                       */}
           {/* ===================================================================== */}
+          {/* ===================================================================== */}
+          {/* TAB 2: COURSE SETUP — MANAGE EXAMS (ADMIN ONLY)                       */}
+          {/* ===================================================================== */}
           {activeTab === 'exams' && isAdmin && (
-            <div className="space-y-6 animate-in fade-in">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold">
-                      <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Course Setup (Phase 5.2)</span>
-                    </div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
-                      Manage Medical Exam Tracks
-                    </h2>
-                    <p className="text-xs text-slate-500">
-                      Rule 3 Enforced: Packages and content depend on these master exam categories.
-                    </p>
-                  </div>
-
-                  <button className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer">
-                    <Plus className="w-4 h-4" />
-                    <span>Create New Exam Category</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  {[
-                    { id: 'neet-pg', name: 'NEET PG & NExT 2026', flag: '🇮🇳 India', weeks: 28, status: 'Active', packages: 3 },
-                    { id: 'usmle', name: 'USMLE Step 1 & 2 CK', flag: '🇺🇸 United States', weeks: 24, status: 'Active', packages: 3 },
-                    { id: 'plab', name: 'PLAB 1 & 2 (UK GMC)', flag: '🇬🇧 United Kingdom', weeks: 16, status: 'Active', packages: 3 },
-                    { id: 'europe', name: 'European Medical Licensing', flag: '🇪🇺 Germany/Switzerland', weeks: 12, status: 'Active', packages: 3 }
-                  ].map((exam) => (
-                    <div key={exam.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
-                          {exam.flag}
-                        </span>
-                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          {exam.status}
-                        </span>
-                      </div>
-                      <h3 className="text-base font-bold text-slate-900">{exam.name}</h3>
-                      <div className="flex items-center gap-4 text-xs text-slate-500">
-                        <span>📚 {exam.weeks} Weeks Curriculum</span>
-                        <span>📦 {exam.packages} Package Tiers</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <ManageExamsTab />
           )}
 
           {/* ===================================================================== */}
           {/* TAB 3: COURSE SETUP — MANAGE PACKAGES (ADMIN ONLY)                    */}
           {/* ===================================================================== */}
           {activeTab === 'packages' && isAdmin && (
-            <div className="space-y-6 animate-in fade-in">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold">
-                      <Package className="w-3.5 h-3.5 text-purple-600" />
-                      <span>Package Tiers & Feature Toggles (Phase 5.2)</span>
-                    </div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
-                      Manage Package Tiers & Permissions
-                    </h2>
-                    <p className="text-xs text-slate-500">
-                      Rule 4 Enforced: Toggling features off disables corresponding student tabs.
-                    </p>
-                  </div>
-
-                  <button className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer">
-                    <Plus className="w-4 h-4" />
-                    <span>Create New Package</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                  {[
-                    { name: 'Basic Tier', validity: '3 Months', price: '₹14,999', features: ['PDF Notes: ON', 'Video Lessons: ON', 'Flashcards: OFF', 'Live Grand Rounds: OFF', 'Test Series: 5 Tests'] },
-                    { name: 'Standard Tier', validity: '6 Months', price: '₹24,999', features: ['PDF Notes: ON', 'Video Lessons: ON', 'Flashcards: ON', 'Live Grand Rounds: ON', 'Test Series: 15 Tests'], popular: true },
-                    { name: 'Premium Tier', validity: '12 Months', price: '₹39,999', features: ['PDF Notes: ON', 'Video Lessons: ON', 'Flashcards: ON', 'Live Grand Rounds: Unlimited', 'Test Series: All 30 Tests'] }
-                  ].map((pkg, i) => (
-                    <div key={i} className={`p-5 rounded-2xl border ${pkg.popular ? 'border-indigo-400 bg-indigo-50/20' : 'border-slate-200 bg-slate-50'} space-y-3`}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-500">{pkg.validity}</span>
-                        {pkg.popular && <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">Most Enrolled</span>}
-                      </div>
-                      <h3 className="text-lg font-bold text-slate-900">{pkg.name}</h3>
-                      <div className="text-xl font-black text-slate-900">{pkg.price}</div>
-                      <ul className="text-xs space-y-1 text-slate-600 pt-2 border-t border-slate-200">
-                        {pkg.features.map((f, idx) => (
-                          <li key={idx} className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
-                            <span>{f}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <ManagePackagesTab />
           )}
 
           {/* ===================================================================== */}

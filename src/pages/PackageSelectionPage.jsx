@@ -26,6 +26,7 @@ import {
   detailedComparisonRows, 
   packageFaqs 
 } from '../data/mockData';
+import { catalogService } from '../services/catalogService';
 
 export default function PackageSelectionPage() {
   const { examId = 'neet-pg' } = useParams();
@@ -41,9 +42,57 @@ export default function PackageSelectionPage() {
   const [showDetailedTable, setShowDetailedTable] = useState(true);
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
+  // Catalog service subscriptions
+  const [activeCatalogPackages, setActiveCatalogPackages] = useState(() => catalogService.getActivePackages(examId));
+  const [activeCatalogExams, setActiveCatalogExams] = useState(() => catalogService.getActiveExams());
+
+  useEffect(() => {
+    const unsubscribe = catalogService.subscribe(() => {
+      setActiveCatalogPackages(catalogService.getActivePackages(examId));
+      setActiveCatalogExams(catalogService.getActiveExams());
+    });
+    return unsubscribe;
+  }, [examId]);
+
   // Get current exam data or fallback to neet-pg
   const examInfo = mockPackagesByExam[examId] || mockPackagesByExam['neet-pg'];
-  const examCategory = examCategories.find(e => e.id === examId) || examCategories[0];
+  const examCategory = activeCatalogExams.find(e => e.id === examId) || examCategories.find(e => e.id === examId) || examCategories[0];
+
+  // Base packages from mock data (filtered by active status in catalog)
+  const basePackages = (mockPackagesByExam[examId]?.packages || mockPackagesByExam['neet-pg'].packages).filter(basePkg => {
+    const match = activeCatalogPackages.find(p => 
+      p.id.toLowerCase().includes(basePkg.id.toLowerCase()) || 
+      p.name.toLowerCase().includes(basePkg.name.toLowerCase())
+    );
+    return match ? match.status === 'Active' : true;
+  });
+
+  // Custom packages added by Admin under this exam
+  const customPackages = activeCatalogPackages
+    .filter(p => !['neet-pg-basic', 'neet-pg-standard', 'neet-pg-premium', 'usmle-basic', 'usmle-standard', 'usmle-premium', 'plab-basic', 'plab-standard', 'plab-premium', 'europe-basic', 'europe-standard', 'europe-premium'].includes(p.id))
+    .filter(p => p.examId === examId)
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      tierLabel: 'Custom Tier',
+      price: p.formattedPrice,
+      duration: p.duration,
+      durationFull: `${p.duration} Access`,
+      description: 'Admin-curated custom curriculum tier tailored for your clinical preparation.',
+      popular: p.popular,
+      badge: p.popular ? 'POPULAR' : undefined,
+      features: [
+        { name: 'PDF Notes', included: p.features?.pdfNotes, detail: p.features?.pdfNotes ? 'Included' : 'Not Included' },
+        { name: 'Video Lectures', included: p.features?.videoLectures, detail: p.features?.videoLectures ? 'Included' : 'Not Included' },
+        { name: 'Flashcards', included: p.features?.flashcards, detail: p.features?.flashcards ? 'Included' : 'Not Included' },
+        { name: 'Live Sessions', included: p.features?.liveSessions, detail: p.features?.liveSessions ? 'Included' : 'Not Included' },
+        { name: 'Test Series', included: p.features?.testSeries, detail: p.features?.testSeries ? 'Included' : 'Not Included' }
+      ]
+    }));
+
+  const visiblePackages = mockPackagesByExam[examId] 
+    ? [...basePackages, ...customPackages] 
+    : (customPackages.length > 0 ? customPackages : basePackages);
 
   const handleSelectPackage = (pkg) => {
     setSelectedPlan(pkg);
@@ -109,18 +158,18 @@ export default function PackageSelectionPage() {
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block px-2 mb-1.5">
                 Switch Exam Track:
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                {examCategories.map((exam) => (
+              <div className="flex flex-wrap gap-1.5 max-w-sm">
+                {activeCatalogExams.map((exam) => (
                   <button
                     key={exam.id}
                     onClick={() => navigate(`/packages/${exam.id}`)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                       exam.id === examId
                         ? 'bg-brand-600 text-white shadow-sm'
                         : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
                     }`}
                   >
-                    {exam.flag} {exam.id === 'neet-pg' ? 'NEET PG' : exam.id.toUpperCase()}
+                    {exam.flag} {exam.name.split(' ')[0]}
                   </button>
                 ))}
               </div>
@@ -140,7 +189,7 @@ export default function PackageSelectionPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-            {examInfo.packages.map((pkg) => {
+            {visiblePackages.map((pkg) => {
               const isPopular = pkg.popular;
               return (
                 <div

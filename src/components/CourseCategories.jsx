@@ -12,22 +12,49 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { examCategories } from '../data/mockData';
+import { catalogService } from '../services/catalogService';
 
 export default function CourseCategories() {
   const navigate = useNavigate();
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [activeCatalogExams, setActiveCatalogExams] = useState(() => catalogService.getActiveExams());
+
+  React.useEffect(() => {
+    const unsubscribe = catalogService.subscribe(() => {
+      setActiveCatalogExams(catalogService.getActiveExams());
+    });
+    return unsubscribe;
+  }, []);
+
+  // Filter out inactive exams, and merge catalog state with rich presentation highlights
+  const availableExams = activeCatalogExams.map(cat => {
+    const baseMock = examCategories.find(e => e.id === cat.id);
+    return {
+      ...baseMock,
+      ...cat,
+      rating: baseMock?.rating || '4.9',
+      highlights: baseMock?.highlights || [
+        'Structured clinical modules & grand tests',
+        'Live faculty grand rounds & daily doubt clearance',
+        'High-yield clinical vignette practice questions'
+      ],
+      startingPrice: cat.startingPrice || baseMock?.startingPrice || '₹14,999',
+      originalPrice: baseMock?.originalPrice || '₹24,999',
+      discount: baseMock?.discount || '35% OFF'
+    };
+  });
 
   const filterOptions = [
-    { id: 'all', label: 'All Exams (4)' },
-    { id: 'neet-pg', label: '🇮🇳 NEET PG' },
-    { id: 'usmle', label: '🇺🇸 USMLE' },
-    { id: 'plab', label: '🇬🇧 PLAB / UKMLA' },
-    { id: 'europe', label: '🇪🇺 Europe' },
+    { id: 'all', label: `All Exams (${availableExams.length})` },
+    ...availableExams.map(e => ({
+      id: e.id,
+      label: `${e.flag} ${e.name.split(' ')[0]}`
+    }))
   ];
 
   const filteredCategories = selectedFilter === 'all' 
-    ? examCategories 
-    : examCategories.filter(cat => cat.id === selectedFilter);
+    ? availableExams 
+    : availableExams.filter(cat => cat.id === selectedFilter);
 
   const handleSelectExam = (examId) => {
     navigate(`/packages/${examId}`);
