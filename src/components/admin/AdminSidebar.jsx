@@ -10,9 +10,9 @@ import {
   FileText, 
   BarChart3, 
   ChevronDown, 
-  ChevronRight,
-  Crown,
-  X
+  ChevronRight, 
+  Crown, 
+  X 
 } from 'lucide-react';
 import { authService, USER_ROLES } from '../../services/authService';
 
@@ -63,7 +63,7 @@ export default function AdminSidebar({
 
       {/* Persistent Sidebar */}
       <aside className={`fixed lg:sticky top-0 lg:top-16 left-0 z-50 h-screen lg:h-[calc(100vh-4rem)] bg-white border-r border-slate-200 transition-all duration-300 flex flex-col justify-between ${
-        isCollapsed ? 'w-20' : 'w-64'
+        isCollapsed ? 'w-20' : 'w-72'
       } ${
         isOpenMobile ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
@@ -95,7 +95,7 @@ export default function AdminSidebar({
               }`}
             >
               <LayoutDashboard className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-400'}`} />
-              {!isCollapsed && <span>Dashboard</span>}
+              {!isCollapsed && <span className="whitespace-nowrap">Dashboard</span>}
             </button>
           </div>
 
@@ -107,46 +107,48 @@ export default function AdminSidebar({
                   onClick={() => toggleSection('courseSetup')}
                   className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
-                  <span>Course Setup</span>
+                  <span className="whitespace-nowrap">Course Setup</span>
                   {collapsedSections.courseSetup ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
               )}
 
               {!collapsedSections.courseSetup && (
                 <div className="space-y-1">
+                  {/* Manage Exams */}
                   <button
                     onClick={() => handleTabClick('exams')}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       activeTab === 'exams'
                         ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <BookOpen className={`w-4 h-4 shrink-0 ${activeTab === 'exams' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                      {!isCollapsed && <span>Manage Exams</span>}
+                      {!isCollapsed && <span className="whitespace-nowrap truncate">Manage Exams</span>}
                     </div>
                     {!isCollapsed && (
-                      <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.2 rounded-md">
+                      <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
                         4 Live
                       </span>
                     )}
                   </button>
 
+                  {/* Manage Packages */}
                   <button
                     onClick={() => handleTabClick('packages')}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       activeTab === 'packages'
                         ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <Package className={`w-4 h-4 shrink-0 ${activeTab === 'packages' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                      {!isCollapsed && <span>Manage Packages</span>}
+                      {!isCollapsed && <span className="whitespace-nowrap truncate">Manage Packages</span>}
                     </div>
                     {!isCollapsed && (
-                      <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.2 rounded-md">
+                      <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
                         12 Tiers
                       </span>
                     )}
@@ -163,7 +165,7 @@ export default function AdminSidebar({
                 onClick={() => toggleSection('people')}
                 className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
               >
-                <span>People</span>
+                <span className="whitespace-nowrap">People</span>
                 {collapsedSections.people ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
             )}
@@ -174,18 +176,18 @@ export default function AdminSidebar({
                 {isAdmin && (
                   <button
                     onClick={() => handleTabClick('faculty')}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       activeTab === 'faculty'
                         ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <GraduationCap className={`w-4 h-4 shrink-0 ${activeTab === 'faculty' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                      {!isCollapsed && <span>Manage Faculty</span>}
+                      {!isCollapsed && <span className="whitespace-nowrap truncate">Manage Faculty</span>}
                     </div>
                     {!isCollapsed && (
-                      <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.2 rounded-md">
+                      <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
                         8 Leads
                       </span>
                     )}
@@ -195,20 +197,20 @@ export default function AdminSidebar({
                 {/* Manage Students (Admin: All Students; Faculty: Scoped Students) */}
                 <button
                   onClick={() => handleTabClick('students')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     activeTab === 'students'
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <Users className={`w-4 h-4 shrink-0 ${activeTab === 'students' ? 'text-indigo-600' : 'text-slate-400'}`} />
                     {!isCollapsed && (
-                      <span>{isAdmin ? 'Manage Students' : 'Enrolled Students'}</span>
+                      <span className="whitespace-nowrap truncate">{isAdmin ? 'Manage Students' : 'Enrolled Students'}</span>
                     )}
                   </div>
                   {!isCollapsed && (
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-md">
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
                       {isAdmin ? '1.4k All' : '680 Cardio'}
                     </span>
                   )}
@@ -224,67 +226,70 @@ export default function AdminSidebar({
                 onClick={() => toggleSection('contentSchedule')}
                 className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
               >
-                <span>Content & Schedule</span>
+                <span className="whitespace-nowrap">Content & Schedule</span>
                 {collapsedSections.contentSchedule ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
             )}
 
             {!collapsedSections.contentSchedule && (
               <div className="space-y-1">
+                {/* Content Management */}
                 <button
                   onClick={() => handleTabClick('content')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     activeTab === 'content'
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <UploadCloud className={`w-4 h-4 shrink-0 ${activeTab === 'content' ? 'text-indigo-600' : 'text-slate-400'}`} />
                     {!isCollapsed && (
-                      <span>{isAdmin ? 'Content Management' : 'Assigned Daily Content'}</span>
+                      <span className="whitespace-nowrap truncate">{isAdmin ? 'Content Management' : 'Assigned Daily Content'}</span>
                     )}
                   </div>
                   {!isCollapsed && (
-                    <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.2 rounded-md">
+                    <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
                       Drip Feed
                     </span>
                   )}
                 </button>
 
+                {/* Live Sessions */}
                 <button
                   onClick={() => handleTabClick('live')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     activeTab === 'live'
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <Video className={`w-4 h-4 shrink-0 ${activeTab === 'live' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {!isCollapsed && <span>Live Sessions</span>}
+                    {!isCollapsed && <span className="whitespace-nowrap truncate">Live Sessions</span>}
                   </div>
                   {!isCollapsed && (
-                    <span className="text-[10px] bg-red-100 text-red-700 font-bold px-1.5 py-0.2 rounded-md">
+                    <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
                       Tonight
                     </span>
                   )}
                 </button>
 
+                {/* Manage Tests */}
                 <button
                   onClick={() => handleTabClick('tests')}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     activeTab === 'tests'
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <FileText className={`w-4 h-4 shrink-0 ${activeTab === 'tests' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {!isCollapsed && <span>Manage Tests</span>}
+                    {!isCollapsed && <span className="whitespace-nowrap truncate">Manage Tests</span>}
                   </div>
                   {!isCollapsed && (
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-md">
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
                       CBT Engine
                     </span>
                   )}
@@ -298,18 +303,18 @@ export default function AdminSidebar({
             <div className="space-y-1 pt-2 border-t border-slate-100">
               <button
                 onClick={() => handleTabClick('analytics')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   activeTab === 'analytics'
                     ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <BarChart3 className={`w-4 h-4 shrink-0 ${activeTab === 'analytics' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                  {!isCollapsed && <span>Reports & Analytics</span>}
+                  {!isCollapsed && <span className="whitespace-nowrap truncate">Reports & Analytics</span>}
                 </div>
                 {!isCollapsed && (
-                  <span className="text-[10px] bg-brand-100 text-brand-700 font-bold px-1.5 py-0.2 rounded-md">
+                  <span className="text-[10px] bg-brand-100 text-brand-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
                     KPIs
                   </span>
                 )}
@@ -326,9 +331,9 @@ export default function AdminSidebar({
               <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                   <Crown className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Super Admin Account</span>
+                  <span className="whitespace-nowrap">Super Admin Account</span>
                 </div>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-500 leading-snug">
                   Full Platform Authority across all 4 exam tracks, 12 packages, and financial reports.
                 </p>
               </div>
@@ -336,7 +341,7 @@ export default function AdminSidebar({
               <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-200/80 shadow-2xs space-y-1">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900">
                   <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
-                  <span>Faculty Assigned Scope</span>
+                  <span className="whitespace-nowrap">Faculty Assigned Scope</span>
                 </div>
                 <p className="text-[11px] text-purple-700 leading-snug">
                   Assigned: <strong>NEET PG & USMLE Cardio</strong>. Only assigned exams and students are visible.
