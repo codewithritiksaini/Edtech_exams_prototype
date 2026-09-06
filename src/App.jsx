@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage';
 import DayContentView from './pages/DayContentView';
 import FacultyLoginPage from './pages/FacultyLoginPage';
 import FacultyDashboardPage from './pages/FacultyDashboardPage';
+import TestExperiencePage from './pages/TestExperiencePage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -23,6 +24,7 @@ export default function App() {
 
   const isAppView = location.pathname.startsWith('/dashboard') || 
                     location.pathname.startsWith('/day') || 
+                    location.pathname.startsWith('/test') ||
                     location.pathname.startsWith('/faculty');
 
   const handleExploreCourses = () => {
@@ -72,6 +74,10 @@ export default function App() {
           <Route 
             path="/day/:dayId" 
             element={<DayContentView />} 
+          />
+          <Route 
+            path="/test/:testId" 
+            element={<TestExperiencePage />} 
           />
           <Route 
             path="/faculty/login" 

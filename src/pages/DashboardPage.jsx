@@ -32,7 +32,8 @@ import {
   dashboardUserData, 
   studyPlanWeeks, 
   dashboardLiveSessions, 
-  dashboardTests 
+  dashboardTests,
+  testService 
 } from '../data/mockData';
 
 export default function DashboardPage() {
@@ -50,6 +51,20 @@ export default function DashboardPage() {
       : examParam === 'europe' 
         ? 'Europe Medical Licensing' 
         : dashboardUserData.enrolledCourse;
+
+  // Reactive Tests Store for Phase 6
+  const [testsList, setTestsList] = useState(() => testService.getTests());
+
+  useEffect(() => {
+    const handleTestsUpdate = () => {
+      setTestsList(testService.getTests());
+    };
+    window.addEventListener('medprep-tests-updated', handleTestsUpdate);
+    return () => window.removeEventListener('medprep-tests-updated', handleTestsUpdate);
+  }, []);
+
+  // Active upcoming/live test
+  const activeTest = testsList.find((t) => t.id === 'test-cardio-01') || testsList[0];
 
   // Sidebar & Modals state
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -234,30 +249,58 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* 3. Upcoming Test */}
+            {/* 3. Upcoming Test Card (Phase 6 Reactive Store) */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                    TEST SCHEDULE
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                    activeTest.status === 'Completed'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}>
+                    {activeTest.status === 'Completed' ? 'TEST COMPLETED' : 'SCHEDULED ASSESSMENT'}
                   </span>
-                  <span className="text-xs text-slate-500">45 Mins</span>
+                  <span className="text-xs text-slate-500">{activeTest.duration}</span>
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
-                  Cardiology Subject Mini-Mock #02
+                  {activeTest.name}
                 </h4>
                 <p className="text-xs text-slate-500 mt-1">
-                  40 clinical vignette questions timed exam.
+                  {activeTest.status === 'Completed' ? (
+                    <span className="text-emerald-700 font-semibold">
+                      Your Score: {activeTest.score} ({activeTest.percentile || '94.2%ile'}) • PASSED
+                    </span>
+                  ) : (
+                    <span>{activeTest.questionsCount || 20} clinical vignette questions • +5 / -1 marking scheme.</span>
+                  )}
                 </p>
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs text-emerald-600 font-bold">Active Today</span>
+                <div className="flex items-center gap-1.5 text-xs">
+                  {activeTest.status === 'Completed' ? (
+                    <span className="text-emerald-600 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Result Ready</span>
+                    </span>
+                  ) : (
+                    <span className="text-emerald-600 font-bold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>{activeTest.startsIn || 'Live Window Active'}</span>
+                    </span>
+                  )}
+                </div>
+
                 <button
-                  onClick={() => handleAttemptTest(dashboardTests[1])}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors"
+                  onClick={() => navigate(`/test/${activeTest.id}`)}
+                  className={`px-3.5 py-1.5 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1 ${
+                    activeTest.status === 'Completed'
+                      ? 'bg-slate-800 hover:bg-slate-700'
+                      : 'bg-brand-600 hover:bg-brand-500 shadow-brand-600/20'
+                  }`}
                 >
-                  Attempt Test
+                  <span>{activeTest.status === 'Completed' ? 'Review Answers' : 'View Details & Start'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -619,9 +662,9 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Test list rows */}
+            {/* Test list rows (Dynamic Phase 6 Store) */}
             <div className="divide-y divide-slate-100">
-              {dashboardTests.map((test) => {
+              {testsList.map((test) => {
                 const isCompleted = test.status === 'Completed';
 
                 return (
@@ -653,7 +696,7 @@ export default function DashboardPage() {
                           <span>•</span>
                           <span>⏱ {test.duration}</span>
                           <span>•</span>
-                          <span>📝 {test.questions} Questions</span>
+                          <span>📝 {test.questionsCount || test.questions || 20} Questions</span>
                           {test.score && (
                             <>
                               <span>•</span>
@@ -667,14 +710,15 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-3 self-end sm:self-center">
                       {isCompleted ? (
                         <button
-                          onClick={() => handleAttemptTest(test)}
-                          className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                          onClick={() => navigate(`/test/${test.id}`)}
+                          className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center gap-1.5"
                         >
-                          View Result & Analysis
+                          <span>Review Results & Answers</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleAttemptTest(test)}
+                          onClick={() => navigate(`/test/${test.id}`)}
                           className="px-5 py-2.5 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
                         >
                           <span>Attempt Test</span>

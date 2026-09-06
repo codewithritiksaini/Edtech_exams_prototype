@@ -32,8 +32,10 @@ import {
   facultySummaryMetrics, 
   facultyRecentActivity, 
   facultyStudentDirectory,
-  dashboardLiveSessions,
-  dashboardTests 
+  dashboardLiveSessions, 
+  dashboardTests,
+  testService,
+  initialCohortTestResults 
 } from '../data/mockData';
 
 export default function FacultyDashboardPage() {
@@ -80,14 +82,36 @@ export default function FacultyDashboardPage() {
   const [liveDuration, setLiveDuration] = useState('1.5 hours');
   const [liveLink, setLiveLink] = useState('https://zoom.us/j/9876543210');
 
-  // Tests form state
-  const [testsList, setTestsList] = useState(dashboardTests);
-  const [testCourse, setTestCourse] = useState('neet-pg');
-  const [testName, setTestName] = useState('Cardiology Subject Grand Test #02');
-  const [testBatchTier, setTestBatchTier] = useState('All Enrolled Tiers');
+  // Tests form & state (Phase 6 Reactive Store)
+  const [testsList, setTestsList] = useState(() => testService.getTests());
+  const [testCourse, setTestCourse] = useState('NEET PG & NExT 2026');
+  const [testName, setTestName] = useState('Cardiology Mock Test 1');
+  const [testBatchTier, setTestBatchTier] = useState('All Students of this Course');
   const [testDate, setTestDate] = useState('2026-09-18');
-  const [testDuration, setTestDuration] = useState('60 mins');
-  const [testQuestionCount, setTestQuestionCount] = useState('50');
+  const [testTime, setTestTime] = useState('18:00');
+  const [testDuration, setTestDuration] = useState('45 mins');
+  const [testTotalMarks, setTestTotalMarks] = useState('100');
+  const [testQuestionCount, setTestQuestionCount] = useState('20');
+
+  // Cohort Results Modal State
+  const [activeResultsModalTest, setActiveResultsModalTest] = useState(null);
+  const [cohortResultsData, setCohortResultsData] = useState(null);
+
+  // Sync test store across browser sessions and tabs
+  React.useEffect(() => {
+    const handleSync = () => {
+      setTestsList(testService.getTests());
+      if (activeResultsModalTest) {
+        setCohortResultsData(testService.getCohortResults(activeResultsModalTest.id));
+      }
+    };
+    window.addEventListener('medprep-tests-updated', handleSync);
+    window.addEventListener('medprep-results-updated', handleSync);
+    return () => {
+      window.removeEventListener('medprep-tests-updated', handleSync);
+      window.removeEventListener('medprep-results-updated', handleSync);
+    };
+  }, [activeResultsModalTest]);
 
   // Students Search state
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
@@ -131,16 +155,43 @@ export default function FacultyDashboardPage() {
     const newTest = {
       id: `test-${Date.now()}`,
       name: testName,
-      type: `${testQuestionCount} Qs • ${testBatchTier}`,
+      courseId: testCourse.toLowerCase().includes('neet') ? 'neet-pg' : testCourse.toLowerCase().includes('usmle') ? 'usmle' : 'plab',
+      course: testCourse,
+      batch: testBatchTier,
       date: testDate,
+      time: `${testTime} IST`,
       duration: testDuration,
-      questions: parseInt(testQuestionCount, 10),
+      durationSeconds: testDuration.includes('210') ? 12600 : testDuration.includes('60') || testDuration.includes('1 hr') ? 3600 : 2700,
+      totalMarks: parseInt(testTotalMarks, 10) || 100,
+      questionsCount: parseInt(testQuestionCount, 10) || 20,
       status: 'Upcoming',
-      badge: 'New Test',
-      pattern: 'NExT/USMLE Aligned'
+      badge: 'Newly Scheduled',
+      pattern: 'NExT/USMLE Clinical Simulation',
+      startsIn: `Starts on ${testDate}`,
+      instructions: [
+        `Examination: ${testName}`,
+        `Candidate Batch: ${testBatchTier}`,
+        `Total marks: ${testTotalMarks} Marks (${testQuestionCount} clinical questions).`,
+        'Marking Scheme: +5 marks per correct response, -1 mark negative marking for incorrect choices.',
+        'Proctored countdown clock enforces automatic submission upon timer expiration.'
+      ]
     };
-    setTestsList([newTest, ...testsList]);
-    triggerUploadSuccess(`Test "${testName}" created and assigned!`);
+
+    testService.saveTest(newTest);
+    triggerUploadSuccess(`Assessment "${testName}" scheduled successfully for ${testBatchTier}!`);
+  };
+
+  const handleOpenResults = (testObj) => {
+    const results = testService.getCohortResults(testObj.id);
+    setActiveResultsModalTest(testObj);
+    setCohortResultsData(results);
+  };
+
+  const handleCancelTest = (testId, name) => {
+    const updated = testsList.filter((t) => t.id !== testId);
+    testService.saveTest(updated);
+    setTestsList(updated);
+    triggerUploadSuccess(`Test "${name}" was cancelled.`);
   };
 
   const filteredStudents = facultyStudentDirectory.filter((s) => 
@@ -758,86 +809,143 @@ export default function FacultyDashboardPage() {
           )}
 
           {/* ========================================================================= */}
-          {/* 6. Manage Tests Section                                                   */}
+          {/* 6. Manage Tests Section (Phase 6 Detailed Scheduling & Results)           */}
           {/* ========================================================================= */}
           {activeTab === 'tests' && (
             <div className="space-y-8 animate-in fade-in">
               
+              {/* Test Creation Form */}
               <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-800 space-y-6">
                 <div>
-                  <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">
-                    Assessment & CBT Engine
-                  </span>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white mt-1">
-                    Create & Schedule Test
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-950 border border-indigo-700/60 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-2">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Faculty Assessment Scheduler</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-white">
+                    Create & Schedule Examination
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-400">
-                    Release timed examinations, subject mini-mocks, and full grand tests with national percentile benchmarking.
+                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                    Configure timed assessments tied to specific courses and student package tiers. Scheduled tests immediately reflect on enrolled candidate dashboards.
                   </p>
                 </div>
 
                 <form onSubmit={handleCreateTest} className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-800">
+                  
+                  {/* Course Track */}
                   <div>
-                    <label className="text-xs text-slate-300 block mb-1">Target Course Track</label>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">Select Course Track</label>
                     <select
                       value={testCourse}
                       onChange={(e) => setTestCourse(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white"
+                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
                     >
-                      <option value="neet-pg">NEET PG & NExT 2026</option>
-                      <option value="usmle">USMLE Step 1 & 2 CK</option>
-                      <option value="plab">PLAB 1 & 2 / UKMLA</option>
+                      <option value="NEET PG & NExT 2026">NEET PG & NExT 2026</option>
+                      <option value="USMLE Step 1 & 2 CK">USMLE Step 1 & 2 CK</option>
+                      <option value="PLAB 1 & 2 / UKMLA">PLAB 1 & 2 / UKMLA</option>
+                      <option value="Europe Medical Licensing">Europe Medical Licensing</option>
                     </select>
                   </div>
 
+                  {/* Test Title */}
                   <div className="sm:col-span-2">
-                    <label className="text-xs text-slate-300 block mb-1">Test Title</label>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">Test Name / Title</label>
                     <input
                       type="text"
+                      placeholder="e.g. Cardiology Mock Test 1"
                       value={testName}
                       onChange={(e) => setTestName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white"
+                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
                       required
                     />
                   </div>
 
+                  {/* Batch / Tier */}
                   <div>
-                    <label className="text-xs text-slate-300 block mb-1">Target Package Tier</label>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">Applicable Batch / Tier</label>
                     <select
                       value={testBatchTier}
                       onChange={(e) => setTestBatchTier(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white"
+                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
                     >
-                      <option value="All Enrolled Tiers">All Enrolled Tiers</option>
-                      <option value="Standard & Premium Only">Standard & Premium Only</option>
-                      <option value="Premium 1-on-1 VIP Only">Premium 1-on-1 VIP Only</option>
+                      <option value="All Students of this Course">All Students of this Course</option>
+                      <option value="All Premium Students">All Premium Students</option>
+                      <option value="Standard & Premium Students Only">Standard & Premium Students Only</option>
                     </select>
                   </div>
 
+                  {/* Exam Date */}
                   <div>
-                    <label className="text-xs text-slate-300 block mb-1">Exam Date</label>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">Test Date</label>
                     <input
                       type="date"
                       value={testDate}
                       onChange={(e) => setTestDate(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white"
+                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
                     />
                   </div>
 
+                  {/* Start Time */}
                   <div>
-                    <label className="text-xs text-slate-300 block mb-1">Duration & Q Count</label>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">Test Start Time</label>
                     <input
-                      type="text"
+                      type="time"
+                      value={testTime}
+                      onChange={(e) => setTestTime(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
+                    />
+                  </div>
+
+                  {/* Duration Dropdown */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">Duration</label>
+                    <select
                       value={testDuration}
                       onChange={(e) => setTestDuration(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white"
+                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
+                    >
+                      <option value="30 mins">30 mins</option>
+                      <option value="45 mins">45 mins</option>
+                      <option value="60 mins (1 hr)">60 mins (1 hr)</option>
+                      <option value="90 mins (1.5 hr)">90 mins (1.5 hr)</option>
+                      <option value="120 mins (2 hr)">120 mins (2 hr)</option>
+                      <option value="210 mins (3.5 hr)">210 mins (3.5 hr)</option>
+                    </select>
+                  </div>
+
+                  {/* Total Marks */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">Total Marks</label>
+                    <input
+                      type="number"
+                      value={testTotalMarks}
+                      onChange={(e) => setTestTotalMarks(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
                     />
                   </div>
 
-                  <div className="sm:col-span-3 pt-2">
+                  {/* Number of Questions */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-300">Number of Questions</label>
+                      <span className="text-[10px] text-indigo-400">Linked to Q-Bank</span>
+                    </div>
+                    <input
+                      type="number"
+                      value={testQuestionCount}
+                      onChange={(e) => setTestQuestionCount(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
+                    />
+                  </div>
+
+                  {/* Notice & Submit Action */}
+                  <div className="sm:col-span-3 pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <p className="text-[11px] text-slate-400">
+                      ℹ️ Questions automatically linked via Question Bank module (vignettes with NExT/USMLE clinical format).
+                    </p>
+
                     <button
                       type="submit"
-                      className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
                     >
                       <FileText className="w-4 h-4" />
                       <span>Schedule & Release Test</span>
@@ -846,38 +954,77 @@ export default function FacultyDashboardPage() {
                 </form>
               </div>
 
-              {/* Tests Roster Table */}
+              {/* Scheduled Tests Table */}
               <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-800 space-y-4">
-                <h3 className="text-base font-bold text-white">Active Test Series Roster</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-white">Scheduled Assessments Roster</h3>
+                    <p className="text-xs text-slate-400">Overview of upcoming, live, and completed examination series.</p>
+                  </div>
+                  <span className="text-xs text-indigo-400 font-mono font-bold">
+                    {testsList.length} Total Tests
+                  </span>
+                </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="border-b border-slate-800 text-slate-400">
+                      <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
                         <th className="py-3 px-4">Test Name</th>
-                        <th className="py-3 px-4">Date</th>
-                        <th className="py-3 px-4">Questions</th>
+                        <th className="py-3 px-4">Course</th>
+                        <th className="py-3 px-4">Batch</th>
+                        <th className="py-3 px-4">Date & Time</th>
+                        <th className="py-3 px-4">Duration</th>
                         <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 text-right">Analytics</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
                       {testsList.map((t) => (
-                        <tr key={t.id} className="hover:bg-slate-800/40">
-                          <td className="py-3.5 px-4 font-bold text-white">{t.name}</td>
-                          <td className="py-3.5 px-4 text-slate-300">{t.date} ({t.duration})</td>
-                          <td className="py-3.5 px-4 text-slate-400">{t.questions} Qs</td>
+                        <tr key={t.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-white">
+                            <div>{t.name}</div>
+                            <div className="text-[10px] text-slate-400">{t.questionsCount || t.questions || 20} Questions • {t.totalMarks || 100} Marks</div>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-300 font-medium">{t.course || 'NEET PG & NExT'}</td>
+                          <td className="py-3.5 px-4 text-slate-400">{t.batch || 'All Students'}</td>
+                          <td className="py-3.5 px-4 text-slate-300">
+                            <div>{t.date}</div>
+                            <div className="text-[10px] text-slate-400">{t.time || '18:00 IST'}</div>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-400">{t.duration}</td>
                           <td className="py-3.5 px-4">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800/50">
+                            <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${
+                              t.status === 'Live'
+                                ? 'bg-emerald-950 text-emerald-300 border-emerald-800/60 animate-pulse'
+                                : t.status === 'Completed'
+                                ? 'bg-indigo-950 text-indigo-300 border-indigo-800/60'
+                                : 'bg-slate-800 text-slate-300 border-slate-700'
+                            }`}>
                               {t.status}
                             </span>
                           </td>
                           <td className="py-3.5 px-4 text-right">
-                            <button
-                              onClick={() => triggerUploadSuccess(`Generated cohort diagnostic report for ${t.name}`)}
-                              className="text-xs font-bold text-indigo-400 hover:text-indigo-300"
-                            >
-                              View Cohort Results
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleOpenResults(t)}
+                                className="px-3 py-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-600/40 rounded-lg text-xs font-bold transition-colors"
+                              >
+                                View Results
+                              </button>
+                              <button
+                                onClick={() => triggerUploadSuccess(`Test config editor opened for "${t.name}"`)}
+                                className="text-[11px] text-slate-400 hover:text-white px-2 py-1"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleCancelTest(t.id, t.name)}
+                                className="text-[11px] text-rose-400 hover:text-rose-300 px-2 py-1"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -885,6 +1032,166 @@ export default function FacultyDashboardPage() {
                   </table>
                 </div>
               </div>
+
+              {/* ============================================================= */}
+              {/* POPUP MODAL: Cohort Test Results View (Part A.3)              */}
+              {/* ============================================================= */}
+              {activeResultsModalTest && cohortResultsData && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+                  <div className="bg-slate-900 rounded-3xl max-w-4xl w-full border border-slate-800 p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+                    
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                      <div>
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-950 border border-indigo-700/60 text-indigo-300 text-[10px] font-bold uppercase tracking-wider mb-1">
+                          <span>Cohort Examination Performance Report</span>
+                        </div>
+                        <h3 className="text-xl font-black text-white">
+                          {activeResultsModalTest.name}
+                        </h3>
+                        <p className="text-xs text-slate-400">
+                          Track: {activeResultsModalTest.course || 'NEET PG'} • Target Batch: {activeResultsModalTest.batch || 'All Students'}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => setActiveResultsModalTest(null)}
+                        className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Top Summary Metrics */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center">
+                        <div className="text-[11px] text-slate-400 font-medium">Average Score</div>
+                        <div className="text-xl font-black text-white mt-1">
+                          {cohortResultsData.summary.averageScore}
+                        </div>
+                        <div className="text-[10px] text-slate-500">Cohort Mean</div>
+                      </div>
+
+                      <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center">
+                        <div className="text-[11px] text-slate-400 font-medium">Highest Score</div>
+                        <div className="text-xl font-black text-emerald-400 mt-1">
+                          {cohortResultsData.summary.highestScore}
+                        </div>
+                        <div className="text-[10px] text-slate-500">Top Candidate</div>
+                      </div>
+
+                      <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center">
+                        <div className="text-[11px] text-slate-400 font-medium">Candidates Attempted</div>
+                        <div className="text-xl font-black text-indigo-400 mt-1">
+                          {cohortResultsData.summary.attemptedCount} / {cohortResultsData.summary.totalEligible || 450}
+                        </div>
+                        <div className="text-[10px] text-slate-500">Submissions</div>
+                      </div>
+
+                      <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center">
+                        <div className="text-[11px] text-slate-400 font-medium">Cohort Pass Rate</div>
+                        <div className="text-xl font-black text-amber-400 mt-1">
+                          {cohortResultsData.summary.passRate}
+                        </div>
+                        <div className="text-[10px] text-slate-500">Threshold: ≥50%</div>
+                      </div>
+                    </div>
+
+                    {/* Candidate Submissions Table */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                          Candidate Attempts & Diagnostic Scores
+                        </h4>
+                        <span className="text-[11px] text-slate-400">
+                          {cohortResultsData.students?.length || 0} Submissions Recorded
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400">
+                              <th className="py-3 px-4">Student Name</th>
+                              <th className="py-3 px-4">Score</th>
+                              <th className="py-3 px-4">Percentage</th>
+                              <th className="py-3 px-4">Time Taken</th>
+                              <th className="py-3 px-4">Status</th>
+                              <th className="py-3 px-4 text-right">Submitted At</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800">
+                            {cohortResultsData.students?.map((s) => {
+                              const isRitik = s.name === 'Dr. Ritik Saini';
+                              return (
+                                <tr 
+                                  key={s.id} 
+                                  className={`hover:bg-slate-800/40 transition-colors ${
+                                    isRitik ? 'bg-indigo-950/40 border-l-2 border-indigo-500' : ''
+                                  }`}
+                                >
+                                  <td className="py-3.5 px-4 font-bold text-white flex items-center gap-2.5">
+                                    <img 
+                                      src={s.avatar} 
+                                      alt={s.name} 
+                                      className="w-7 h-7 rounded-full object-cover border border-slate-700" 
+                                    />
+                                    <div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span>{s.name}</span>
+                                        {isRitik && (
+                                          <span className="text-[9px] bg-brand-500 text-white font-bold px-1.5 py-0.2 rounded">
+                                            Current Candidate
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-[10px] text-slate-400 font-normal">{s.course}</div>
+                                    </div>
+                                  </td>
+                                  <td className="py-3.5 px-4 font-bold text-slate-200">{s.score}</td>
+                                  <td className="py-3.5 px-4 font-bold text-indigo-400">{s.percentage}</td>
+                                  <td className="py-3.5 px-4 text-slate-400">{s.timeTaken}</td>
+                                  <td className="py-3.5 px-4">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      s.status === 'Pass' 
+                                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/60' 
+                                        : 'bg-rose-950 text-rose-300 border border-rose-800/60'
+                                    }`}>
+                                      {s.status}
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4 text-right text-slate-400 text-[11px]">
+                                    {s.submittedAt}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Bottom Modal Actions */}
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+                      <button
+                        onClick={() => triggerUploadSuccess('Grade sheet exported in CSV format')}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Export Cohort CSV</span>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveResultsModalTest(null)}
+                        className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition-colors"
+                      >
+                        Close Window
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              )}
 
             </div>
           )}
