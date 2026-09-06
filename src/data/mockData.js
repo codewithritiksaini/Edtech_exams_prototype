@@ -1563,6 +1563,10 @@ export const testService = {
     return phase6InitialTests;
   },
 
+  getAllTests: () => {
+    return testService.getTests();
+  },
+
   getTestById: (id) => {
     const tests = testService.getTests();
     return tests.find((t) => t.id === id) || tests[0];
@@ -1578,6 +1582,40 @@ export const testService = {
       console.warn('Storage save error:', e);
     }
     return updated;
+  },
+
+  addTest: (testData) => {
+    const newTest = {
+      id: `test-${Date.now()}`,
+      name: testData.name,
+      courseId: testData.courseId || 'neet-pg',
+      course: testData.course || (testData.courseId === 'usmle' ? 'USMLE Step 1 & 2' : testData.courseId === 'plab' ? 'PLAB 1 & 2' : 'NEET PG & NExT 2026'),
+      batch: testData.batch || 'All Enrolled Students',
+      date: testData.dateTime ? testData.dateTime.split('@')[0]?.trim() : 'Upcoming',
+      time: testData.dateTime ? testData.dateTime.split('@')[1]?.trim() : '18:00 IST',
+      duration: testData.duration || '45 mins',
+      durationSeconds: 2700,
+      totalMarks: testData.totalMarks || 100,
+      questionsCount: testData.totalQuestions || 20,
+      status: 'Scheduled',
+      badge: 'Assessment Scheduled',
+      pattern: 'Clinical Vignettes (Single Best Response)',
+      startsIn: 'Scheduled'
+    };
+    testService.saveTest(newTest);
+    return newTest;
+  },
+
+  subscribe: (callback) => {
+    const handler = (e) => {
+      callback(e.detail || testService.getTests());
+    };
+    window.addEventListener('medprep-tests-updated', handler);
+    return () => window.removeEventListener('medprep-tests-updated', handler);
+  },
+
+  getStudentSubmissions: () => {
+    return [];
   },
 
   getCohortResults: (testId) => {

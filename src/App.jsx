@@ -8,6 +8,8 @@ import DashboardPage from './pages/DashboardPage';
 import DayContentView from './pages/DayContentView';
 import FacultyLoginPage from './pages/FacultyLoginPage';
 import FacultyDashboardPage from './pages/FacultyDashboardPage';
+import LoginPage from './pages/LoginPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import TestExperiencePage from './pages/TestExperiencePage';
 
 function ScrollToTop() {
@@ -25,7 +27,9 @@ export default function App() {
   const isAppView = location.pathname.startsWith('/dashboard') || 
                     location.pathname.startsWith('/day') || 
                     location.pathname.startsWith('/test') ||
-                    location.pathname.startsWith('/faculty');
+                    location.pathname.startsWith('/faculty') ||
+                    location.pathname.startsWith('/admin') ||
+                    location.pathname === '/login';
 
   const handleExploreCourses = () => {
     const el = document.getElementById('courses');
@@ -80,12 +84,24 @@ export default function App() {
             element={<TestExperiencePage />} 
           />
           <Route 
+            path="/login" 
+            element={<LoginPage />} 
+          />
+          <Route 
+            path="/admin" 
+            element={<AdminDashboardPage />} 
+          />
+          <Route 
+            path="/admin/login" 
+            element={<LoginPage />} 
+          />
+          <Route 
             path="/faculty/login" 
-            element={<FacultyLoginPage />} 
+            element={<LoginPage />} 
           />
           <Route 
             path="/faculty" 
-            element={<FacultyDashboardPage />} 
+            element={<AdminDashboardPage />} 
           />
           {/* Catch-all redirect to homepage */}
           <Route 
