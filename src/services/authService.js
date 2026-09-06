@@ -117,6 +117,28 @@ class AuthService {
     return account;
   }
 
+  registerFacultyAccount(faculty) {
+    if (!faculty || !faculty.email) return;
+    const cleanEmail = faculty.email.trim().toLowerCase();
+    const newAccount = {
+      email: cleanEmail,
+      role: USER_ROLES.FACULTY,
+      name: faculty.name,
+      roleLabel: `Clinical Faculty Specialist`,
+      institution: 'MedPrep Faculty Board',
+      assignedScope: `${Array.isArray(faculty.assignedExams) ? faculty.assignedExams.join(', ') : faculty.assignedExams} (${faculty.assignedWeeks || 'All Weeks'})`,
+      assignedStudentsCount: 680,
+      avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=120&auto=format&fit=crop&q=80',
+      redirectTo: '/admin'
+    };
+    MOCK_ACCOUNTS[cleanEmail] = newAccount;
+    try {
+      localStorage.setItem(`medprep_account_${cleanEmail}`, JSON.stringify(newAccount));
+    } catch (e) {
+      console.warn('Account save error:', e);
+    }
+  }
+
   logout() {
     this.currentUser = null;
     try {
