@@ -71,8 +71,33 @@ export default function AdminDashboardPage() {
 
   // Active tab state: 'dashboard' | 'exams' | 'packages' | 'faculty' | 'students' | 'content' | 'live' | 'tests' | 'analytics'
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Persistent Sidebar Pin/Unpin state
+  const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
+    try {
+      const saved = localStorage.getItem('medprep_sidebar_pinned');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch (e) {
+      return true;
+    }
+  });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const handleTogglePin = () => {
+    setIsSidebarPinned(prev => {
+      const next = !prev;
+      localStorage.setItem('medprep_sidebar_pinned', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleToggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsMobileSidebarOpen(prev => !prev);
+    } else {
+      handleTogglePin();
+    }
+  };
 
   // If activeTab is restricted for Faculty, reset to dashboard
   useEffect(() => {
@@ -247,7 +272,7 @@ export default function AdminDashboardPage() {
       
       {/* Top Persistent Admin Navbar */}
       <AdminNavbar 
-        onToggleSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        onToggleSidebar={handleToggleSidebar}
       />
 
       <div className="flex-grow flex">
@@ -256,7 +281,8 @@ export default function AdminDashboardPage() {
         <AdminSidebar 
           activeTab={activeTab}
           onSelectTab={(tab) => setActiveTab(tab)}
-          isCollapsed={isSidebarCollapsed}
+          isPinned={isSidebarPinned}
+          onTogglePin={handleTogglePin}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />

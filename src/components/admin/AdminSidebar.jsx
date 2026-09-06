@@ -12,18 +12,22 @@ import {
   ChevronDown, 
   ChevronRight, 
   Crown, 
-  X 
+  X, 
+  Pin, 
+  PinOff 
 } from 'lucide-react';
 import { authService, USER_ROLES } from '../../services/authService';
 
 export default function AdminSidebar({ 
   activeTab, 
   onSelectTab, 
-  isCollapsed, 
+  isPinned = true, 
+  onTogglePin, 
   isOpenMobile, 
   onCloseMobile 
 }) {
   const [currentUser, setCurrentUser] = useState(authService.getCurrentUser());
+  const [isHovered, setIsHovered] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({
     courseSetup: false,
     people: false,
@@ -39,7 +43,12 @@ export default function AdminSidebar({
 
   const isAdmin = currentUser?.role === USER_ROLES.ADMIN;
 
+  // The sidebar is expanded if it is pinned OR currently hovered
+  const isExpanded = isPinned || isHovered;
+
   const toggleSection = (sectionKey) => {
+    // Only allow collapsing sub-sections when expanded
+    if (!isExpanded) return;
     setCollapsedSections(prev => ({
       ...prev,
       [sectionKey]: !prev[sectionKey]
@@ -49,6 +58,10 @@ export default function AdminSidebar({
   const handleTabClick = (tabId) => {
     onSelectTab(tabId);
     if (onCloseMobile) onCloseMobile();
+    // If not pinned, collapse back on tab selection
+    if (!isPinned) {
+      setIsHovered(false);
+    }
   };
 
   return (
@@ -61,48 +74,120 @@ export default function AdminSidebar({
         />
       )}
 
-      {/* Persistent Sidebar */}
-      <aside className={`fixed lg:sticky top-0 lg:top-16 left-0 z-50 h-screen lg:h-[calc(100vh-4rem)] bg-white border-r border-slate-200 transition-all duration-300 flex flex-col justify-between ${
-        isCollapsed ? 'w-20' : 'w-72'
-      } ${
-        isOpenMobile ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      }`}>
+      {/* Desktop Layout Spacer:
+          When pinned: takes full 305px in document flow.
+          When unpinned: takes compact 80px rail space so content doesn't jump on hover! */}
+      <div 
+        className={`hidden lg:block shrink-0 transition-all duration-200 ease-in-out ${
+          isPinned ? 'w-[305px]' : 'w-20'
+        }`}
+      />
+
+      {/* Persistent Sidebar / Floating Rail */}
+      <aside 
+        onMouseEnter={() => !isPinned && setIsHovered(true)}
+        onMouseLeave={() => !isPinned && setIsHovered(false)}
+        className={`fixed top-0 lg:top-16 left-0 z-50 h-screen lg:h-[calc(100vh-4rem)] bg-white border-r border-slate-200 transition-all duration-200 ease-in-out flex flex-col justify-between ${
+          isExpanded 
+            ? 'w-[305px]' 
+            : 'w-20'
+        } ${
+          !isPinned && isHovered 
+            ? 'shadow-2xl shadow-slate-900/15 ring-1 ring-slate-900/5' 
+            : isPinned 
+              ? 'shadow-none' 
+              : 'shadow-xs'
+        } ${
+          isOpenMobile 
+            ? 'translate-x-0' 
+            : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
         
-        {/* Navigation Items Area */}
-        <div className="p-3.5 space-y-4 overflow-y-auto flex-grow">
+        {/* Navigation Items Area with Sleek Custom Scrollbar */}
+        <div className="p-2.5 space-y-2 overflow-y-auto custom-sidebar-scroll flex-grow overflow-x-hidden">
           
-          {/* Mobile Close Bar */}
-          <div className="flex lg:hidden items-center justify-between pb-3 border-b border-slate-100">
+          {/* Mobile Close Bar (Mobile Only) */}
+          <div className="flex lg:hidden items-center justify-between pb-2 border-b border-slate-100">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              {isAdmin ? 'Admin Navigation' : 'Faculty Navigation'}
+              {isAdmin ? 'Admin Portal' : 'Faculty Portal'}
             </span>
             <button
               onClick={onCloseMobile}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Section 1: Dashboard Overview (Always Visible) */}
+          {/* Desktop Pin / Unpin Toolbar */}
+          <div className="hidden lg:flex items-center justify-between pb-2 border-b border-slate-100 min-h-[36px]">
+            {isExpanded ? (
+              <>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1.5 whitespace-nowrap">
+                  {isAdmin ? 'Administration' : 'Faculty Console'}
+                </span>
+                <button
+                  id="btn-sidebar-pin-toggle"
+                  type="button"
+                  onClick={onTogglePin}
+                  className={`px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    isPinned 
+                      ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 shadow-2xs' 
+                      : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/60 border border-transparent hover:border-indigo-100'
+                  }`}
+                  title={isPinned ? 'Sidebar is Pinned (Click to Unpin & auto-collapse)' : 'Sidebar is Unpinned (Click to Pin open)'}
+                >
+                  {isPinned ? (
+                    <>
+                      <Pin className="w-3.5 h-3.5 text-indigo-600 rotate-45 shrink-0" />
+                      <span className="text-[10px] font-bold whitespace-nowrap">Pinned</span>
+                    </>
+                  ) : (
+                    <>
+                      <PinOff className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">Unpinned</span>
+                    </>
+                  )}
+                </button>
+              </>
+            ) : (
+              <div className="w-full flex justify-center">
+                <button
+                  id="btn-sidebar-pin-rail-toggle"
+                  type="button"
+                  onClick={onTogglePin}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                  title="Click to Pin sidebar open (or hover to extend)"
+                >
+                  <PinOff className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 1: DASHBOARD OVERVIEW */}
           <div className="space-y-1">
             <button
               onClick={() => handleTabClick('dashboard')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              title={!isExpanded ? 'Dashboard Overview' : undefined}
+              className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                isExpanded ? 'gap-3 px-3 py-2' : 'justify-center p-2.5'
+              } ${
                 activeTab === 'dashboard'
                   ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
               }`}
             >
               <LayoutDashboard className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-400'}`} />
-              {!isCollapsed && <span className="whitespace-nowrap">Dashboard</span>}
+              {isExpanded && <span className="whitespace-nowrap">Dashboard</span>}
             </button>
           </div>
 
-          {/* Section 2: Course Setup (Admin: Visible; Faculty: HIDDEN) */}
+          {/* SECTION 2: COURSE SETUP (Admin Only) */}
           {isAdmin && (
-            <div className="space-y-1 pt-2 border-t border-slate-100">
-              {!isCollapsed && (
+            <div className="space-y-1 pt-1.5 border-t border-slate-100">
+              {isExpanded ? (
                 <button
                   onClick={() => toggleSection('courseSetup')}
                   className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
@@ -110,25 +195,30 @@ export default function AdminSidebar({
                   <span className="whitespace-nowrap">Course Setup</span>
                   {collapsedSections.courseSetup ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
+              ) : (
+                <div className="my-1 border-t border-slate-100" />
               )}
 
-              {!collapsedSections.courseSetup && (
+              {(!collapsedSections.courseSetup || !isExpanded) && (
                 <div className="space-y-1">
                   {/* Manage Exams */}
                   <button
                     onClick={() => handleTabClick('exams')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    title={!isExpanded ? 'Manage Exams (4 Live)' : undefined}
+                    className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                      isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                    } ${
                       activeTab === 'exams'
                         ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                       <BookOpen className={`w-4 h-4 shrink-0 ${activeTab === 'exams' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                      {!isCollapsed && <span className="whitespace-nowrap truncate">Manage Exams</span>}
+                      {isExpanded && <span className="whitespace-nowrap shrink-0">Manage Exams</span>}
                     </div>
-                    {!isCollapsed && (
-                      <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
+                    {isExpanded && (
+                      <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                         4 Live
                       </span>
                     )}
@@ -137,18 +227,21 @@ export default function AdminSidebar({
                   {/* Manage Packages */}
                   <button
                     onClick={() => handleTabClick('packages')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    title={!isExpanded ? 'Manage Packages (12 Tiers)' : undefined}
+                    className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                      isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                    } ${
                       activeTab === 'packages'
                         ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                       <Package className={`w-4 h-4 shrink-0 ${activeTab === 'packages' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                      {!isCollapsed && <span className="whitespace-nowrap truncate">Manage Packages</span>}
+                      {isExpanded && <span className="whitespace-nowrap shrink-0">Manage Packages</span>}
                     </div>
-                    {!isCollapsed && (
-                      <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
+                    {isExpanded && (
+                      <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                         12 Tiers
                       </span>
                     )}
@@ -158,9 +251,9 @@ export default function AdminSidebar({
             </div>
           )}
 
-          {/* Section 3: People (Manage Faculty is Admin only; Students visible to both with scoped data) */}
-          <div className="space-y-1 pt-2 border-t border-slate-100">
-            {!isCollapsed && (
+          {/* SECTION 3: PEOPLE (Faculty admin-only, Students scoped) */}
+          <div className="space-y-1 pt-1.5 border-t border-slate-100">
+            {isExpanded ? (
               <button
                 onClick={() => toggleSection('people')}
                 className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
@@ -168,49 +261,57 @@ export default function AdminSidebar({
                 <span className="whitespace-nowrap">People</span>
                 {collapsedSections.people ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
+            ) : (
+              <div className="my-1 border-t border-slate-100" />
             )}
 
-            {!collapsedSections.people && (
+            {(!collapsedSections.people || !isExpanded) && (
               <div className="space-y-1">
                 {/* Manage Faculty (Admin Only) */}
                 {isAdmin && (
                   <button
                     onClick={() => handleTabClick('faculty')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    title={!isExpanded ? 'Manage Faculty Specialists' : undefined}
+                    className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                      isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                    } ${
                       activeTab === 'faculty'
                         ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                       <GraduationCap className={`w-4 h-4 shrink-0 ${activeTab === 'faculty' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                      {!isCollapsed && <span className="whitespace-nowrap truncate">Manage Faculty</span>}
+                      {isExpanded && <span className="whitespace-nowrap shrink-0">Manage Faculty</span>}
                     </div>
-                    {!isCollapsed && (
-                      <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
+                    {isExpanded && (
+                      <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                         8 Leads
                       </span>
                     )}
                   </button>
                 )}
 
-                {/* Manage Students (Admin: All Students; Faculty: Scoped Students) */}
+                {/* Manage Students */}
                 <button
                   onClick={() => handleTabClick('students')}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  title={!isExpanded ? (isAdmin ? 'Manage Students' : 'Enrolled Students') : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
                     activeTab === 'students'
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                     <Users className={`w-4 h-4 shrink-0 ${activeTab === 'students' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {!isCollapsed && (
-                      <span className="whitespace-nowrap truncate">{isAdmin ? 'Manage Students' : 'Enrolled Students'}</span>
+                    {isExpanded && (
+                      <span className="whitespace-nowrap shrink-0">{isAdmin ? 'Manage Students' : 'Enrolled Students'}</span>
                     )}
                   </div>
-                  {!isCollapsed && (
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
+                  {isExpanded && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                       {isAdmin ? '1.4k All' : '680 Cardio'}
                     </span>
                   )}
@@ -219,9 +320,9 @@ export default function AdminSidebar({
             )}
           </div>
 
-          {/* Section 4: Content & Schedule (Visible to both; Faculty sees only assigned exam scope) */}
-          <div className="space-y-1 pt-2 border-t border-slate-100">
-            {!isCollapsed && (
+          {/* SECTION 4: CONTENT & SCHEDULE */}
+          <div className="space-y-1 pt-1.5 border-t border-slate-100">
+            {isExpanded ? (
               <button
                 onClick={() => toggleSection('contentSchedule')}
                 className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
@@ -229,27 +330,32 @@ export default function AdminSidebar({
                 <span className="whitespace-nowrap">Content & Schedule</span>
                 {collapsedSections.contentSchedule ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
+            ) : (
+              <div className="my-1 border-t border-slate-100" />
             )}
 
-            {!collapsedSections.contentSchedule && (
+            {(!collapsedSections.contentSchedule || !isExpanded) && (
               <div className="space-y-1">
                 {/* Content Management */}
                 <button
                   onClick={() => handleTabClick('content')}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  title={!isExpanded ? 'Day-Wise Content Management' : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
                     activeTab === 'content'
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                  }`}
+                    }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                     <UploadCloud className={`w-4 h-4 shrink-0 ${activeTab === 'content' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {!isCollapsed && (
-                      <span className="whitespace-nowrap truncate">{isAdmin ? 'Content Management' : 'Assigned Daily Content'}</span>
+                    {isExpanded && (
+                      <span className="whitespace-nowrap shrink-0">{isAdmin ? 'Content Management' : 'Assigned Daily Content'}</span>
                     )}
                   </div>
-                  {!isCollapsed && (
-                    <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
+                  {isExpanded && (
+                    <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                       Drip Feed
                     </span>
                   )}
@@ -258,18 +364,21 @@ export default function AdminSidebar({
                 {/* Live Sessions */}
                 <button
                   onClick={() => handleTabClick('live')}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  title={!isExpanded ? 'Live Grand Rounds Scheduler' : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
                     activeTab === 'live'
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                     <Video className={`w-4 h-4 shrink-0 ${activeTab === 'live' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {!isCollapsed && <span className="whitespace-nowrap truncate">Live Sessions</span>}
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Live Sessions</span>}
                   </div>
-                  {!isCollapsed && (
-                    <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
+                  {isExpanded && (
+                    <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                       Tonight
                     </span>
                   )}
@@ -278,18 +387,21 @@ export default function AdminSidebar({
                 {/* Manage Tests */}
                 <button
                   onClick={() => handleTabClick('tests')}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  title={!isExpanded ? 'CBT Mock Assessment Scheduler' : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
                     activeTab === 'tests'
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                     <FileText className={`w-4 h-4 shrink-0 ${activeTab === 'tests' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {!isCollapsed && <span className="whitespace-nowrap truncate">Manage Tests</span>}
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Manage Tests</span>}
                   </div>
-                  {!isCollapsed && (
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
+                  {isExpanded && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                       CBT Engine
                     </span>
                   )}
@@ -298,23 +410,26 @@ export default function AdminSidebar({
             )}
           </div>
 
-          {/* Section 5: Reports & Analytics (Admin: Visible; Faculty: HIDDEN) */}
+          {/* SECTION 5: REPORTS & ANALYTICS (Admin Only) */}
           {isAdmin && (
-            <div className="space-y-1 pt-2 border-t border-slate-100">
+            <div className="space-y-1 pt-1.5 border-t border-slate-100">
               <button
                 onClick={() => handleTabClick('analytics')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                title={!isExpanded ? 'Executive Reports & Analytics' : undefined}
+                className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                } ${
                   activeTab === 'analytics'
                     ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                   <BarChart3 className={`w-4 h-4 shrink-0 ${activeTab === 'analytics' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                  {!isCollapsed && <span className="whitespace-nowrap truncate">Reports & Analytics</span>}
+                  {isExpanded && <span className="whitespace-nowrap shrink-0">Reports & Analytics</span>}
                 </div>
-                {!isCollapsed && (
-                  <span className="text-[10px] bg-brand-100 text-brand-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-2">
+                {isExpanded && (
+                  <span className="text-[10px] bg-brand-100 text-brand-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                     KPIs
                   </span>
                 )}
@@ -325,31 +440,44 @@ export default function AdminSidebar({
         </div>
 
         {/* Bottom Sidebar Box: Current Scope Display */}
-        {!isCollapsed && (
-          <div className="p-3 border-t border-slate-100 bg-slate-50/70">
-            {isAdmin ? (
-              <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+        <div className="p-2.5 border-t border-slate-100 bg-slate-50/70">
+          {isExpanded ? (
+            isAdmin ? (
+              <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1 animate-in fade-in">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                  <Crown className="w-3.5 h-3.5 text-indigo-600" />
+                  <Crown className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                   <span className="whitespace-nowrap">Super Admin Account</span>
                 </div>
-                <p className="text-[11px] text-slate-500 leading-snug">
-                  Full Platform Authority across all 4 exam tracks, 12 packages, and financial reports.
+                <p className="text-[10.5px] text-slate-500 leading-snug">
+                  Full Platform Authority across all 4 exam tracks, 12 packages & reports.
                 </p>
               </div>
             ) : (
-              <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-200/80 shadow-2xs space-y-1">
+              <div className="p-2.5 bg-purple-50/70 rounded-xl border border-purple-200/80 shadow-2xs space-y-1 animate-in fade-in">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900">
-                  <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
+                  <GraduationCap className="w-3.5 h-3.5 text-purple-600 shrink-0" />
                   <span className="whitespace-nowrap">Faculty Assigned Scope</span>
                 </div>
-                <p className="text-[11px] text-purple-700 leading-snug">
-                  Assigned: <strong>NEET PG & USMLE Cardio</strong>. Only assigned exams and students are visible.
+                <p className="text-[10.5px] text-purple-700 leading-snug">
+                  Assigned: <strong>NEET PG & USMLE Cardio</strong>. Only assigned exams visible.
                 </p>
               </div>
-            )}
-          </div>
-        )}
+            )
+          ) : (
+            <div className="flex justify-center">
+              <div 
+                className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-2xs cursor-pointer"
+                title={isAdmin ? 'Super Admin Account (Full Platform Authority)' : 'Faculty Assigned Scope (NEET PG / USMLE)'}
+              >
+                {isAdmin ? (
+                  <Crown className="w-4 h-4 text-indigo-600" />
+                ) : (
+                  <GraduationCap className="w-4 h-4 text-purple-600" />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
       </aside>
     </>
