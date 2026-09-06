@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import PackageSelectionPage from './pages/PackageSelectionPage';
 import DashboardPage from './pages/DashboardPage';
+import DayContentView from './pages/DayContentView';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -16,6 +17,9 @@ function ScrollToTop() {
 
 export default function App() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const location = useLocation();
+
+  const isLmsView = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/day');
 
   const handleExploreCourses = () => {
     const el = document.getElementById('courses');
@@ -30,10 +34,12 @@ export default function App() {
     <div className="min-h-screen flex flex-col font-sans selection:bg-brand-500 selection:text-white">
       <ScrollToTop />
       
-      {/* Sticky Header */}
-      <Navbar 
-        onOpenLogin={() => setIsLoginOpen(true)}
-      />
+      {/* Sticky Marketing Header (Hidden on logged-in student LMS routes) */}
+      {!isLmsView && (
+        <Navbar 
+          onOpenLogin={() => setIsLoginOpen(true)}
+        />
+      )}
 
       {/* Main Content View */}
       <main className="flex-grow">
@@ -59,6 +65,10 @@ export default function App() {
             path="/dashboard" 
             element={<DashboardPage />} 
           />
+          <Route 
+            path="/day/:dayId" 
+            element={<DayContentView />} 
+          />
           {/* Catch-all redirect to homepage */}
           <Route 
             path="*" 
@@ -72,10 +82,12 @@ export default function App() {
         </Routes>
       </main>
 
-      {/* Footer */}
-      <Footer 
-        onExploreCourses={handleExploreCourses}
-      />
+      {/* Footer (Hidden on logged-in student LMS routes) */}
+      {!isLmsView && (
+        <Footer 
+          onExploreCourses={handleExploreCourses}
+        />
+      )}
     </div>
   );
 }

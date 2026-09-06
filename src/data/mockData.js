@@ -560,3 +560,458 @@ export const packageFaqs = [
     answer: 'Yes! All question vignettes, diagnostic criteria, and guidelines for NEET PG (NExT), USMLE Step 1 & 2 CK, and PLAB / UKMLA are audited monthly by practicing specialist physicians according to the latest 2026 NBE, USMLE, and GMC standards.'
   }
 ];
+
+// Phase 3: Student Dashboard Mock Data
+export const dashboardUserData = {
+  name: 'Dr. Ritik Saini',
+  email: 'ritik.doctor@example.com',
+  avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
+  enrolledCourse: 'NEET PG & NExT 2026',
+  examCategory: 'neet-pg',
+  packageTier: 'Standard Package (6 Months)',
+  overallProgress: 32,
+  daysLeft: 84,
+  targetExamDate: 'Nov 29, 2026',
+  completedDaysThisWeek: 4,
+  totalDaysThisWeek: 7,
+  dailyGoalHours: '3.5 hrs/day',
+  streakDays: 5,
+  qbankAccuracy: '92%'
+};
+
+export const studyPlanWeeks = [
+  {
+    weekNumber: 1,
+    title: 'Cardiology & Clinical Hemodynamics',
+    status: 'current',
+    completionRate: '43%',
+    badge: 'High-Yield Clinical System (28 Qs in exam)',
+    description: 'Valvular pathologies, heart failure physiology, electrocardiography, and acute coronary syndromes.',
+    days: [
+      {
+        dayNumber: 1,
+        title: 'Valvular Heart Diseases & Murmurs',
+        status: 'completed',
+        score: '94%',
+        duration: '45 mins',
+        topics: ['Aortic Stenosis Triad', 'Mitral Regurgitation & Prolapse', 'Phonocardiogram Analysis'],
+        hasNotes: true,
+        hasVideo: true,
+        hasFlashcards: true,
+        hasQuiz: true
+      },
+      {
+        dayNumber: 2,
+        title: 'Congestive Heart Failure & Pharmacotherapy',
+        status: 'completed',
+        score: '88%',
+        duration: '50 mins',
+        topics: ['HFrEF vs HFpEF', 'ARNI & SGLT2i Trials', 'Inotropic Mechanisms'],
+        hasNotes: true,
+        hasVideo: true,
+        hasFlashcards: true,
+        hasQuiz: true
+      },
+      {
+        dayNumber: 3,
+        title: 'Cardiac Arrhythmias & ECG Interpretation',
+        status: 'in-progress',
+        current: true,
+        duration: '55 mins',
+        topics: ['Narrow vs Wide Complex Tachycardia', 'AV Blocks Degrees I-III', 'Vaughan-Williams Class I-IV'],
+        hasNotes: true,
+        hasVideo: true,
+        hasFlashcards: true,
+        hasQuiz: true
+      },
+      {
+        dayNumber: 4,
+        title: 'Acute Coronary Syndromes & Cardiac Biomarkers',
+        status: 'locked',
+        duration: '50 mins',
+        topics: ['STEMI vs NSTEMI Evolution', 'High-Sensitivity Troponin I/T', 'Dual Antiplatelet Therapy (DAPT)'],
+        hasNotes: true,
+        hasVideo: true,
+        hasFlashcards: true,
+        hasQuiz: true
+      },
+      {
+        dayNumber: 5,
+        title: 'Congenital Heart Defects & Pediatric Shunts',
+        status: 'locked',
+        duration: '45 mins',
+        topics: ['Tetralogy of Fallot (TOF)', 'Coarctation of the Aorta', 'Eisenmenger Syndrome'],
+        hasNotes: true,
+        hasVideo: true,
+        hasFlashcards: true,
+        hasQuiz: true
+      },
+      {
+        dayNumber: 6,
+        title: 'Cardiology Active Recall & Flashcard Sprint',
+        status: 'locked',
+        duration: '40 mins',
+        topics: ['150 Pharmacology & Pathology Flashcards', 'High-Yield Diagnostic Triads'],
+        hasNotes: true,
+        hasVideo: false,
+        hasFlashcards: true,
+        hasQuiz: true
+      },
+      {
+        dayNumber: 7,
+        title: 'Subject Grand Test #01: Full Cardiology CBT',
+        status: 'locked',
+        duration: '60 mins',
+        topics: ['50 Clinical Vignettes', 'Timed Examination Simulation with Percentile'],
+        hasNotes: false,
+        hasVideo: false,
+        hasFlashcards: false,
+        hasQuiz: true
+      }
+    ]
+  },
+  {
+    weekNumber: 2,
+    title: 'Respiratory Medicine & Pulmonary Pathology',
+    status: 'locked',
+    completionRate: '0%',
+    badge: '19 Qs in Exam',
+    description: 'Obstructive vs restrictive pulmonary function tests, ARDS management, and thoracic radiology.',
+    days: [
+      { dayNumber: 8, title: 'Pulmonary Function Tests & Flow-Volume Loops', status: 'locked', duration: '45 mins' },
+      { dayNumber: 9, title: 'COPD, Asthma & Bronchiectasis', status: 'locked', duration: '50 mins' },
+      { dayNumber: 10, title: 'Interstitial Lung Diseases & Pneumoconioses', status: 'locked', duration: '45 mins' },
+      { dayNumber: 11, title: 'Pulmonary Embolism & Deep Vein Thrombosis', status: 'locked', duration: '45 mins' },
+      { dayNumber: 12, title: 'Pneumonia & Mycobacterial Infections (TB)', status: 'locked', duration: '55 mins' },
+      { dayNumber: 13, title: 'Thoracic Oncology: Small vs Non-Small Cell Lung Carcinoma', status: 'locked', duration: '40 mins' },
+      { dayNumber: 14, title: 'Subject Grand Test #02: Pulmonology CBT', status: 'locked', duration: '60 mins' },
+    ]
+  },
+  {
+    weekNumber: 3,
+    title: 'Renal & Acid-Base Clinical Physiology',
+    status: 'locked',
+    completionRate: '0%',
+    badge: '18 Qs in Exam',
+    description: 'Glomerulonephritis histology, Acute Kidney Injury (KDIGO criteria), and Davenport acid-base diagrams.',
+    days: [
+      { dayNumber: 15, title: 'Nephritic vs Nephrotic Syndromes (Biopsy Pearls)', status: 'locked', duration: '50 mins' },
+      { dayNumber: 16, title: 'Acute Kidney Injury & Renal Replacement Criteria', status: 'locked', duration: '45 mins' },
+      { dayNumber: 17, title: 'Acid-Base Disorders: Anion Gap & Winter\'s Formula', status: 'locked', duration: '55 mins' },
+      { dayNumber: 18, title: 'Renal Tubular Acidosis (Types 1, 2, 4)', status: 'locked', duration: '40 mins' },
+      { dayNumber: 19, title: 'Diuretics & Electrolyte Derangements', status: 'locked', duration: '45 mins' },
+      { dayNumber: 20, title: 'Renal Pathology Recall Marathon', status: 'locked', duration: '40 mins' },
+      { dayNumber: 21, title: 'Subject Grand Test #03: Nephrology CBT', status: 'locked', duration: '60 mins' },
+    ]
+  },
+  {
+    weekNumber: 4,
+    title: 'Gastroenterology & Clinical Hepatology',
+    status: 'locked',
+    completionRate: '0%',
+    badge: '22 Qs in Exam',
+    description: 'Cirrhosis portal hypertension, inflammatory bowel diseases, and GI endoscopy vignettes.',
+    days: [
+      { dayNumber: 22, title: 'Esophageal Motility & Gastric Ulcer Disease', status: 'locked', duration: '45 mins' },
+      { dayNumber: 23, title: 'Crohn\'s Disease vs Ulcerative Colitis Differentiation', status: 'locked', duration: '50 mins' },
+      { dayNumber: 24, title: 'Cirrhosis, Portal HTN & Ascites Management', status: 'locked', duration: '50 mins' },
+      { dayNumber: 25, title: 'Viral Hepatitis Serology & Acute Liver Failure', status: 'locked', duration: '45 mins' },
+      { dayNumber: 26, title: 'Pancreatitis & Biliary Tree Pathologies', status: 'locked', duration: '45 mins' },
+      { dayNumber: 27, title: 'GI Histology & Biopsy Rapid Review', status: 'locked', duration: '40 mins' },
+      { dayNumber: 28, title: 'Subject Grand Test #04: Gastroenterology CBT', status: 'locked', duration: '60 mins' },
+    ]
+  }
+];
+
+export const dashboardLiveSessions = [
+  {
+    id: 'live-1',
+    title: 'STEMI & Acute Coronary Syndrome Grand Rounds',
+    faculty: 'Dr. Siddharth V. (MD, DM Interventional Cardiology)',
+    college: 'AIIMS New Delhi Faculty',
+    date: 'Today',
+    time: '8:00 PM - 9:15 PM IST',
+    status: 'Live Soon',
+    badge: 'Tonight',
+    zoomReady: true,
+    registered: true,
+    attendeesCount: 342,
+    description: 'Interactive ECG interpretation, primary PCI vs thrombolysis decision-making drills, and student live Q&A.'
+  },
+  {
+    id: 'live-2',
+    title: 'ECG Mastery: Distinguishing VT vs SVT with Aberrancy',
+    faculty: 'Dr. Ananya Roy (MD General Medicine, DNB)',
+    college: 'Safdarjung Hospital Residency Mentor',
+    date: 'Tomorrow',
+    time: '7:30 PM - 8:45 PM IST',
+    status: 'Scheduled',
+    badge: 'Tomorrow',
+    zoomReady: false,
+    registered: false,
+    attendeesCount: 285,
+    description: 'Brugada criteria, Vereckei algorithm, and pharmacological cardioversion in hemodynamically stable patients.'
+  },
+  {
+    id: 'live-3',
+    title: 'Clinical Pharmacology: High-Yield Toxins & Antidotes',
+    faculty: 'Dr. Rajiv Mehta (MD, Gold Medalist)',
+    college: 'Clinical Faculty Leader',
+    date: '15 Sep 2026',
+    time: '8:00 PM - 9:30 PM IST',
+    status: 'Scheduled',
+    badge: 'Next Week',
+    zoomReady: false,
+    registered: false,
+    attendeesCount: 410,
+    description: 'High-yield poisonings, organophosphate toxidromes, and essential antidotes commonly tested in NExT/USMLE.'
+  }
+];
+
+export const dashboardTests = [
+  {
+    id: 'test-1',
+    name: 'National Grand Mock Test #08 (Full CBT)',
+    type: 'Full 19-Subject Simulation',
+    date: '14 Sep 2026',
+    duration: '210 mins',
+    questions: 200,
+    status: 'Upcoming',
+    badge: 'National Rank Benchmark',
+    pattern: 'NExT 2026 Aligned'
+  },
+  {
+    id: 'test-2',
+    name: 'Cardiology Subject Mini-Mock #02',
+    type: 'Subject Targeted Test',
+    date: 'Today',
+    duration: '45 mins',
+    questions: 40,
+    status: 'Upcoming',
+    badge: 'Active Today',
+    pattern: 'Clinical Vignettes'
+  },
+  {
+    id: 'test-3',
+    name: 'National Grand Mock Test #07',
+    type: 'Full 19-Subject Simulation',
+    date: '02 Sep 2026',
+    duration: '210 mins',
+    questions: 200,
+    status: 'Completed',
+    score: '684 / 800',
+    percentile: '99.2%ile',
+    rank: 'AIR 84',
+    badge: 'Top 1% Score'
+  }
+];
+
+// Phase 4: Day Content View Multi-Day Store
+export const dayContentStore = {
+  '1': {
+    dayNumber: 1,
+    weekNumber: 1,
+    title: 'Valvular Heart Diseases & Heart Murmurs',
+    estimatedTime: '1.5 hours',
+    activeTabs: ['notes', 'images', 'video', 'flashcards', 'live'],
+    pdf: {
+      fileName: 'Valvular_Heart_Diseases_Comprehensive_Review.pdf',
+      title: 'Valvular Heart Diseases: Pathophysiology & Auscultation Pearls',
+      pages: 22,
+      size: '4.8 MB',
+      updated: 'August 2026',
+      author: 'Dr. Rajiv Mehta (MD, DM Cardiology)'
+    },
+    images: [
+      {
+        id: 1,
+        title: 'Cardiac Cycle & Auscultation Points (Wiggers Diagram)',
+        url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80',
+        caption: 'Fig 1: Relationship of ventricular pressure, aortic flow, and cardiac heart sounds (S1, S2, S3, S4).'
+      },
+      {
+        id: 2,
+        title: 'Mitral Valve Prolapse Histopathology (Myxomatous Degeneration)',
+        url: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?w=900&auto=format&fit=crop&q=80',
+        caption: 'Fig 2: Histological stain showing dermatan sulfate accumulation in the spongiosa layer of the mitral leaflet.'
+      }
+    ],
+    video: {
+      title: 'Clinical Auscultation & Systolic vs Diastolic Murmurs',
+      duration: '32:15',
+      instructor: 'Dr. Rajiv Mehta',
+      chapters: [
+        { time: '00:00', label: 'Anatomy of Heart Valves' },
+        { time: '08:12', label: 'Aortic Stenosis vs Sclerosis' },
+        { time: '18:40', label: 'Mitral Regurgitation & Austin Flint Murmur' },
+        { time: '26:30', label: 'Dynamic Auscultation Maneuvers' }
+      ]
+    },
+    flashcards: [
+      { id: 1, question: 'Which physical exam maneuver uniquely INCREASES the intensity of Hypertrophic Cardiomyopathy (HCM) and Mitral Valve Prolapse (MVP) murmurs?', answer: 'Valsalva maneuver (strain phase) and sudden standing from a squatting position (both decrease left ventricular end-diastolic volume).' },
+      { id: 2, question: 'What is the classic clinical symptom triad of severe aortic stenosis and what is the associated prognosis?', answer: 'SAD: Syncope (3-yr survival), Angina (5-yr survival), Dyspnea/Heart Failure (2-yr survival without valve replacement).' },
+      { id: 3, question: 'What is the Austin Flint murmur and in which valvular disorder is it heard?', answer: 'A low-pitched rumbling mid-to-late diastolic murmur at the cardiac apex caused by the regurgitant jet of severe Aortic Regurgitation impinging on the anterior mitral leaflet.' }
+    ],
+    live: {
+      hasSession: true,
+      isScheduled: false,
+      recordingAvailable: true,
+      title: 'Grand Round Recording: Valvular Surgery Timing & Transcatheter Aortic Valve Implantation (TAVI)',
+      faculty: 'Dr. Siddharth V.',
+      duration: '58 mins',
+      views: '1,420 views'
+    }
+  },
+
+  '2': {
+    dayNumber: 2,
+    weekNumber: 1,
+    title: 'Congestive Heart Failure & Pharmacotherapy',
+    estimatedTime: '2 hours',
+    // Demonstration of faculty-controlled assignment: Only 2 tabs active!
+    activeTabs: ['notes', 'video'],
+    pdf: {
+      fileName: 'Heart_Failure_HFrEF_HFpEF_Pharmacology_Guide.pdf',
+      title: 'HFrEF vs HFpEF: Guideline-Directed Medical Therapy (GDMT)',
+      pages: 26,
+      size: '5.2 MB',
+      updated: 'July 2026',
+      author: 'Dr. Siddharth V.'
+    },
+    images: [],
+    video: {
+      title: 'Quadruple Therapy in HFrEF: ARNI, Beta-Blockers, MRA & SGLT2i',
+      duration: '44:10',
+      instructor: 'Dr. Siddharth V.',
+      chapters: [
+        { time: '00:00', label: 'Neurohormonal Activation in Heart Failure' },
+        { time: '12:00', label: 'DAPA-HF and EMPEROR-Reduced Trial Pearls' },
+        { time: '28:15', label: 'Sacubitril/Valsartan Mechanism & Neprilysin Inhibition' }
+      ]
+    },
+    flashcards: [],
+    live: {
+      hasSession: false,
+      message: 'No live session assigned for Day 2. Focus on the core video lesson and GDMT guide.'
+    }
+  },
+
+  '3': {
+    dayNumber: 3,
+    weekNumber: 1,
+    title: 'Cardiac Arrhythmias & ECG Interpretation',
+    estimatedTime: '2 hours',
+    // All 5 tabs active with active live session countdown tonight!
+    activeTabs: ['notes', 'images', 'video', 'flashcards', 'live'],
+    pdf: {
+      fileName: 'Clinical_ECG_Mastery_Arrhythmias_and_AV_Blocks.pdf',
+      title: 'ECG Mastery: Tachyarrhythmias, Bradycardias & Pre-excitation',
+      pages: 30,
+      size: '6.4 MB',
+      updated: 'September 2026',
+      author: 'Dr. Siddharth V. & Dr. Rajiv Mehta'
+    },
+    images: [
+      {
+        id: 1,
+        title: '12-Lead ECG: Monomorphic Ventricular Tachycardia (VT)',
+        url: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?w=900&auto=format&fit=crop&q=80',
+        caption: 'Fig 1: Wide complex tachycardia with AV dissociation, extreme QRS axis deviation, and positive concordance in V1-V6.'
+      },
+      {
+        id: 2,
+        title: 'ECG: Atrial Fibrillation with Rapid Ventricular Response (RVR)',
+        url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80',
+        caption: 'Fig 2: Irregularly irregular R-R intervals with undulating fibrillatory baseline waves and absence of P waves.'
+      },
+      {
+        id: 3,
+        title: 'Wolff-Parkinson-White (WPW) Pre-Excitation Pattern',
+        url: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?w=900&auto=format&fit=crop&q=80',
+        caption: 'Fig 3: Short PR interval (< 120 ms) with slurred initial upstroke of the QRS complex (Delta wave) and secondary ST-T changes.'
+      }
+    ],
+    video: {
+      title: 'Wide Complex Tachycardias: Brugada vs Vereckei Algorithmic Mastery',
+      duration: '28:40',
+      instructor: 'Dr. Siddharth V. (AIIMS Interventional Cardiologist)',
+      chapters: [
+        { time: '00:00', label: 'Conduction System Physiology' },
+        { time: '06:15', label: 'Differentiating VT from SVT with Aberrancy' },
+        { time: '14:30', label: 'Step-by-Step Brugada 4-Step Algorithm' },
+        { time: '22:10', label: 'Antiarrhythmic Drug Classification (Vaughan-Williams)' }
+      ]
+    },
+    flashcards: [
+      {
+        id: 1,
+        question: 'What is the definitive ECG hallmark of atrioventricular (AV) dissociation in ventricular tachycardia?',
+        answer: 'The presence of independent sinus P waves marching across wide QRS complexes, along with intermittent capture beats (Dressler beats) and fusion beats.'
+      },
+      {
+        id: 2,
+        question: 'Which antiarrhythmic drug class prolongs both the action potential duration (APD) and QT interval by selectively blocking outward K+ channels?',
+        answer: 'Class III antiarrhythmics (Amiodarone, Sotalol, Dofetilide, Ibutilide).'
+      },
+      {
+        id: 3,
+        question: 'What is the characteristic ECG finding and clinical antidote for acute Digoxin toxicity?',
+        answer: 'ECG: "Scooped" ST segment depression (Salvador Dali mustache), bidirectional VT, and junctional tachycardia. Antidote: Digoxin-specific Fab fragments (DigiFab).'
+      },
+      {
+        id: 4,
+        question: 'Why are AV nodal blocking agents (Verapamil, Diltiazem, Beta-blockers, Adenosine) strictly contraindicated in antidromic WPW pre-excited Atrial Fibrillation?',
+        answer: 'Blocking the AV node diverts all electrical impulses exclusively down the accessory pathway (Bundle of Kent) without normal physiological delay, precipitating ventricular fibrillation and cardiac arrest.'
+      }
+    ],
+    live: {
+      hasSession: true,
+      isScheduled: true,
+      recordingAvailable: false,
+      title: 'STEMI & Acute Coronary Syndrome Grand Rounds',
+      faculty: 'Dr. Siddharth V. (MD, DM)',
+      time: 'Tonight @ 8:00 PM - 9:15 PM IST',
+      attendeesCount: 342,
+      badge: 'Live Tonight'
+    }
+  },
+
+  '4': {
+    dayNumber: 4,
+    weekNumber: 1,
+    title: 'Acute Coronary Syndromes & Cardiac Biomarkers',
+    estimatedTime: '2.5 hours',
+    activeTabs: ['notes', 'images', 'video'],
+    pdf: {
+      fileName: 'ACS_STEMI_NSTEMI_Unstable_Angina_Management.pdf',
+      title: 'Acute Coronary Syndromes: TIMI Risk Score & Primary PCI',
+      pages: 28,
+      size: '5.8 MB',
+      updated: 'August 2026',
+      author: 'Dr. Siddharth V.'
+    },
+    images: [
+      {
+        id: 1,
+        title: 'Evolution of STEMI ECG Changes over 24 Hours',
+        url: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?w=900&auto=format&fit=crop&q=80',
+        caption: 'Fig 1: Hyperacute T waves → ST elevation → Pathological Q waves and T-wave inversion.'
+      }
+    ],
+    video: {
+      title: 'Thrombolysis vs Primary PCI in STEMI (Door-to-Balloon < 90 mins)',
+      duration: '35:20',
+      instructor: 'Dr. Siddharth V.',
+      chapters: [
+        { time: '00:00', label: 'Pathophysiology of Plaque Rupture' },
+        { time: '14:10', label: 'Door-to-Needle vs Door-to-Balloon Time' },
+        { time: '26:00', label: 'Post-MI Mechanical Complications (VSR, Papillary Muscle Rupture)' }
+      ]
+    },
+    flashcards: [],
+    live: {
+      hasSession: false,
+      message: 'No live session assigned for Day 4.'
+    }
+  }
+};
