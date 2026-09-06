@@ -222,17 +222,23 @@ export default function DayContentView() {
                     </button>
                   </div>
 
-                  {/* Mark as Complete Checkbox/Button */}
+                  {/* Mark as Complete Checkbox/Button (Phase 7 Navigation Flow) */}
                   <button
-                    onClick={() => setIsCompleted(!isCompleted)}
+                    onClick={() => {
+                      setIsCompleted(true);
+                      setDoubtSuccessMessage(`Day ${currentDayNum} marked as Completed! Updating study plan...`);
+                      setTimeout(() => {
+                        navigate(`/dashboard?completedDay=${currentDayNum}`);
+                      }, 900);
+                    }}
                     className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm ${
                       isCompleted
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/20'
+                        : 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/20 active:scale-98'
                     }`}
                   >
                     <CheckCircle2 className={`w-4 h-4 ${isCompleted ? 'text-emerald-600' : 'text-white'}`} />
-                    <span>{isCompleted ? 'Completed ✅' : 'Mark as Complete'}</span>
+                    <span>{isCompleted ? 'Completed ✅ (Updating...)' : 'Mark as Complete'}</span>
                   </button>
 
                 </div>

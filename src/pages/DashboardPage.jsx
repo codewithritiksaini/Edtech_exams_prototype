@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Stethoscope, 
@@ -66,6 +66,25 @@ export default function DashboardPage() {
   // Active upcoming/live test
   const activeTest = testsList.find((t) => t.id === 'test-cardio-01') || testsList[0];
 
+  // Phase 7 Navigation: Completed Day tracking from Day Content View
+  const completedDayParam = searchParams.get('completedDay');
+  const [completedDaysList, setCompletedDaysList] = useState(() => {
+    return completedDayParam ? [parseInt(completedDayParam, 10)] : [];
+  });
+  const [completionBanner, setCompletionBanner] = useState(() => {
+    return completedDayParam ? `🎉 Excellent progress! Day ${completedDayParam} has been marked as Completed.` : '';
+  });
+
+  useEffect(() => {
+    if (completedDayParam) {
+      const dayNum = parseInt(completedDayParam, 10);
+      setCompletedDaysList((prev) => Array.from(new Set([...prev, dayNum])));
+      setCompletionBanner(`🎉 Excellent progress! Day ${dayNum} has been marked as Completed.`);
+      const timer = setTimeout(() => setCompletionBanner(''), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [completedDayParam]);
+
   // Sidebar & Modals state
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -123,6 +142,22 @@ export default function DashboardPage() {
         {/* Main Content Area */}
         <main className="flex-grow p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-10">
           
+          {/* Phase 7 Return Notification Banner */}
+          {completionBanner && (
+            <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-200 shrink-0" />
+                <span className="text-xs sm:text-sm font-bold">{completionBanner}</span>
+              </div>
+              <button
+                onClick={() => setCompletionBanner('')}
+                className="p-1 hover:bg-emerald-700 rounded-lg text-emerald-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* ========================================================================= */}
           {/* 3. Welcome / Overview Section (Top of Main Area)                          */}
           {/* ========================================================================= */}
@@ -440,9 +475,10 @@ export default function DashboardPage() {
                     {isExpanded && (
                       <div className="border-t border-slate-100 divide-y divide-slate-100 bg-slate-50/40">
                         {week.days.map((day) => {
-                          const isCompleted = day.status === 'completed';
-                          const isInProgress = day.status === 'in-progress';
-                          const isLocked = day.status === 'locked';
+                          const isMarkedCompleted = completedDaysList.includes(day.dayNumber);
+                          const isCompleted = day.status === 'completed' || isMarkedCompleted;
+                          const isInProgress = !isCompleted && day.status === 'in-progress';
+                          const isLocked = !isCompleted && day.status === 'locked';
 
                           return (
                             <div

@@ -143,6 +143,22 @@ export default function LoginModal({ isOpen, onClose }) {
               <p className="text-[11px] text-slate-400 text-center">
                 *Prototype mode: No password required, pre-configured demo credentials.
               </p>
+
+              {/* Dedicated Faculty Portal Access */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span>Looking for Faculty Portal?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate('/faculty/login');
+                  }}
+                  className="font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                >
+                  <span>Go to Faculty Login</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
             </form>
           )}
         </div>

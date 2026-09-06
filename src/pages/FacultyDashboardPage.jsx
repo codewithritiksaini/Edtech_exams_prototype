@@ -23,7 +23,8 @@ import {
   BookOpen,
   Image as ImageIcon,
   Brain,
-  Edit2
+  Edit2,
+  X
 } from 'lucide-react';
 import FacultyNavbar from '../components/FacultyNavbar';
 import FacultySidebar from '../components/FacultySidebar';
