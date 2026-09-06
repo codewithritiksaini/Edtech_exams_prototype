@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import PackageSelectionPage from './pages/PackageSelectionPage';
+import DashboardPage from './pages/DashboardPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -53,6 +54,10 @@ export default function App() {
           <Route 
             path="/packages" 
             element={<PackageSelectionPage />} 
+          />
+          <Route 
+            path="/dashboard" 
+            element={<DashboardPage />} 
           />
           {/* Catch-all redirect to homepage */}
           <Route 

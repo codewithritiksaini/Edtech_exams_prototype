@@ -222,59 +222,73 @@ export const testimonials = [
   }
 ];
 
+// Phase 2: Exact 3 Tiers (Basic, Standard - Most Popular, Premium) for each exam
 export const mockPackagesByExam = {
   'neet-pg': {
-    examName: 'NEET PG & NExT 2026',
+    examName: 'NEET PG & NExT',
     flag: '🇮🇳',
-    subtitle: 'Comprehensive 19-Subject Clinical Mastery for Indian Residency',
+    country: 'India',
+    subtitle: 'Comprehensive 19-Subject Clinical Mastery for Indian Postgraduate Residency',
     packages: [
       {
-        id: 'starter',
-        name: 'Rapid QBank & Notes',
+        id: 'basic',
+        name: 'Basic',
+        tierLabel: 'Essential Prep',
         price: '₹14,999',
-        originalPrice: '₹24,999',
-        validity: '6 Months Validity',
-        description: 'Ideal for interns and repeaters focusing on active recall and rapid clinical practice.',
+        originalPrice: '₹22,999',
+        discount: '35% OFF',
+        duration: '3 Months',
+        durationFull: '3 Months Full Access',
+        description: 'Ideal for interns and repeaters focusing on active recall and high-yield question solving.',
         popular: false,
         features: [
-          '15,000+ NExT Pattern Clinical Vignette QBank',
-          'Downloadable High-Yield PDF Notes (19 Subjects)',
-          '15 Grand Mock Tests with National Percentile',
-          'Standard Community Forum Doubt Support'
+          { name: 'PDF Notes', included: true, detail: '19 Subjects High-Yield' },
+          { name: 'Video Lectures', included: true, detail: 'Core High-Yield Concepts' },
+          { name: 'Flashcards', included: false, detail: 'Not Included' },
+          { name: 'Live Sessions', included: false, detail: 'Not Included' },
+          { name: 'Test Series', included: true, detail: '15 Full CBT Grand Tests' },
+          { name: 'Doubt Support', included: false, detail: 'Community Forum Only' }
         ]
       },
       {
-        id: 'pro',
-        name: 'Comprehensive Clinical Pro',
+        id: 'standard',
+        name: 'Standard',
+        tierLabel: 'Most Recommended',
         price: '₹22,999',
         originalPrice: '₹34,999',
-        validity: '12 Months Validity',
-        description: 'Our flagship complete system: complete video library, flashcards, and live doubt clinics.',
+        discount: '34% OFF',
+        duration: '6 Months',
+        durationFull: '6 Months Complete Access',
+        description: 'Our flagship complete system: full video library, active recall flashcards, and email faculty support.',
         popular: true,
-        badge: 'Recommended by Top 100 Rankers',
+        badge: 'MOST POPULAR',
         features: [
-          'Everything in Rapid QBank plan',
-          '600+ Hours Full Clinical Video Lectures (2x playback)',
-          '8,000+ Pre-made Smart Anki Flashcards',
-          'Weekly Live Faculty Grand Rounds & Cases',
-          '35 Full CBT Grand Tests + Subject-wise Tests',
-          'AI Weakness Tracker & Revision Scheduler'
+          { name: 'PDF Notes', included: true, detail: '19 Subjects + Annotated Diagrams' },
+          { name: 'Video Lectures', included: true, detail: 'Full 600+ Hours Clinical Library' },
+          { name: 'Flashcards', included: true, detail: '8,000+ Anki-Style Decks' },
+          { name: 'Live Sessions', included: false, detail: 'Not Included' },
+          { name: 'Test Series', included: true, detail: '35 Full CBT Grand Tests + Analytics' },
+          { name: 'Doubt Support', included: true, detail: 'Email Support (24h response)' }
         ]
       },
       {
-        id: 'elite',
-        name: '1-on-1 Residency Elite',
+        id: 'premium',
+        name: 'Premium',
+        tierLabel: 'Residency Elite',
         price: '₹34,999',
         originalPrice: '₹49,999',
-        validity: '24 Months Validity',
-        description: 'Dedicated faculty mentorship, personal study schedule, and guaranteed doubt resolution.',
+        discount: '30% OFF',
+        duration: '12 Months',
+        durationFull: '12 Months VIP Access',
+        description: 'Maximum clinical immersion with weekly live faculty grand rounds, 1-on-1 mentorship, and priority live chat.',
         popular: false,
         features: [
-          'Everything in Comprehensive Clinical Pro',
-          'Dedicated Faculty Mentor (AIR Top 50 Alumnus)',
-          'Bi-weekly 1-on-1 Strategy & Mentorship Calls',
-          'Priority 1-Hour WhatsApp Doubt Resolution',
-          'Printed Color Spiral Notes Shipped to Doorstep'
+          { name: 'PDF Notes', included: true, detail: 'All Notes + Spiral Hardcopies Shipped' },
+          { name: 'Video Lectures', included: true, detail: 'Full HD Library + Masterclasses' },
+          { name: 'Flashcards', included: true, detail: 'Unlimited Smart Recall Decks' },
+          { name: 'Live Sessions', included: true, detail: 'Weekly Live Grand Rounds with MDs' },
+          { name: 'Test Series', included: true, detail: '50+ CBT Tests + 1-on-1 Review' },
+          { name: 'Doubt Support', included: true, detail: 'Priority (Live chat & WhatsApp)' }
         ]
       }
     ]
@@ -282,163 +296,267 @@ export const mockPackagesByExam = {
   'usmle': {
     examName: 'USMLE Step 1 & Step 2 CK',
     flag: '🇺🇸',
+    country: 'United States',
     subtitle: 'Integrated Organ Systems & US Clinical Match Mentorship',
     packages: [
       {
-        id: 'starter',
-        name: 'Step 1 QBank & Decks',
+        id: 'basic',
+        name: 'Basic',
+        tierLabel: 'Essential QBank',
         price: '₹24,999',
-        usd: '$299',
-        validity: '6 Months Validity',
-        description: 'Focused test preparation for conquering the Step 1 Pass/Fail benchmark.',
+        usdPrice: '$299',
+        originalPrice: '₹34,999',
+        discount: '28% OFF',
+        duration: '3 Months',
+        durationFull: '3 Months Full Access',
+        description: 'Targeted test preparation for mastering Step 1 Pass/Fail and Step 2 CK question logic.',
         popular: false,
         features: [
-          '3,800+ High-Yield Step 1 Clinical Vignettes',
-          'First Aid Aligned Visual Organ-System Notes',
-          'Pre-made Anki Active Recall Decks',
-          '6 Full-Length Simulated NBME-style Forms'
+          { name: 'PDF Notes', included: true, detail: 'Organ System First Aid Summaries' },
+          { name: 'Video Lectures', included: true, detail: 'High-Yield Organ Physiology' },
+          { name: 'Flashcards', included: false, detail: 'Not Included' },
+          { name: 'Live Sessions', included: false, detail: 'Not Included' },
+          { name: 'Test Series', included: true, detail: '6 Full-Length NBME-Style Forms' },
+          { name: 'Doubt Support', included: false, detail: 'Community Q&A Only' }
         ]
       },
       {
-        id: 'pro',
-        name: 'Dual Step 1 & Step 2 CK Master',
-        price: '₹39,999',
-        usd: '$479',
-        validity: '18 Months Validity',
-        description: 'Complete integrated continuum to pass Step 1 and achieve 250+ on Step 2 CK.',
+        id: 'standard',
+        name: 'Standard',
+        tierLabel: 'Step Master',
+        price: '₹38,999',
+        usdPrice: '$469',
+        originalPrice: '₹54,999',
+        discount: '29% OFF',
+        duration: '6 Months',
+        durationFull: '6 Months Complete Access',
+        description: 'Complete integrated continuum: dual Step 1 & 2 CK question bank, flashcards, and email tutor support.',
         popular: true,
-        badge: 'Most Popular for IMGs',
+        badge: 'MOST POPULAR',
         features: [
-          'Complete Step 1 & Step 2 CK Video & QBank Bundle',
-          '7,500+ Board-style Clinical Decision Cases',
-          'Bi-weekly Live US Clinical Faculty Grand Rounds',
-          'ERAS Residency Match & CV Strategy Session',
-          '12 Full Simulated Practice Examinations'
+          { name: 'PDF Notes', included: true, detail: 'System Integrated Clinical Guides' },
+          { name: 'Video Lectures', included: true, detail: 'Step 1 & 2 Comprehensive Lectures' },
+          { name: 'Flashcards', included: true, detail: 'USMLE Anki High-Yield Decks' },
+          { name: 'Live Sessions', included: false, detail: 'Not Included' },
+          { name: 'Test Series', included: true, detail: '14 Full NBME-Style Practice Exams' },
+          { name: 'Doubt Support', included: true, detail: 'Email Support (24h response)' }
         ]
       },
       {
-        id: 'elite',
-        name: 'US Clinical Match Mentorship',
-        price: '₹59,999',
-        usd: '$719',
-        validity: '24 Months Validity',
-        description: 'End-to-end guidance including US clinical electives advice, LoR review, and residency mock interviews.',
+        id: 'premium',
+        name: 'Premium',
+        tierLabel: 'Residency Match VIP',
+        price: '₹56,999',
+        usdPrice: '$689',
+        originalPrice: '₹79,999',
+        discount: '28% OFF',
+        duration: '12 Months',
+        durationFull: '12 Months All-Inclusive',
+        description: 'Full clinical prep plus live weekly grand rounds, US residency ERAS mentorship, and priority doctor chat.',
         popular: false,
         features: [
-          'Everything in Dual Master Plan',
-          '1-on-1 Mentorship from Match 2025 US Residents',
-          'Personal Statement & ERAS Application Polishing',
-          '3 Live Mock Residency Match Interviews with Feedback'
+          { name: 'PDF Notes', included: true, detail: 'Complete Physical + Digital Binders' },
+          { name: 'Video Lectures', included: true, detail: 'Unlimited Clinical Masterclasses' },
+          { name: 'Flashcards', included: true, detail: 'Personalized Diagnostic Decks' },
+          { name: 'Live Sessions', included: true, detail: 'Weekly Live US Faculty Grand Rounds' },
+          { name: 'Test Series', included: true, detail: '20+ Full Simulated Board Exams' },
+          { name: 'Doubt Support', included: true, detail: 'Priority (Live chat & WhatsApp)' }
         ]
       }
     ]
   },
   'plab': {
-    examName: 'PLAB 1 & 2 / UKMLA Pathway',
+    examName: 'PLAB 1 & 2 / UKMLA',
     flag: '🇬🇧',
+    country: 'United Kingdom',
     subtitle: 'NHS Guidelines Mastery & PLAB 2 OSCE Clinical Stations',
     packages: [
       {
-        id: 'starter',
-        name: 'PLAB 1 High-Yield Sprint',
+        id: 'basic',
+        name: 'Basic',
+        tierLabel: 'PLAB 1 Sprint',
         price: '₹19,999',
-        gbp: '£189',
-        validity: '6 Months Validity',
-        description: 'Pass PLAB 1 on your first try with NHS guideline-tailored clinical questions.',
+        gbpPrice: '£189',
+        originalPrice: '₹28,999',
+        discount: '31% OFF',
+        duration: '3 Months',
+        durationFull: '3 Months Full Access',
+        description: 'Pass PLAB 1 on your first try with NHS guideline-tailored clinical vignettes and notes.',
         popular: false,
         features: [
-          '4,500+ GMC / NICE Guidelines Aligned Questions',
-          'High-Yield British National Formulary (BNF) Notes',
-          '10 Full-Length Timed PLAB 1 CBT Simulations',
-          'Weekly Live Doubt Solving Webinars'
+          { name: 'PDF Notes', included: true, detail: 'NICE Guidelines & BNF Summaries' },
+          { name: 'Video Lectures', included: true, detail: 'PLAB 1 High-Yield Clinical Concepts' },
+          { name: 'Flashcards', included: false, detail: 'Not Included' },
+          { name: 'Live Sessions', included: false, detail: 'Not Included' },
+          { name: 'Test Series', included: true, detail: '8 Full Timed PLAB 1 Mock Exams' },
+          { name: 'Doubt Support', included: false, detail: 'Forum Access Only' }
         ]
       },
       {
-        id: 'pro',
-        name: 'PLAB 1 + PLAB 2 OSCE Complete',
-        price: '₹32,999',
-        gbp: '£310',
-        validity: '12 Months Validity',
-        description: 'End-to-end preparation including hands-on live online OSCE patient simulations.',
+        id: 'standard',
+        name: 'Standard',
+        tierLabel: 'PLAB 1 + OSCE Pro',
+        price: '₹31,999',
+        gbpPrice: '£299',
+        originalPrice: '₹44,999',
+        discount: '29% OFF',
+        duration: '6 Months',
+        durationFull: '6 Months Complete Access',
+        description: 'Complete UK pathway: PLAB 1 mock exams, OSCE communication modules, and active recall flashcards.',
         popular: true,
-        badge: 'Top Rated for UK Relocation',
+        badge: 'MOST POPULAR',
         features: [
-          'Everything in PLAB 1 Sprint',
-          '50+ Interactive PLAB 2 OSCE Station Video Breakdowns',
-          'NHS Communication Skills & Ethical Scenarios',
-          '4 Live 1-on-1 Mock OSCE Station Drills with NHS Doctors',
-          'NHS CV & Foundation Programme / Trust Grade Job Guide'
+          { name: 'PDF Notes', included: true, detail: 'Complete NHS Clinical Handbooks' },
+          { name: 'Video Lectures', included: true, detail: 'PLAB 1 + 50 OSCE Video Breakdowns' },
+          { name: 'Flashcards', included: true, detail: 'BNF Drug & Emergency Recall Decks' },
+          { name: 'Live Sessions', included: false, detail: 'Not Included' },
+          { name: 'Test Series', included: true, detail: '16 Full Mock Exams with Percentile' },
+          { name: 'Doubt Support', included: true, detail: 'Email Support (24h response)' }
         ]
       },
       {
-        id: 'elite',
-        name: 'NHS Doctor FastTrack Elite',
-        price: '₹47,999',
-        gbp: '£450',
-        validity: '18 Months Validity',
-        description: 'Comprehensive mentorship from exam day until your first NHS hospital placement.',
+        id: 'premium',
+        name: 'Premium',
+        tierLabel: 'NHS FastTrack Elite',
+        price: '₹46,999',
+        gbpPrice: '£440',
+        originalPrice: '₹64,999',
+        discount: '28% OFF',
+        duration: '12 Months',
+        durationFull: '12 Months All-Inclusive',
+        description: 'End-to-end NHS career package: live 1-on-1 OSCE drills with NHS doctors, GMC guidance, and priority chat.',
         popular: false,
         features: [
-          'Everything in PLAB 1 + 2 Complete Plan',
-          'Unlimited Mock OSCE Practice with Senior NHS Faculty',
-          'Dedicated GMC Registration & Visa Guidance Concierge',
-          'NHS Job Application & Interview Prep Masterclass'
+          { name: 'PDF Notes', included: true, detail: 'Printed Spiral Notes Shipped' },
+          { name: 'Video Lectures', included: true, detail: 'Full Library + OSCE Simulations' },
+          { name: 'Flashcards', included: true, detail: 'Unlimited Clinical Recall Decks' },
+          { name: 'Live Sessions', included: true, detail: 'Live 1-on-1 Mock OSCE Practice' },
+          { name: 'Test Series', included: true, detail: '25 Full Tests + Personal Review' },
+          { name: 'Doubt Support', included: true, detail: 'Priority (Live chat & WhatsApp)' }
         ]
       }
     ]
   },
   'europe': {
-    examName: 'European Medical Licensing (Germany, Italy & EU)',
+    examName: 'Europe Medical Licensing',
     flag: '🇪🇺',
-    subtitle: 'FSP Medical Terminology, Kenntnisprüfung (KP) & Approbation',
+    country: 'Europe',
+    subtitle: 'Germany (FSP/KP), Italy (SSM) & European Approbation Pathways',
     packages: [
       {
-        id: 'starter',
-        name: 'Fachsprachprüfung (FSP) Intensive',
+        id: 'basic',
+        name: 'Basic',
+        tierLabel: 'FSP Foundation',
         price: '₹22,499',
-        eur: '€249',
-        validity: '6 Months Validity',
-        description: 'Specialized medical German terminology and doctor-patient dialogue simulations.',
+        eurPrice: '€249',
+        originalPrice: '₹31,999',
+        discount: '30% OFF',
+        duration: '3 Months',
+        durationFull: '3 Months Full Access',
+        description: 'Specialized clinical terminology, medical documentation (Arztbrief), and foundation tests.',
         popular: false,
         features: [
-          'Clinical German Vocabulary & Medical Documentation (Arztbrief)',
-          'Doctor-Patient Dialogue Simulation Audio & Scripts',
-          '15 Live FSP Case Simulation Sessions',
-          'Standard Approbation Application Checklist'
+          { name: 'PDF Notes', included: true, detail: 'Medical German/EU Terminology' },
+          { name: 'Video Lectures', included: true, detail: 'Doctor-Patient Dialogue Breakdown' },
+          { name: 'Flashcards', included: false, detail: 'Not Included' },
+          { name: 'Live Sessions', included: false, detail: 'Not Included' },
+          { name: 'Test Series', included: true, detail: '10 FSP Case Simulation Exams' },
+          { name: 'Doubt Support', included: false, detail: 'Community Forum' }
         ]
       },
       {
-        id: 'pro',
-        name: 'Full Approbation (FSP + KP) Master',
-        price: '₹36,999',
-        eur: '€410',
-        validity: '12 Months Validity',
-        description: 'Complete German & EU medical licensing bundle: language + clinical knowledge exam.',
+        id: 'standard',
+        name: 'Standard',
+        tierLabel: 'FSP + KP Master',
+        price: '₹35,999',
+        eurPrice: '€399',
+        originalPrice: '₹49,999',
+        discount: '28% OFF',
+        duration: '6 Months',
+        durationFull: '6 Months Complete Access',
+        description: 'Complete German & European medical licensing: language + clinical knowledge exams with flashcards.',
         popular: true,
-        badge: 'Comprehensive EU Pathway',
+        badge: 'MOST POPULAR',
         features: [
-          'Full FSP Medical Language + KP Clinical Modules',
-          'German Clinical Pharmacology & Internal Medicine Focus',
-          'Weekly Live Grand Rounds with German Specialist Physicians',
-          'Kenntnisprüfung (KP) Case Question Bank (3,000+ Vignettes)',
-          'Hospital Hospitation & Assistenzarzt Job Search Blueprint'
+          { name: 'PDF Notes', included: true, detail: 'FSP Terminology + KP Clinical Notes' },
+          { name: 'Video Lectures', included: true, detail: 'Complete Internal Medicine & Surgery' },
+          { name: 'Flashcards', included: true, detail: 'Fachterminologie Anki Decks' },
+          { name: 'Live Sessions', included: false, detail: 'Not Included' },
+          { name: 'Test Series', included: true, detail: '20 Simulated Knowledge Exams' },
+          { name: 'Doubt Support', included: true, detail: 'Email Support (24h response)' }
         ]
       },
       {
-        id: 'elite',
-        name: 'European Residency Concierge',
-        price: '₹54,999',
-        eur: '€610',
-        validity: '24 Months Validity',
-        description: '1-on-1 mentorship by licensed doctors working in Germany, Italy, and Switzerland.',
+        id: 'premium',
+        name: 'Premium',
+        tierLabel: 'Approbation Concierge',
+        price: '₹52,999',
+        eurPrice: '€589',
+        originalPrice: '₹74,999',
+        discount: '29% OFF',
+        duration: '12 Months',
+        durationFull: '12 Months VIP Access',
+        description: 'Full licensing prep plus weekly live sessions with German physicians, hospital job guidance, and priority support.',
         popular: false,
         features: [
-          'Everything in Full Approbation Master Plan',
-          '1-on-1 German Medical CV & Motivation Letter Review',
-          'Hospital Job Interview Simulations in German / English',
-          'Direct Assistance with State Medical Chamber (Landesprüfungsamt)'
+          { name: 'PDF Notes', included: true, detail: 'Complete Printed Curriculum Shipped' },
+          { name: 'Video Lectures', included: true, detail: 'All Language + Clinical Lectures' },
+          { name: 'Flashcards', included: true, detail: 'Unlimited Clinical Anki Decks' },
+          { name: 'Live Sessions', included: true, detail: 'Weekly Live Grand Rounds with Doctors' },
+          { name: 'Test Series', included: true, detail: '30 Full Simulation Exams' },
+          { name: 'Doubt Support', included: true, detail: 'Priority (Live chat & WhatsApp)' }
         ]
       }
     ]
   }
 };
+
+// Detailed comparison table rows across all 3 tiers
+export const detailedComparisonRows = [
+  {
+    category: 'Core Clinical Content',
+    items: [
+      { feature: 'PDF Study Notes', basic: '✅ 19 Subjects Summary', standard: '✅ Annotated + Illustrations', premium: '✅ Digital + Hardcopy Shipped' },
+      { feature: 'High-Yield Video Lectures', basic: '✅ Core Modules (150 hrs)', standard: '✅ Full Library (600+ hrs)', premium: '✅ Full Library + Masterclasses' },
+      { feature: 'Spaced-Repetition Flashcards', basic: '❌ Not Included', standard: '✅ 8,000+ Pre-Made Decks', premium: '✅ Unlimited Smart Decks' },
+      { feature: 'Searchable Clinical Transcripts', basic: '✅ Included', standard: '✅ Included', premium: '✅ Included' },
+    ]
+  },
+  {
+    category: 'Question Bank & Mock Tests',
+    items: [
+      { feature: 'Clinical Vignette QBank', basic: '5,000+ Questions', standard: '15,000+ Questions', premium: '20,000+ Questions (All Active)' },
+      { feature: 'Full-Length CBT Grand Tests', basic: '15 Full Tests', standard: '35 Full Tests', premium: '50+ Full Tests + AI Diagnostics' },
+      { feature: 'National Percentile & Analytics', basic: 'Basic Score Report', standard: 'Detailed Weak-Area Matrix', premium: 'Full AI Competency Breakdown' },
+      { feature: 'Option-Wise In-Depth Rationales', basic: '✅ Included', standard: '✅ Included', premium: '✅ Included' },
+    ]
+  },
+  {
+    category: 'Live Sessions & Mentorship',
+    items: [
+      { feature: 'Live Faculty Grand Rounds', basic: '❌ Not Included', standard: '❌ Not Included', premium: '✅ Weekly Live Case Clinics' },
+      { feature: 'Faculty Doubt Resolution', basic: '❌ Community Forum Only', standard: '✅ Email Support (24h SLA)', premium: '✅ Priority 1-on-1 Live Chat & WhatsApp' },
+      { feature: 'Personal Study Schedule Planner', basic: 'Self-guided', standard: 'Automated Calendar', premium: 'Custom MD Mentor Schedule' },
+      { feature: '1-on-1 Residency Counseling', basic: '❌ Not Included', standard: 'Group Webinar Access', premium: '✅ Bi-weekly 1:1 Strategy Calls' },
+    ]
+  }
+];
+
+export const packageFaqs = [
+  {
+    question: 'Can I upgrade my package later?',
+    answer: 'Yes! You can upgrade from Basic to Standard or Premium at any point during your access window. You will only pay the pro-rated price difference between the two plans directly from your student dashboard with zero penalty fees.'
+  },
+  {
+    question: 'Is there a refund policy?',
+    answer: 'Absolutely. We offer a 100% unconditional 7-Day Money-Back Guarantee on all packages. If you feel the lectures, high-yield PDF notes, or clinical question banks do not meet your expectations, simply tap "Request Refund" in your dashboard for a full refund.'
+  },
+  {
+    question: 'How long will I have access to the content?',
+    answer: 'Access duration depends on your plan: Basic includes 3 months, Standard includes 6 months, and Premium includes 12 months. If your official exam is rescheduled or deferred, we offer a complimentary 60-day pause & extension upon submitting your exam admit card.'
+  },
+  {
+    question: 'Are the questions aligned with the latest 2026 exam pattern?',
+    answer: 'Yes! All question vignettes, diagnostic criteria, and guidelines for NEET PG (NExT), USMLE Step 1 & 2 CK, and PLAB / UKMLA are audited monthly by practicing specialist physicians according to the latest 2026 NBE, USMLE, and GMC standards.'
+  }
+];
