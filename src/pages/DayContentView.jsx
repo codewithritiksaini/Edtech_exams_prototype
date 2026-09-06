@@ -694,16 +694,16 @@ export default function DayContentView() {
                       </div>
 
                       {/* BACK OF CARD */}
-                      <div className="absolute inset-0 backface-hidden rotate-y-180 bg-slate-950 border-2 border-emerald-500 rounded-3xl p-8 flex flex-col justify-between shadow-xl text-white">
+                      <div className="absolute inset-0 backface-hidden rotate-y-180 bg-emerald-50 border-2 border-emerald-500 rounded-3xl p-8 flex flex-col justify-between shadow-md text-slate-900">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                          <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                             CLINICAL RATIONALE & ANSWER
                           </span>
-                          <span className="text-xs text-slate-400 font-semibold">Tap to flip back</span>
+                          <span className="text-xs text-slate-500 font-semibold">Tap to flip back</span>
                         </div>
 
                         <div className="text-center my-auto py-4">
-                          <p className="text-sm sm:text-base font-semibold text-emerald-100 leading-relaxed">
+                          <p className="text-sm sm:text-base font-semibold text-emerald-950 leading-relaxed">
                             {currentCard.answer}
                           </p>
                         </div>
@@ -791,33 +791,33 @@ export default function DayContentView() {
                   
                   {/* If Live Scheduled for Today (e.g. Day 3) */}
                   {currentDayData.live?.isScheduled && (
-                    <div className="bg-gradient-to-r from-red-950 via-slate-900 to-slate-950 text-white rounded-3xl p-8 border border-red-900/40 shadow-xl space-y-6">
+                    <div className="bg-gradient-to-r from-red-50 via-white to-amber-50 text-slate-900 rounded-3xl p-8 border border-red-200 shadow-sm space-y-6">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/90 text-white text-xs font-bold">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600 text-white text-xs font-bold shadow-xs">
                           <span className="w-2 h-2 rounded-full bg-white animate-ping" />
                           <span>{currentDayData.live.badge || 'Live Grand Rounds'}</span>
                         </div>
-                        <span className="text-xs font-mono font-bold text-amber-400 bg-black/50 px-3 py-1 rounded-xl">
+                        <span className="text-xs font-mono font-bold text-red-700 bg-red-100 border border-red-200 px-3 py-1 rounded-xl">
                           Starts @ {currentDayData.live.time}
                         </span>
                       </div>
 
                       <div className="space-y-2">
-                        <h3 className="text-xl sm:text-2xl font-black text-white">
+                        <h3 className="text-xl sm:text-2xl font-black text-slate-900">
                           {currentDayData.live.title}
                         </h3>
-                        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+                        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl">
                           Clinical case scenarios with <strong>{currentDayData.live.faculty}</strong>. Focus on acute coronary ECG recognition, door-to-balloon timelines, and live Q&A.
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-800">
-                        <span className="text-xs text-slate-400">
+                      <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200">
+                        <span className="text-xs text-slate-500 font-medium">
                           👥 {currentDayData.live.attendeesCount} Registered Candidates
                         </span>
                         <button
                           onClick={() => setLiveModalOpen(true)}
-                          className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-red-600/30 transition-all flex items-center gap-2"
+                          className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-red-600/20 transition-all flex items-center gap-2"
                         >
                           <Radio className="w-4 h-4" />
                           <span>Join Live Broadcast Room</span>
@@ -828,17 +828,17 @@ export default function DayContentView() {
 
                   {/* If Recording Available (e.g. Day 1) */}
                   {currentDayData.live?.recordingAvailable && (
-                    <div className="bg-slate-900 text-white rounded-3xl p-8 border border-slate-800 shadow-xl space-y-5">
-                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                    <div className="bg-white text-slate-900 rounded-3xl p-8 border border-slate-200 shadow-sm space-y-5">
+                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-600">
                         <CheckCircle2 className="w-4 h-4" />
                         <span>Recorded Faculty Grand Round Available</span>
                       </div>
 
                       <div>
-                        <h3 className="text-xl font-bold text-white">
+                        <h3 className="text-xl font-bold text-slate-900">
                           {currentDayData.live.title}
                         </h3>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <p className="text-xs text-slate-500 mt-1">
                           Taught by {currentDayData.live.faculty} • Duration: {currentDayData.live.duration}
                         </p>
                       </div>
@@ -917,7 +917,7 @@ export default function DayContentView() {
                 </span>
                 <button
                   onClick={handleSaveNotes}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                  className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>{notesSaved ? 'Saved ✓' : 'Save Notes'}</span>

@@ -161,56 +161,56 @@ export default function DashboardPage() {
           {/* ========================================================================= */}
           {/* 3. Welcome / Overview Section (Top of Main Area)                          */}
           {/* ========================================================================= */}
-          <section id="overview-section" className="bg-gradient-to-r from-slate-900 via-navy-850 to-brand-950 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/15 rounded-full blur-3xl pointer-events-none" />
+          <section id="overview-section" className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm relative overflow-hidden text-slate-900">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Enrolled: {enrolledPlan}</span>
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">
-                  Welcome back, <span className="text-brand-400">{dashboardUserData.name}</span>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+                  Welcome back, <span className="text-brand-600">{dashboardUserData.name}</span>
                 </h1>
 
-                <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-                  Your personalized clinical study space for <strong className="text-white">{enrolledCourse}</strong>. 
+                <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
+                  Your personalized clinical study space for <strong className="text-slate-800">{enrolledCourse}</strong>. 
                   Week 1 Cardiology is currently active.
                 </p>
               </div>
 
               {/* Days remaining countdown pill */}
-              <div className="flex items-center gap-4 bg-slate-800/80 p-4 rounded-2xl border border-slate-700/80 shrink-0">
+              <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 shrink-0">
                 <div className="text-center px-2">
-                  <div className="text-2xl sm:text-3xl font-black text-amber-400 font-sans">
+                  <div className="text-2xl sm:text-3xl font-black text-amber-600 font-sans">
                     {dashboardUserData.daysLeft}
                   </div>
-                  <span className="text-[11px] text-slate-400 font-semibold block uppercase tracking-wider">Days Left</span>
+                  <span className="text-[11px] text-slate-500 font-semibold block uppercase tracking-wider">Days Left</span>
                 </div>
-                <div className="w-px h-10 bg-slate-700" />
+                <div className="w-px h-10 bg-slate-200" />
                 <div className="text-center px-2">
-                  <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-sans">
+                  <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-sans">
                     {dashboardUserData.overallProgress}%
                   </div>
-                  <span className="text-[11px] text-slate-400 font-semibold block uppercase tracking-wider">Complete</span>
+                  <span className="text-[11px] text-slate-500 font-semibold block uppercase tracking-wider">Complete</span>
                 </div>
               </div>
             </div>
 
             {/* Overall Progress Bar */}
-            <div className="mt-8 pt-6 border-t border-slate-800/80">
-              <div className="flex flex-wrap items-center justify-between text-xs text-slate-300 mb-2 gap-2">
+            <div className="mt-8 pt-6 border-t border-slate-100">
+              <div className="flex flex-wrap items-center justify-between text-xs text-slate-600 mb-2 gap-2">
                 <span className="font-semibold flex items-center gap-2">
                   <span>Overall Curriculum Progress</span>
                   <span className="text-slate-400">({dashboardUserData.overallProgress}% Complete)</span>
                 </span>
-                <span className="text-brand-400 font-bold">Target Exam: {dashboardUserData.targetExamDate}</span>
+                <span className="text-brand-600 font-bold">Target Exam: {dashboardUserData.targetExamDate}</span>
               </div>
-              <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-brand-500 via-brand-400 to-emerald-400 rounded-full transition-all duration-500" 
+                  className="h-full bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-full transition-all duration-500" 
                   style={{ width: `${dashboardUserData.overallProgress}%` }}
                 />
               </div>
@@ -328,10 +328,10 @@ export default function DashboardPage() {
 
                 <button
                   onClick={() => navigate(`/test/${activeTest.id}`)}
-                  className={`px-3.5 py-1.5 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1 ${
+                  className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1 ${
                     activeTest.status === 'Completed'
-                      ? 'bg-slate-800 hover:bg-slate-700'
-                      : 'bg-brand-600 hover:bg-brand-500 shadow-brand-600/20'
+                      ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+                      : 'bg-brand-600 hover:bg-brand-500 text-white shadow-brand-600/20'
                   }`}
                 >
                   <span>{activeTest.status === 'Completed' ? 'Review Answers' : 'View Details & Start'}</span>
@@ -662,7 +662,7 @@ export default function DashboardPage() {
                         className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 ${
                           isLiveSoon
                             ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
-                            : 'bg-slate-800 hover:bg-slate-900 text-white'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                         }`}
                       >
                         <Radio className="w-3.5 h-3.5" />
