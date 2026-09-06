@@ -1015,3 +1015,122 @@ export const dayContentStore = {
     }
   }
 };
+
+// Phase 5: Faculty Portal Mock Data
+export const facultyProfileData = {
+  name: 'Dr. Siddharth V.',
+  degree: 'MD, DM (Interventional Cardiology)',
+  institution: 'AIIMS New Delhi Senior Clinical Faculty',
+  email: 'dr.siddharth@medpreppro.com',
+  avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
+  specialization: 'Cardiovascular Medicine & Electrocardiography',
+  activeModules: ['NEET PG Cardiology', 'USMLE Organ System Cardio']
+};
+
+export const facultySummaryMetrics = {
+  coursesAssigned: '2 Active Tracks',
+  coursesList: ['NEET PG 2026', 'USMLE Step 1 & 2 CK'],
+  studentsEnrolled: 1420,
+  contentUploadedThisWeek: 14,
+  upcomingLiveSessions: 2,
+  pendingDoubts: 4,
+  averageQBankScore: '74.2%'
+};
+
+export const facultyRecentActivity = [
+  {
+    id: 1,
+    action: 'Uploaded High-Yield PDF Notes',
+    target: 'Day 3 — Cardiac Arrhythmias & ECG Interpretation',
+    course: 'NEET PG & NExT',
+    time: '2 hours ago',
+    badge: 'Content'
+  },
+  {
+    id: 2,
+    action: 'Scheduled Live Case Grand Round',
+    target: 'STEMI & Acute Coronary Syndrome Drills (Tonight @ 8:00 PM)',
+    course: 'NEET PG & NExT',
+    time: '4 hours ago',
+    badge: 'Live Session'
+  },
+  {
+    id: 3,
+    action: 'Published Subject Test Series',
+    target: 'Cardiology Subject Mini-Mock #02 (40 Questions)',
+    course: 'NEET PG & NExT',
+    time: 'Yesterday',
+    badge: 'Test Released'
+  },
+  {
+    id: 4,
+    action: 'Added 4 Active Recall Flashcards',
+    target: 'Day 1 — Valvular Heart Diseases',
+    course: 'NEET PG & NExT',
+    time: '2 days ago',
+    badge: 'Flashcards'
+  }
+];
+
+export const facultyStudentDirectory = [
+  {
+    id: 's-1',
+    name: 'Dr. Ritik Saini',
+    email: 'ritik.doctor@example.com',
+    avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&auto=format&fit=crop&q=80',
+    course: 'NEET PG & NExT 2026',
+    packageTier: 'Standard Package',
+    progress: 32,
+    qbankAccuracy: '92%',
+    lastActive: '10 mins ago',
+    status: 'Online'
+  },
+  {
+    id: 's-2',
+    name: 'Dr. Ananya Sharma',
+    email: 'ananya.s@example.com',
+    avatar: 'https://images.unsplash.com/photo-1594824813689-13e64883395b?w=100&auto=format&fit=crop&q=80',
+    course: 'NEET PG & NExT 2026',
+    packageTier: 'Premium Package',
+    progress: 48,
+    qbankAccuracy: '96%',
+    lastActive: '1 hour ago',
+    status: 'Active Today'
+  },
+  {
+    id: 's-3',
+    name: 'Dr. Marcus Vance',
+    email: 'marcus.v@example.com',
+    avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&auto=format&fit=crop&q=80',
+    course: 'USMLE Step 1 & 2 CK',
+    packageTier: 'Premium Package',
+    progress: 41,
+    qbankAccuracy: '94%',
+    lastActive: '3 hours ago',
+    status: 'Active Today'
+  },
+  {
+    id: 's-4',
+    name: 'Dr. Sarah Jenkins',
+    email: 'sarah.j@example.com',
+    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&auto=format&fit=crop&q=80',
+    course: 'PLAB 1 & 2 / UKMLA',
+    packageTier: 'Standard Package',
+    progress: 28,
+    qbankAccuracy: '89%',
+    lastActive: 'Yesterday',
+    status: 'Offline'
+  },
+  {
+    id: 's-5',
+    name: 'Dr. Klaus Becker',
+    email: 'klaus.b@example.com',
+    avatar: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=100&auto=format&fit=crop&q=80',
+    course: 'Europe Medical Licensing',
+    packageTier: 'Basic Package',
+    progress: 19,
+    qbankAccuracy: '86%',
+    lastActive: '2 days ago',
+    status: 'Offline'
+  }
+];

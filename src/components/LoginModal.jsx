@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, UserCheck, Stethoscope, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function LoginModal({ isOpen, onClose }) {
+  const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState('student');
   const [email, setEmail] = useState('demo.student@medpreppro.com');
   const [submitted, setSubmitted] = useState(false);
@@ -13,7 +15,7 @@ export default function LoginModal({ isOpen, onClose }) {
     if (role === 'student') {
       setEmail('demo.student@medpreppro.com');
     } else {
-      setEmail('dr.faculty@medpreppro.com');
+      setEmail('dr.siddharth@medpreppro.com');
     }
   };
 
@@ -23,7 +25,12 @@ export default function LoginModal({ isOpen, onClose }) {
     setTimeout(() => {
       setSubmitted(false);
       onClose();
-    }, 1500);
+      if (selectedRole === 'faculty') {
+        navigate('/faculty');
+      } else {
+        navigate('/dashboard');
+      }
+    }, 1200);
   };
 
   return (

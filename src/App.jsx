@@ -6,6 +6,8 @@ import HomePage from './pages/HomePage';
 import PackageSelectionPage from './pages/PackageSelectionPage';
 import DashboardPage from './pages/DashboardPage';
 import DayContentView from './pages/DayContentView';
+import FacultyLoginPage from './pages/FacultyLoginPage';
+import FacultyDashboardPage from './pages/FacultyDashboardPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -19,7 +21,9 @@ export default function App() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const location = useLocation();
 
-  const isLmsView = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/day');
+  const isAppView = location.pathname.startsWith('/dashboard') || 
+                    location.pathname.startsWith('/day') || 
+                    location.pathname.startsWith('/faculty');
 
   const handleExploreCourses = () => {
     const el = document.getElementById('courses');
@@ -34,8 +38,8 @@ export default function App() {
     <div className="min-h-screen flex flex-col font-sans selection:bg-brand-500 selection:text-white">
       <ScrollToTop />
       
-      {/* Sticky Marketing Header (Hidden on logged-in student LMS routes) */}
-      {!isLmsView && (
+      {/* Sticky Marketing Header (Hidden on logged-in student LMS & faculty routes) */}
+      {!isAppView && (
         <Navbar 
           onOpenLogin={() => setIsLoginOpen(true)}
         />
@@ -69,6 +73,14 @@ export default function App() {
             path="/day/:dayId" 
             element={<DayContentView />} 
           />
+          <Route 
+            path="/faculty/login" 
+            element={<FacultyLoginPage />} 
+          />
+          <Route 
+            path="/faculty" 
+            element={<FacultyDashboardPage />} 
+          />
           {/* Catch-all redirect to homepage */}
           <Route 
             path="*" 
@@ -82,8 +94,8 @@ export default function App() {
         </Routes>
       </main>
 
-      {/* Footer (Hidden on logged-in student LMS routes) */}
-      {!isLmsView && (
+      {/* Footer (Hidden on logged-in student LMS & faculty routes) */}
+      {!isAppView && (
         <Footer 
           onExploreCourses={handleExploreCourses}
         />
