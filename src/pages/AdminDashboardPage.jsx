@@ -101,7 +101,7 @@ export default function AdminDashboardPage() {
 
   // If activeTab is restricted for Faculty, reset to dashboard
   useEffect(() => {
-    if (!isAdmin && ['exams', 'packages', 'faculty', 'analytics'].includes(activeTab)) {
+    if (!isAdmin && ['packages', 'faculty', 'analytics'].includes(activeTab)) {
       setActiveTab('dashboard');
     }
   }, [isAdmin, activeTab]);
@@ -727,12 +727,9 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ===================================================================== */}
-          {/* TAB 2: COURSE SETUP — MANAGE EXAMS (ADMIN ONLY)                       */}
+          {/* TAB 2: COURSE SETUP — MANAGE EXAMS & COURSES (ADMIN & FACULTY)      */}
           {/* ===================================================================== */}
-          {/* ===================================================================== */}
-          {/* TAB 2: COURSE SETUP — MANAGE EXAMS (ADMIN ONLY)                       */}
-          {/* ===================================================================== */}
-          {activeTab === 'exams' && isAdmin && (
+          {activeTab === 'exams' && (
             <ManageExamsTab />
           )}
 

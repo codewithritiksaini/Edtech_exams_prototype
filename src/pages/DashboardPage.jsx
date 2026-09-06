@@ -22,7 +22,21 @@ import {
   BarChart3,
   CalendarCheck2,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  BookOpen,
+  TrendingUp,
+  AlertCircle,
+  X,
+  Download,
+  Search,
+  Mail,
+  Bell,
+  CreditCard,
+  Target,
+  FileCheck,
+  GraduationCap,
+  Layers,
+  Settings
 } from 'lucide-react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import DashboardSidebar from '../components/DashboardSidebar';
@@ -85,7 +99,7 @@ export default function DashboardPage() {
     }
   }, [completedDayParam]);
 
-  // Sidebar & Modals state
+  // Sidebar & Tab view state
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedLiveSession, setSelectedLiveSession] = useState(null);
@@ -130,17 +144,14 @@ export default function DashboardPage() {
           activeTab={activeTab}
           onSelectTab={(tabId) => {
             setActiveTab(tabId);
-            const section = document.getElementById(tabId === 'plan' ? 'study-plan-section' : tabId === 'live' ? 'live-sessions-section' : tabId === 'tests' ? 'tests-section' : 'overview-section');
-            if (section) {
-              section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
 
         {/* Main Content Area */}
-        <main className="flex-grow p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-10">
+        <main className="flex-grow p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-8">
           
           {/* Phase 7 Return Notification Banner */}
           {completionBanner && (
@@ -159,614 +170,1151 @@ export default function DashboardPage() {
           )}
 
           {/* ========================================================================= */}
-          {/* 3. Welcome / Overview Section (Top of Main Area)                          */}
+          {/* TAB 1: DASHBOARD (HOME / OVERVIEW)                                        */}
           {/* ========================================================================= */}
-          <section id="overview-section" className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm relative overflow-hidden text-slate-900">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
+          {activeTab === 'dashboard' && (
+            <div className="space-y-8 animate-in fade-in">
+              
+              {/* Welcome Banner */}
+              <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm relative overflow-hidden text-slate-900">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
 
-            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Enrolled: {enrolledPlan}</span>
-                </div>
-
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
-                  Welcome back, <span className="text-brand-600">{dashboardUserData.name}</span>
-                </h1>
-
-                <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
-                  Your personalized clinical study space for <strong className="text-slate-800">{enrolledCourse}</strong>. 
-                  Week 1 Cardiology is currently active.
-                </p>
-              </div>
-
-              {/* Days remaining countdown pill */}
-              <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 shrink-0">
-                <div className="text-center px-2">
-                  <div className="text-2xl sm:text-3xl font-black text-amber-600 font-sans">
-                    {dashboardUserData.daysLeft}
-                  </div>
-                  <span className="text-[11px] text-slate-500 font-semibold block uppercase tracking-wider">Days Left</span>
-                </div>
-                <div className="w-px h-10 bg-slate-200" />
-                <div className="text-center px-2">
-                  <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-sans">
-                    {dashboardUserData.overallProgress}%
-                  </div>
-                  <span className="text-[11px] text-slate-500 font-semibold block uppercase tracking-wider">Complete</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Overall Progress Bar */}
-            <div className="mt-8 pt-6 border-t border-slate-100">
-              <div className="flex flex-wrap items-center justify-between text-xs text-slate-600 mb-2 gap-2">
-                <span className="font-semibold flex items-center gap-2">
-                  <span>Overall Curriculum Progress</span>
-                  <span className="text-slate-400">({dashboardUserData.overallProgress}% Complete)</span>
-                </span>
-                <span className="text-brand-600 font-bold">Target Exam: {dashboardUserData.targetExamDate}</span>
-              </div>
-              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-full transition-all duration-500" 
-                  style={{ width: `${dashboardUserData.overallProgress}%` }}
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* ========================================================================= */}
-          {/* 4. Quick Access Cards Row                                                 */}
-          {/* ========================================================================= */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            
-            {/* 1. Continue Learning */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-brand-50 text-brand-700 border border-brand-200">
-                    NEXT UP
-                  </span>
-                  <span className="text-xs text-brand-600 font-bold">Day 3</span>
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
-                  Cardiac Arrhythmias & ECG Interpretation
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  Narrow vs wide complex tachycardia and AV conduction blocks.
-                </p>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs text-brand-600 font-bold flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
-                  In Progress
-                </span>
-                <button
-                  onClick={() => navigate('/day/3')}
-                  className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1 group/btn"
-                >
-                  <span>Resume</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-            </div>
-
-            {/* 2. Next Live Session */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-                    LIVE TONIGHT
-                  </span>
-                  <span className="text-xs text-slate-500">8:00 PM IST</span>
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
-                  STEMI & Acute ECG Grand Rounds
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  Taught by Dr. Siddharth V. (AIIMS New Delhi Faculty).
-                </p>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs text-slate-500">340+ Registered</span>
-                <button
-                  onClick={() => handleJoinLive(dashboardLiveSessions[0])}
-                  className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors flex items-center gap-1"
-                >
-                  <Radio className="w-3.5 h-3.5" />
-                  <span>Join</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 3. Upcoming Test Card (Phase 6 Reactive Store) */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                    activeTest.status === 'Completed'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      : 'bg-amber-50 text-amber-800 border-amber-200'
-                  }`}>
-                    {activeTest.status === 'Completed' ? 'TEST COMPLETED' : 'SCHEDULED ASSESSMENT'}
-                  </span>
-                  <span className="text-xs text-slate-500">{activeTest.duration}</span>
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
-                  {activeTest.name}
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  {activeTest.status === 'Completed' ? (
-                    <span className="text-emerald-700 font-semibold">
-                      Your Score: {activeTest.score} ({activeTest.percentile || '94.2%ile'}) • PASSED
-                    </span>
-                  ) : (
-                    <span>{activeTest.questionsCount || 20} clinical vignette questions • +5 / -1 marking scheme.</span>
-                  )}
-                </p>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs">
-                  {activeTest.status === 'Completed' ? (
-                    <span className="text-emerald-600 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Result Ready</span>
-                    </span>
-                  ) : (
-                    <span className="text-emerald-600 font-bold flex items-center gap-1">
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>{activeTest.startsIn || 'Live Window Active'}</span>
-                    </span>
-                  )}
-                </div>
+                      <span>Enrolled: {enrolledPlan}</span>
+                    </div>
 
-                <button
-                  onClick={() => navigate(`/test/${activeTest.id}`)}
-                  className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1 ${
-                    activeTest.status === 'Completed'
-                      ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
-                      : 'bg-brand-600 hover:bg-brand-500 text-white shadow-brand-600/20'
-                  }`}
-                >
-                  <span>{activeTest.status === 'Completed' ? 'Review Answers' : 'View Details & Start'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+                      Welcome back, <span className="text-brand-600">{dashboardUserData.name}</span>
+                    </h1>
 
-            {/* 4. This Week's Progress */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    WEEK 1 PACE
-                  </span>
-                  <span className="text-xs font-bold text-slate-700">Goal: 7/7 Days</span>
-                </div>
-                <h4 className="text-sm font-bold text-slate-900">
-                  4 of 7 Days Completed
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  Daily study pace is on track for the Sunday Grand Test.
-                </p>
-              </div>
+                    <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
+                      Your personalized clinical study space for <strong className="text-slate-800">{enrolledCourse}</strong>. 
+                      Week 1 Cardiology & Hemodynamics is currently active.
+                    </p>
+                  </div>
 
-              {/* Visual Day Bubbles (Mon-Sun) */}
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((dayChar, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-slate-400 font-semibold">{dayChar}</span>
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                      i < 2 
-                        ? 'bg-emerald-500 text-white' 
-                        : i === 2 
-                          ? 'bg-brand-600 text-white ring-2 ring-brand-300' 
-                          : 'bg-slate-100 text-slate-400'
-                    }`}>
-                      {i < 2 ? '✓' : i === 2 ? '3' : '•'}
+                  {/* Days remaining countdown pill */}
+                  <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 shrink-0">
+                    <div className="text-center px-2">
+                      <div className="text-2xl sm:text-3xl font-black text-amber-600 font-sans">
+                        {dashboardUserData.daysLeft}
+                      </div>
+                      <span className="text-[11px] text-slate-500 font-semibold block uppercase tracking-wider">Days Left</span>
+                    </div>
+                    <div className="w-px h-10 bg-slate-200" />
+                    <div className="text-center px-2">
+                      <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-sans">
+                        {dashboardUserData.overallProgress}%
+                      </div>
+                      <span className="text-[11px] text-slate-500 font-semibold block uppercase tracking-wider">Complete</span>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-          </section>
-
-          {/* ========================================================================= */}
-          {/* 5. Study Plan Section (MAIN SECTION — Week-wise Structure)                */}
-          {/* ========================================================================= */}
-          <section id="study-plan-section" className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-100 text-brand-800 text-xs font-bold uppercase tracking-wider mb-2">
-                  <Calendar className="w-3.5 h-3.5 text-brand-600" />
-                  <span>Drip-Fed Structured Syllabus</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                  Your Study Plan
-                </h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Structured week-by-week clinical curriculum. Click on any unlocked Day to view notes, video lessons, and active flashcards.
-                </p>
-              </div>
 
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1 font-semibold text-emerald-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  Completed
-                </span>
-                <span className="flex items-center gap-1 font-semibold text-brand-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-brand-500" />
-                  In Progress
-                </span>
-                <span className="flex items-center gap-1 font-semibold text-slate-400">
-                  <Lock className="w-3 h-3" />
-                  Locked
-                </span>
-              </div>
-            </div>
+                {/* Overall Progress Bar */}
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                  <div className="flex flex-wrap items-center justify-between text-xs text-slate-600 mb-2 gap-2">
+                    <span className="font-semibold flex items-center gap-2">
+                      <span>Curriculum Progression</span>
+                      <span className="text-slate-400">({dashboardUserData.overallProgress}% Complete)</span>
+                    </span>
+                    <span className="text-brand-600 font-bold">Target Exam: {dashboardUserData.targetExamDate}</span>
+                  </div>
+                  <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-full transition-all duration-500" 
+                      style={{ width: `${dashboardUserData.overallProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </section>
 
-            {/* Expandable Week Cards */}
-            <div className="space-y-4">
-              {studyPlanWeeks.map((week) => {
-                const isExpanded = expandedWeeks[week.weekNumber];
-                const isCurrentWeek = week.status === 'current';
+              {/* 4 Quick Access KPI Cards */}
+              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                
+                {/* 1. Continue Learning */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-brand-50 text-brand-700 border border-brand-200">
+                        NEXT UP
+                      </span>
+                      <span className="text-xs text-brand-600 font-bold">Day 3</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
+                      Cardiac Arrhythmias & ECG Interpretation
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Narrow vs wide complex tachycardia and AV conduction blocks.
+                    </p>
+                  </div>
 
-                return (
-                  <div
-                    key={week.weekNumber}
-                    className={`bg-white rounded-3xl border transition-all overflow-hidden ${
-                      isCurrentWeek
-                        ? 'border-brand-300 shadow-md ring-1 ring-brand-500/10'
-                        : 'border-slate-200 shadow-sm'
-                    }`}
-                  >
-                    
-                    {/* Week Header Accordion Bar */}
-                    <div
-                      onClick={() => toggleWeek(week.weekNumber)}
-                      className="p-5 sm:p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 transition-colors"
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-xs text-brand-600 font-bold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
+                      In Progress
+                    </span>
+                    <button
+                      onClick={() => navigate('/day/3')}
+                      className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1 group/btn cursor-pointer"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 font-extrabold text-base ${
-                          isCurrentWeek 
-                            ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' 
-                            : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          W{week.weekNumber}
-                        </div>
+                      <span>Resume</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+                </div>
 
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                              Week {week.weekNumber} — {week.title}
-                            </h3>
-                            {isCurrentWeek && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-800 uppercase tracking-wide">
-                                Active Week
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {week.description} • <span className="font-semibold text-brand-700">{week.badge}</span>
-                          </p>
-                        </div>
-                      </div>
+                {/* 2. Next Live Session */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                        LIVE TONIGHT
+                      </span>
+                      <span className="text-xs text-slate-500">8:00 PM IST</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
+                      STEMI & Acute ECG Grand Rounds
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Taught by Dr. Siddharth V. (AIIMS New Delhi Faculty).
+                    </p>
+                  </div>
 
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs font-bold text-slate-500 hidden sm:inline">
-                          Progress: {week.completionRate}
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-xs text-slate-500">340+ Registered</span>
+                    <button
+                      onClick={() => handleJoinLive(dashboardLiveSessions[0])}
+                      className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Radio className="w-3.5 h-3.5" />
+                      <span>Join</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Upcoming Test Card */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                        activeTest.status === 'Completed'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : 'bg-amber-50 text-amber-800 border-amber-200'
+                      }`}>
+                        {activeTest.status === 'Completed' ? 'TEST COMPLETED' : 'SCHEDULED ASSESSMENT'}
+                      </span>
+                      <span className="text-xs text-slate-500">{activeTest.duration}</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
+                      {activeTest.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {activeTest.status === 'Completed' ? (
+                        <span className="text-emerald-700 font-semibold">
+                          Your Score: {activeTest.score} ({activeTest.percentile || '94.2%ile'}) • PASSED
                         </span>
-                        <span className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
-                          isExpanded ? 'bg-slate-100 rotate-180' : 'bg-slate-50'
-                        }`}>
-                          <ChevronDown className="w-4 h-4 text-slate-500" />
+                      ) : (
+                        <span>{activeTest.questionsCount || 20} clinical vignette questions • +5 / -1 marking scheme.</span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      {activeTest.status === 'Completed' ? (
+                        <span className="text-emerald-600 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Result Ready</span>
                         </span>
-                      </div>
+                      ) : (
+                        <span className="text-emerald-600 font-bold flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>{activeTest.startsIn || 'Live Window Active'}</span>
+                        </span>
+                      )}
                     </div>
 
-                    {/* Week Days List (When Expanded) */}
-                    {isExpanded && (
-                      <div className="border-t border-slate-100 divide-y divide-slate-100 bg-slate-50/40">
-                        {week.days.map((day) => {
-                          const isMarkedCompleted = completedDaysList.includes(day.dayNumber);
-                          const isCompleted = day.status === 'completed' || isMarkedCompleted;
-                          const isInProgress = !isCompleted && day.status === 'in-progress';
-                          const isLocked = !isCompleted && day.status === 'locked';
+                    <button
+                      onClick={() => navigate(`/test/${activeTest.id}`)}
+                      className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1 cursor-pointer ${
+                        activeTest.status === 'Completed'
+                          ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+                          : 'bg-brand-600 hover:bg-brand-500 text-white shadow-brand-600/20'
+                      }`}
+                    >
+                      <span>{activeTest.status === 'Completed' ? 'Review Answers' : 'View Details & Start'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
 
-                          return (
-                            <div
-                              key={day.dayNumber}
-                              onClick={() => handleDayClick(day)}
-                              className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
-                                isLocked
-                                  ? 'opacity-60 bg-slate-50/80 cursor-not-allowed'
-                                  : isInProgress
-                                    ? 'bg-brand-50/50 hover:bg-brand-50 cursor-pointer border-l-4 border-brand-500'
-                                    : 'hover:bg-white cursor-pointer'
-                              }`}
-                            >
-                              <div className="flex items-start sm:items-center gap-3.5">
-                                
-                                {/* Status Indicator Icon */}
-                                <div className="shrink-0 mt-0.5 sm:mt-0">
-                                  {isCompleted && (
-                                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-xs">
-                                      <CheckCircle2 className="w-5 h-5" />
-                                    </div>
-                                  )}
-                                  {isInProgress && (
-                                    <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-sm shadow-brand-500/30 animate-pulse">
-                                      <Play className="w-4 h-4 fill-current ml-0.5" />
-                                    </div>
-                                  )}
-                                  {isLocked && (
-                                    <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center">
-                                      <Lock className="w-4 h-4" />
-                                    </div>
-                                  )}
-                                </div>
+                {/* 4. This Week's Progress */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        WEEK 1 PACE
+                      </span>
+                      <span className="text-xs font-bold text-slate-700">Goal: 7/7 Days</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-900">
+                      4 of 7 Days Completed
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Daily study pace is on track for the Sunday Grand Test.
+                    </p>
+                  </div>
 
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-slate-400 uppercase">
-                                      Day {day.dayNumber}
-                                    </span>
-                                    {isInProgress && (
-                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-brand-600 text-white uppercase tracking-wider">
-                                        Current Day
-                                      </span>
+                  {/* Visual Day Bubbles (Mon-Sun) */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((dayChar, i) => (
+                      <div key={i} className="flex flex-col items-center gap-1">
+                        <span className="text-[10px] text-slate-400 font-semibold">{dayChar}</span>
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                          i < 2 
+                            ? 'bg-emerald-500 text-white' 
+                            : i === 2 
+                              ? 'bg-brand-600 text-white ring-2 ring-brand-300' 
+                              : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          {i < 2 ? '✓' : i === 2 ? '3' : '•'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </section>
+
+              {/* Today's Schedule & Clinical Milestones */}
+              <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <CalendarCheck2 className="w-5 h-5 text-brand-600" />
+                      <span>Today's Clinical Study Schedule & Milestones</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Target 3.5 hours active recall • 3 key tasks remaining today
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('plan')}
+                    className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                  >
+                    <span>View Full 28-Day Plan</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      ✓
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-bold text-emerald-800 uppercase">Completed • 09:30 AM</div>
+                      <h4 className="text-xs font-bold text-slate-900">Valvular Murmurs Auscultation</h4>
+                      <p className="text-[11px] text-slate-600">30 min video breakdown & phonocardiograms.</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-brand-50/60 border border-brand-200/80 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-xs shrink-0 animate-pulse">
+                      ▶
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-bold text-brand-700 uppercase">Active Now • 02:00 PM</div>
+                      <h4 className="text-xs font-bold text-slate-900">ECG Arrhythmias Drill (Day 3)</h4>
+                      <p className="text-[11px] text-slate-600">Complete 25 high-yield flashcards.</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-red-50/60 border border-red-200/80 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      🔴
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-bold text-red-700 uppercase">Tonight • 08:00 PM</div>
+                      <h4 className="text-xs font-bold text-slate-900">Live STEMI Grand Rounds</h4>
+                      <p className="text-[11px] text-slate-600">With Dr. Siddharth V. (AIIMS Lead).</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 2: MY COURSE(S)                                                       */}
+          {/* ========================================================================= */}
+          {activeTab === 'courses' && (
+            <div className="space-y-8 animate-in fade-in">
+              
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-100 text-brand-800 text-xs font-bold uppercase tracking-wider mb-2">
+                    <BookOpen className="w-3.5 h-3.5 text-brand-600" />
+                    <span>Curriculum & Program Portal</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                    My Enrolled Course(s)
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                    Complete medical specialization syllabus, faculty leads, and module progression.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => alert('Downloading official high-yield course syllabus (PDF)...')}
+                    className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+                  >
+                    <Download className="w-4 h-4 text-slate-500" />
+                    <span>Download Syllabus PDF</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Active Program Card */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-brand-200 shadow-sm relative overflow-hidden">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="space-y-3 max-w-2xl">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-bold border border-brand-200">
+                        Primary Enrollment Track
+                      </span>
+                      <span className="text-xs text-slate-400 font-mono">ID: MED-PRO-2026</span>
+                    </div>
+
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+                      {enrolledCourse} — Master Preparation Program
+                    </h3>
+
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Comprehensive clinical preparation covering all 19 medical subjects with clinical vignettes, 
+                      daily spaced-repetition flashcards, live AIIMS/NHS grand rounds, and national CBT mock exams.
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 pt-1">
+                      <span className="flex items-center gap-1.5 font-semibold">
+                        <Clock className="w-4 h-4 text-brand-600" />
+                        <span>Valid Until: Nov 29, 2026</span>
+                      </span>
+                      <span className="flex items-center gap-1.5 font-semibold">
+                        <Users className="w-4 h-4 text-emerald-600" />
+                        <span>Cohort: Batch Alpha 2026</span>
+                      </span>
+                      <span className="flex items-center gap-1.5 font-semibold">
+                        <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                        <span>Tier: {enrolledPlan}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center shrink-0 min-w-[220px] space-y-2">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Overall Completion</div>
+                    <div className="text-4xl font-black text-brand-600">32%</div>
+                    <p className="text-[11px] text-slate-500">28 of 88 Daily Modules Done</p>
+                    <button
+                      onClick={() => setActiveTab('plan')}
+                      className="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      Open Study Plan
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subject Module Breakdown */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-brand-600" />
+                  <span>Subject Modules & Progress Tracker</span>
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[
+                    { name: 'Cardiology & Hemodynamics', days: '12 / 14 Days', pct: 85, color: 'emerald', status: 'Active (Week 1)' },
+                    { name: 'Neurology & Neuroanatomy', days: '6 / 15 Days', pct: 40, color: 'brand', status: 'Upcoming (Week 2)' },
+                    { name: 'Clinical Pharmacology & Toxicology', days: '2 / 12 Days', pct: 15, color: 'amber', status: 'Upcoming (Week 3)' },
+                    { name: 'General & Systemic Pathology', days: '9 / 15 Days', pct: 60, color: 'emerald', status: 'In Review' },
+                    { name: 'Internal Medicine & Critical Care', days: '4 / 16 Days', pct: 25, color: 'brand', status: 'Queued' },
+                    { name: 'Pediatrics & Neonatal Resuscitation', days: '0 / 10 Days', pct: 0, color: 'slate', status: 'Locked' },
+                  ].map((sub, i) => (
+                    <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                          {sub.status}
+                        </span>
+                        <span className="text-xs font-black text-slate-900">{sub.pct}%</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900">{sub.name}</h4>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] text-slate-500 font-medium">
+                          <span>Progress</span>
+                          <span>{sub.days}</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-brand-600 rounded-full" 
+                            style={{ width: `${sub.pct}%` }} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Faculty Mentors Section */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-brand-600" />
+                  <span>Assigned Faculty Mentors for Your Course</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    { name: 'Dr. Siddharth V.', spec: 'MD Medicine (AIIMS New Delhi)', role: 'Cardiology & Emergency Lead', rating: '4.9 ★' },
+                    { name: 'Dr. Priya Sharma', spec: 'MD Pharmacology (PGI Chandigarh)', role: 'Clinical Neuro & Pharmacology Lead', rating: '4.8 ★' },
+                    { name: 'Dr. Marcus Vance', spec: 'MRCP (UK), USMLE Step 1/2 265+', role: 'International Advisory Lead', rating: '4.9 ★' },
+                  ].map((fac, i) => (
+                    <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-slate-900 text-xs">{fac.name}</h4>
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">{fac.rating}</span>
+                      </div>
+                      <p className="text-[11px] font-semibold text-brand-700">{fac.spec}</p>
+                      <p className="text-[11px] text-slate-500">{fac.role}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 3: STUDY PLAN (28-DAY CURRICULUM ROADMAP)                             */}
+          {/* ========================================================================= */}
+          {activeTab === 'plan' && (
+            <div className="space-y-6 animate-in fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-100 text-brand-800 text-xs font-bold uppercase tracking-wider mb-2">
+                    <Calendar className="w-3.5 h-3.5 text-brand-600" />
+                    <span>Drip-Fed Structured Syllabus</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Your Study Plan
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                    Structured week-by-week clinical curriculum. Click on any unlocked Day to view notes, video lessons, and active flashcards.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1 font-semibold text-emerald-700">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    Completed
+                  </span>
+                  <span className="flex items-center gap-1 font-semibold text-brand-700">
+                    <span className="w-2.5 h-2.5 rounded-full bg-brand-500" />
+                    In Progress
+                  </span>
+                  <span className="flex items-center gap-1 font-semibold text-slate-400">
+                    <Lock className="w-3 h-3" />
+                    Locked
+                  </span>
+                </div>
+              </div>
+
+              {/* Expandable Week Cards */}
+              <div className="space-y-4">
+                {studyPlanWeeks.map((week) => {
+                  const isExpanded = expandedWeeks[week.weekNumber];
+                  const isCurrentWeek = week.status === 'current';
+
+                  return (
+                    <div
+                      key={week.weekNumber}
+                      className={`bg-white rounded-3xl border transition-all overflow-hidden ${
+                        isCurrentWeek
+                          ? 'border-brand-300 shadow-md ring-1 ring-brand-500/10'
+                          : 'border-slate-200 shadow-sm'
+                      }`}
+                    >
+                      
+                      {/* Week Header Accordion Bar */}
+                      <div
+                        onClick={() => toggleWeek(week.weekNumber)}
+                        className="p-5 sm:p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 font-extrabold text-base ${
+                            isCurrentWeek 
+                              ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' 
+                              : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            W{week.weekNumber}
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                                Week {week.weekNumber} — {week.title}
+                              </h3>
+                              {isCurrentWeek && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-800 uppercase tracking-wide">
+                                  Active Week
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {week.description} • <span className="font-semibold text-brand-700">{week.badge}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          <span className="text-xs font-bold text-slate-500 hidden sm:inline">
+                            Progress: {week.completionRate}
+                          </span>
+                          <span className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
+                            isExpanded ? 'bg-slate-100 rotate-180' : 'bg-slate-50'
+                          }`}>
+                            <ChevronDown className="w-4 h-4 text-slate-500" />
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Week Days List (When Expanded) */}
+                      {isExpanded && (
+                        <div className="border-t border-slate-100 divide-y divide-slate-100 bg-slate-50/40">
+                          {week.days.map((day) => {
+                            const isMarkedCompleted = completedDaysList.includes(day.dayNumber);
+                            const isCompleted = day.status === 'completed' || isMarkedCompleted;
+                            const isInProgress = !isCompleted && day.status === 'in-progress';
+                            const isLocked = !isCompleted && day.status === 'locked';
+
+                            return (
+                              <div
+                                key={day.dayNumber}
+                                onClick={() => handleDayClick(day)}
+                                className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+                                  isLocked
+                                    ? 'opacity-60 bg-slate-50/80 cursor-not-allowed'
+                                    : isInProgress
+                                      ? 'bg-brand-50/50 hover:bg-brand-50 cursor-pointer border-l-4 border-brand-500'
+                                      : 'hover:bg-white cursor-pointer'
+                                }`}
+                              >
+                                <div className="flex items-start sm:items-center gap-3.5">
+                                  
+                                  {/* Status Indicator Icon */}
+                                  <div className="shrink-0 mt-0.5 sm:mt-0">
+                                    {isCompleted && (
+                                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-xs">
+                                        <CheckCircle2 className="w-5 h-5" />
+                                      </div>
                                     )}
-                                    {isCompleted && day.score && (
-                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                                        Drill Score: {day.score}
-                                      </span>
+                                    {isInProgress && (
+                                      <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-sm shadow-brand-500/30 animate-pulse">
+                                        <Play className="w-4 h-4 fill-current ml-0.5" />
+                                      </div>
+                                    )}
+                                    {isLocked && (
+                                      <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center">
+                                        <Lock className="w-4 h-4" />
+                                      </div>
                                     )}
                                   </div>
 
-                                  <h4 className={`text-sm sm:text-base font-bold mt-0.5 ${
-                                    isLocked ? 'text-slate-500' : 'text-slate-900 hover:text-brand-600'
-                                  }`}>
-                                    {day.title}
-                                  </h4>
-
-                                  {day.topics && (
-                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                      {day.topics.map((t, idx) => (
-                                        <span key={idx} className="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200/60">
-                                          {t}
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold text-slate-400 uppercase">
+                                        Day {day.dayNumber}
+                                      </span>
+                                      {isInProgress && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-brand-600 text-white uppercase tracking-wider">
+                                          Current Day
                                         </span>
-                                      ))}
+                                      )}
+                                      {isCompleted && day.score && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                                          Drill Score: {day.score}
+                                        </span>
+                                      )}
                                     </div>
+
+                                    <h4 className={`text-sm sm:text-base font-bold mt-0.5 ${
+                                      isLocked ? 'text-slate-500' : 'text-slate-900 hover:text-brand-600'
+                                    }`}>
+                                      {day.title}
+                                    </h4>
+
+                                    {day.topics && (
+                                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                        {day.topics.map((t, idx) => (
+                                          <span key={idx} className="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200/60">
+                                            {t}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Right Action Button */}
+                                <div className="flex items-center justify-end gap-3 shrink-0">
+                                  <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    {day.duration}
+                                  </span>
+
+                                  {!isLocked ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDayClick(day);
+                                      }}
+                                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                                        isInProgress
+                                          ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-sm'
+                                          : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                                      }`}
+                                    >
+                                      <span>{isInProgress ? 'Start / Resume' : 'Review Content'}</span>
+                                      <ChevronRight className="w-3.5 h-3.5" />
+                                    </button>
+                                  ) : (
+                                    <span className="text-xs font-semibold text-slate-400 flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-lg">
+                                      <Lock className="w-3.5 h-3.5" />
+                                      <span>Drip Locked</span>
+                                    </span>
                                   )}
                                 </div>
+
                               </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
-                              {/* Right Action Button */}
-                              <div className="flex items-center justify-end gap-3 shrink-0">
-                                <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
-                                  <Clock className="w-3.5 h-3.5" />
-                                  {day.duration}
-                                </span>
-
-                                {!isLocked ? (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDayClick(day);
-                                    }}
-                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                                      isInProgress
-                                        ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-sm'
-                                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-                                    }`}
-                                  >
-                                    <span>{isInProgress ? 'Start / Resume' : 'Review Content'}</span>
-                                    <ChevronRight className="w-3.5 h-3.5" />
-                                  </button>
-                                ) : (
-                                  <span className="text-xs font-semibold text-slate-400 flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-lg">
-                                    <Lock className="w-3.5 h-3.5" />
-                                    <span>Drip Locked</span>
-                                  </span>
-                                )}
-                              </div>
-
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                  </div>
-                );
-              })}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </section>
+          )}
 
           {/* ========================================================================= */}
-          {/* 6. Live Sessions Section                                                  */}
+          {/* TAB 4: LIVE SESSIONS HUB                                                  */}
           {/* ========================================================================= */}
-          <section id="live-sessions-section" className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-bold uppercase tracking-wider mb-2">
-                  <Radio className="w-3.5 h-3.5 text-red-600" />
-                  <span>Clinical Case Grand Rounds</span>
+          {activeTab === 'live' && (
+            <div className="space-y-8 animate-in fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-bold uppercase tracking-wider mb-2">
+                    <Radio className="w-3.5 h-3.5 text-red-600" />
+                    <span>Interactive Faculty Broadcast Hub</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Live Faculty Sessions & Grand Rounds
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                    Attend interactive clinical case discussions, differential diagnosis drills, and ask real-time doubts.
+                  </p>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">
-                  Live Faculty Sessions
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                  Interactive real-time case discussions, differential diagnosis drills, and clinical Q&A.
-                </p>
+
+                <span className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3.5 py-2 rounded-xl self-start sm:self-auto shadow-xs">
+                  Next Session: <strong>Tonight @ 8:00 PM IST</strong>
+                </span>
               </div>
 
-              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl self-start sm:self-auto">
-                Next session in 3 hours
-              </span>
-            </div>
-
-            {/* List of Live Sessions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {dashboardLiveSessions.map((session) => {
-                const isLiveSoon = session.status === 'Live Soon';
-                return (
-                  <div
-                    key={session.id}
-                    className={`rounded-2xl p-5 border flex flex-col justify-between transition-all ${
-                      isLiveSoon
-                        ? 'border-red-300 bg-red-50/20 shadow-sm ring-1 ring-red-400/20'
-                        : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isLiveSoon ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-200 text-slate-700'
-                        }`}>
-                          {session.badge}
-                        </span>
-                        <span className="text-xs font-bold text-slate-600">{session.time}</span>
-                      </div>
-
-                      <h4 className="text-sm font-bold text-slate-900 mb-1 leading-snug">
-                        {session.title}
-                      </h4>
-
-                      <p className="text-xs font-semibold text-brand-700 mb-2">
-                        {session.faculty}
-                      </p>
-
-                      <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                        {session.description}
-                      </p>
+              {/* Featured Tonight Live Session Card */}
+              <div className="bg-gradient-to-br from-red-600 to-rose-700 text-white rounded-3xl p-6 sm:p-8 shadow-md relative overflow-hidden">
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="space-y-3 max-w-2xl">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs text-white text-xs font-bold">
+                      <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                      <span>TONIGHT'S FEATURED CLINICAL GRAND ROUNDS</span>
                     </div>
 
-                    <div className="pt-4 border-t border-slate-200/70 flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => alert(`Session added to your Google/Outlook calendar: ${session.title}`)}
-                        className="text-xs font-semibold text-slate-500 hover:text-slate-800"
-                      >
-                        + Add Calendar
-                      </button>
+                    <h3 className="text-2xl sm:text-3xl font-black">
+                      STEMI & Acute ECG Grand Rounds: Localization & Reperfusion
+                    </h3>
 
-                      <button
-                        onClick={() => handleJoinLive(session)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 ${
+                    <p className="text-xs sm:text-sm text-red-100 leading-relaxed">
+                      Deep-dive case study of anteroseptal vs inferior STEMI, Sgarbossa criteria, ventricular arrhythmias, 
+                      and emergency cath-lab activation guidelines.
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs pt-1 text-red-100">
+                      <span>👨‍⚕️ Dr. Siddharth V. (AIIMS New Delhi Faculty)</span>
+                      <span>•</span>
+                      <span>⏱ 1.5 Hours Interactive Class</span>
+                      <span>•</span>
+                      <span>👥 340+ Doctors Registered</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 shrink-0">
+                    <button
+                      onClick={() => handleJoinLive(dashboardLiveSessions[0])}
+                      className="px-6 py-3.5 bg-white text-red-700 hover:bg-red-50 font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
+                    >
+                      <Radio className="w-4 h-4 text-red-600 animate-pulse" />
+                      <span>Join Live Broadcast Room</span>
+                    </button>
+                    <button
+                      onClick={() => alert('Added to Google Calendar!')}
+                      className="text-xs text-white/80 hover:text-white text-center font-medium"
+                    >
+                      + Add to Calendar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upcoming Live Sessions Grid */}
+              <div className="space-y-4">
+                <h3 className="text-base font-bold text-slate-900">Upcoming Live Class Schedule</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {dashboardLiveSessions.map((session) => {
+                    const isLiveSoon = session.status === 'Live Soon';
+                    return (
+                      <div
+                        key={session.id}
+                        className={`rounded-2xl p-5 border flex flex-col justify-between transition-all bg-white ${
                           isLiveSoon
-                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            ? 'border-red-300 ring-1 ring-red-400/20 shadow-sm'
+                            : 'border-slate-200 shadow-xs'
                         }`}
                       >
-                        <Radio className="w-3.5 h-3.5" />
-                        <span>Join Session</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isLiveSoon ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {session.badge}
+                            </span>
+                            <span className="text-xs font-bold text-slate-600">{session.time}</span>
+                          </div>
 
-          {/* ========================================================================= */}
-          {/* 7. Test Schedule Section                                                  */}
-          {/* ========================================================================= */}
-          <section id="tests-section" className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold uppercase tracking-wider mb-2">
-                  <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Computer Based Testing</span>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">
-                  Test Series & Mock Schedule
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                  Full-length examination simulations with national percentile and weak-area diagnostic reports.
-                </p>
-              </div>
-
-              <div className="text-xs text-slate-500">
-                1 Completed • 2 Scheduled
-              </div>
-            </div>
-
-            {/* Test list rows (Dynamic Phase 6 Store) */}
-            <div className="divide-y divide-slate-100">
-              {testsList.map((test) => {
-                const isCompleted = test.status === 'Completed';
-
-                return (
-                  <div
-                    key={test.id}
-                    className="py-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 p-3 rounded-2xl transition-colors"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        isCompleted ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-50 text-brand-600'
-                      }`}>
-                        {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-slate-900">
-                            {test.name}
+                          <h4 className="text-sm font-bold text-slate-900 mb-1 leading-snug">
+                            {session.title}
                           </h4>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                            isCompleted ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {test.status}
-                          </span>
+
+                          <p className="text-xs font-semibold text-brand-700 mb-2">
+                            {session.faculty}
+                          </p>
+
+                          <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                            {session.description}
+                          </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
-                          <span>📅 {test.date}</span>
-                          <span>•</span>
-                          <span>⏱ {test.duration}</span>
-                          <span>•</span>
-                          <span>📝 {test.questionsCount || test.questions || 20} Questions</span>
-                          {test.score && (
-                            <>
+                        <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                          <button
+                            onClick={() => alert(`Session reminder set: ${session.title}`)}
+                            className="text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
+                          >
+                            + Reminder
+                          </button>
+
+                          <button
+                            onClick={() => handleJoinLive(session)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
+                              isLiveSoon
+                                ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            <Radio className="w-3.5 h-3.5" />
+                            <span>Join Session</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Recorded Lectures Archive */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-base font-bold text-slate-900">Recorded Masterclasses Archive</h3>
+                  <span className="text-xs text-slate-400">Available 24/7 on Demand</span>
+                </div>
+                <div className="divide-y divide-slate-100 text-xs">
+                  {[
+                    { title: 'Cardiology ECG Masterclass: Axis & Conduction Abnormalities', date: 'Sep 2, 2026', dur: '1h 22m', fac: 'Dr. Siddharth V.' },
+                    { title: 'Valvular Murmurs Clinical Auscultation & Phonocardiograms', date: 'Aug 28, 2026', dur: '58m', fac: 'Dr. Siddharth V.' },
+                    { title: 'Heart Failure Pharmacotherapy: Landmark SGLT2i & ARNI Trials', date: 'Aug 22, 2026', dur: '1h 10m', fac: 'Dr. Priya Sharma' },
+                  ].map((rec, i) => (
+                    <div key={i} className="py-3.5 flex items-center justify-between gap-4">
+                      <div>
+                        <h4 className="font-bold text-slate-900">{rec.title}</h4>
+                        <span className="text-slate-500 text-[11px]">{rec.fac} • {rec.date} • {rec.dur}</span>
+                      </div>
+                      <button 
+                        onClick={() => alert(`Launching recorded video playback: ${rec.title}`)}
+                        className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                      >
+                        Watch Replay
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 5: TESTS & ASSESSMENTS (CBT ENGINE CENTER)                            */}
+          {/* ========================================================================= */}
+          {activeTab === 'tests' && (
+            <div className="space-y-8 animate-in fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold uppercase tracking-wider mb-2">
+                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>National Standard Assessment Engine</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    CBT Test Series & Mock Schedule
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                    Simulated proctored examinations with All India Rank (AIR), percentile scores, and question-by-question rationales.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-xs">
+                    {testsList.filter(t => t.status === 'Completed').length} Completed • {testsList.filter(t => t.status !== 'Completed').length} Scheduled
+                  </span>
+                </div>
+              </div>
+
+              {/* Scheduled and Active Tests */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-base font-bold text-slate-900">Scheduled Mock Tests (Phase 6 Reactive Store)</h3>
+                  <span className="text-xs text-slate-400">Synchronized with Faculty Test Bank</span>
+                </div>
+
+                <div className="divide-y divide-slate-100">
+                  {testsList.map((test) => {
+                    const isCompleted = test.status === 'Completed';
+
+                    return (
+                      <div
+                        key={test.id}
+                        className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 p-3 rounded-2xl transition-colors"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                            isCompleted ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-50 text-brand-600'
+                          }`}>
+                            {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-bold text-slate-900">
+                                {test.name}
+                              </h4>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                isCompleted ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {test.status}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
+                              <span>📅 {test.date}</span>
                               <span>•</span>
-                              <span className="font-bold text-emerald-600">Score: {test.score} ({test.percentile})</span>
-                            </>
+                              <span>⏱ {test.duration}</span>
+                              <span>•</span>
+                              <span>📝 {test.questionsCount || (test.questions && test.questions.length) || 20} Questions</span>
+                              {test.score && (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-bold text-emerald-600">Score: {test.score} ({test.percentile})</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 self-end sm:self-center">
+                          {isCompleted ? (
+                            <button
+                              onClick={() => navigate(`/test/${test.id}`)}
+                              className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <span>Review Results & Answers</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => navigate(`/test/${test.id}`)}
+                              className="px-5 py-2.5 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <span>Attempt Test</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </div>
                       </div>
-                    </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-                    <div className="flex items-center gap-3 self-end sm:self-center">
-                      {isCompleted ? (
-                        <button
-                          onClick={() => navigate(`/test/${test.id}`)}
-                          className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center gap-1.5"
-                        >
-                          <span>Review Results & Answers</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => navigate(`/test/${test.id}`)}
-                          className="px-5 py-2.5 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
-                        >
-                          <span>Attempt Test</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              {/* CBT Engine Guide Banner */}
+              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div className="space-y-1">
+                  <span className="font-bold text-slate-900 block">Marking Pattern:</span>
+                  <p className="text-slate-600">+5 Marks for correct answer, -1 Mark penalty for incorrect. Zero for unattempted.</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="font-bold text-slate-900 block">Proctored Navigation:</span>
+                  <p className="text-slate-600">Full color-coded Question Palette (Answered, Marked for Review, Unvisited).</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="font-bold text-slate-900 block">Dynamic Faculty Questions:</span>
+                  <p className="text-slate-600">Questions authored by Faculty in the Admin Panel feed directly into your CBT exam room.</p>
+                </div>
+              </div>
+
             </div>
-          </section>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 6: PROGRESS & ANALYTICS                                               */}
+          {/* ========================================================================= */}
+          {activeTab === 'progress' && (
+            <div className="space-y-8 animate-in fade-in">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-2">
+                  <BarChart3 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Clinical Diagnostic Analytics</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  Performance & Learning Analytics
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                  Accurate tracking of subject accuracy, spaced repetition retention, and mock test percentiles.
+                </p>
+              </div>
+
+              {/* 4 Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                  <span className="text-xs text-slate-500 font-semibold">Curriculum Completed</span>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900">32%</div>
+                  <span className="text-[11px] text-emerald-600 font-bold">+8% this week</span>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                  <span className="text-xs text-slate-500 font-semibold">Active Streak</span>
+                  <div className="text-2xl sm:text-3xl font-black text-amber-600">5 Days</div>
+                  <span className="text-[11px] text-slate-400">Target: 3.5 hrs/day</span>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                  <span className="text-xs text-slate-500 font-semibold">Flashcards Mastered</span>
+                  <div className="text-2xl sm:text-3xl font-black text-brand-600">1,420</div>
+                  <span className="text-[11px] text-brand-600 font-bold">92% Long-Term Recall</span>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+                  <span className="text-xs text-slate-500 font-semibold">Mock CBT Average</span>
+                  <div className="text-2xl sm:text-3xl font-black text-indigo-600">76.4%</div>
+                  <span className="text-[11px] text-indigo-600 font-bold">Top 8% National Percentile</span>
+                </div>
+              </div>
+
+              {/* Subject Accuracy Matrix */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+                <h3 className="text-base font-bold text-slate-900">Subject Accuracy Breakdown</h3>
+                <div className="space-y-4">
+                  {[
+                    { subject: 'Cardiology & Hemodynamics', accuracy: 92, status: 'Strong', badgeColor: 'bg-emerald-50 text-emerald-800' },
+                    { subject: 'Systemic Pathology & Neoplasia', accuracy: 84, status: 'Proficient', badgeColor: 'bg-emerald-50 text-emerald-800' },
+                    { subject: 'Neurology & Neuroanatomy', accuracy: 71, status: 'Moderate', badgeColor: 'bg-amber-50 text-amber-800' },
+                    { subject: 'Clinical Pharmacology & Pharmacokinetics', accuracy: 58, status: 'Needs Revision', badgeColor: 'bg-rose-50 text-rose-800' },
+                  ].map((item, idx) => (
+                    <div key={idx} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-800">{item.subject}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.badgeColor}`}>
+                            {item.status}
+                          </span>
+                          <span className="font-black text-slate-900">{item.accuracy}%</span>
+                        </div>
+                      </div>
+                      <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            item.accuracy >= 80 ? 'bg-emerald-500' : item.accuracy >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                          }`}
+                          style={{ width: `${item.accuracy}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI High-Yield Diagnostic Recommendations */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  <span>Personalized High-Yield Recommendations</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                  <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
+                    <span className="font-bold text-amber-900 block">Pharmacology Alert:</span>
+                    <p className="text-slate-600">Review Vaughan-Williams Class I-IV antiarrhythmic agents before tomorrow's live class.</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-1">
+                    <span className="font-bold text-emerald-900 block">Cardiology Mastery:</span>
+                    <p className="text-slate-600">Scored 94% on Valvular Murmurs! Excellent understanding of phonocardiograms.</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-1">
+                    <span className="font-bold text-indigo-900 block">Mock Readiness:</span>
+                    <p className="text-slate-600">On schedule for Sunday's Grand Mock Test. Review weak questions in Day 3.</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 7: SETTINGS & DOCTOR PROFILE                                          */}
+          {/* ========================================================================= */}
+          {activeTab === 'settings' && (
+            <div className="space-y-8 animate-in fade-in">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold uppercase tracking-wider mb-2">
+                  <Settings className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Account & Preferences</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  Doctor Profile & Settings
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                  Manage your candidate profile, target exam preferences, study reminders, and package billing.
+                </p>
+              </div>
+
+              {/* Profile Card */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center font-black text-xl text-brand-600">
+                    DR
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">{dashboardUserData.name}</h3>
+                    <p className="text-xs text-slate-500">Candidate Roll No: <strong className="text-slate-700">MED-2026-904</strong></p>
+                    <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full mt-1 inline-block">
+                      Verified MBBS Candidate
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-4 border-t border-slate-100">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Full Name</label>
+                    <input 
+                      type="text" 
+                      defaultValue={dashboardUserData.name} 
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 font-semibold"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Email Address</label>
+                    <input 
+                      type="email" 
+                      defaultValue={dashboardUserData.email} 
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 font-semibold"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Target Exam Year</label>
+                    <select className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 font-semibold">
+                      <option>2026 Examination Cycle</option>
+                      <option>2027 Examination Cycle</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Specialization Aspiration</label>
+                    <input 
+                      type="text" 
+                      defaultValue="Internal Medicine / Cardiology" 
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 font-semibold"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Study Notifications */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+                <h3 className="text-base font-bold text-slate-900">Alerts & Study Reminders</h3>
+                <div className="divide-y divide-slate-100 text-xs">
+                  <div className="py-3 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-900 block">Daily Morning High-Yield Clinical Pearl</span>
+                      <span className="text-slate-500">Receive 1 high-yield clinical vignette via WhatsApp & Email at 07:00 AM</span>
+                    </div>
+                    <input type="checkbox" defaultChecked className="accent-brand-600 w-4 h-4 cursor-pointer" />
+                  </div>
+                  <div className="py-3 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-900 block">Live Grand Rounds 30-Minute Reminder</span>
+                      <span className="text-slate-500">Push notification and SMS prior to live broadcasts</span>
+                    </div>
+                    <input type="checkbox" defaultChecked className="accent-brand-600 w-4 h-4 cursor-pointer" />
+                  </div>
+                  <div className="py-3 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-900 block">CBT Test Series Scorecard Alerts</span>
+                      <span className="text-slate-500">Instant notification when national rank and percentile are computed</span>
+                    </div>
+                    <input type="checkbox" defaultChecked className="accent-brand-600 w-4 h-4 cursor-pointer" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Package & Subscription Details */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+                <h3 className="text-base font-bold text-slate-900">Current Package & Subscription</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-brand-50 border border-brand-200">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-brand-800 uppercase">ACTIVE SUBSCRIPTION</span>
+                    <h4 className="text-base font-black text-slate-900">{enrolledPlan}</h4>
+                    <p className="text-xs text-slate-600">Access valid until Nov 29, 2026 • Full CBT & Live Classes Included</p>
+                  </div>
+                  <button 
+                    onClick={() => alert('Tax invoice downloaded.')}
+                    className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors cursor-pointer self-start sm:self-auto"
+                  >
+                    Download Invoice PDF
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          )}
 
         </main>
       </div>

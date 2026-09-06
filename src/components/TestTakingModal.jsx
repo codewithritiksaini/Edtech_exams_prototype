@@ -34,7 +34,7 @@ export default function TestTakingModal({ isOpen, onClose, test }) {
     return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const sampleQuestions = [
+  const defaultQuestions = [
     {
       id: 1,
       vignette: 'A 62-year-old woman presents to the emergency department with a 3-hour history of acute palpitations and mild lightheadedness. Blood pressure is 118/74 mmHg, pulse is 132/min and irregularly irregular. Electrocardiogram demonstrates an irregularly irregular rhythm with narrow QRS complexes and absent discernible P waves with fibrillatory baseline waves.',
@@ -62,6 +62,10 @@ export default function TestTakingModal({ isOpen, onClose, test }) {
       explanation: 'Hypertrophic Cardiomyopathy (HCM) is an autosomal dominant condition characterized by asymmetric septal hypertrophy. Murmur intensifies with maneuvers that decrease left ventricular preload (Valsalva, standing). Caused by sarcomeric protein mutations (MYH7 / MYBPC3).'
     }
   ];
+
+  const sampleQuestions = (test?.questions && Array.isArray(test.questions) && test.questions.length > 0)
+    ? test.questions
+    : defaultQuestions;
 
   const currentQ = sampleQuestions[currentQuestionIndex];
 

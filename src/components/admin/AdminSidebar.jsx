@@ -184,47 +184,47 @@ export default function AdminSidebar({
             </button>
           </div>
 
-          {/* SECTION 2: COURSE SETUP (Admin Only) */}
-          {isAdmin && (
-            <div className="space-y-1 pt-1.5 border-t border-slate-100">
-              {isExpanded ? (
+          {/* SECTION 2: COURSE SETUP (Exams for both Faculty & Admin, Packages for Admin) */}
+          <div className="space-y-1 pt-1.5 border-t border-slate-100">
+            {isExpanded ? (
+              <button
+                onClick={() => toggleSection('courseSetup')}
+                className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <span className="whitespace-nowrap">{isAdmin ? 'Course Setup' : 'Exams & Curriculum'}</span>
+                {collapsedSections.courseSetup ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            ) : (
+              <div className="my-1 border-t border-slate-100" />
+            )}
+
+            {(!collapsedSections.courseSetup || !isExpanded) && (
+              <div className="space-y-1">
+                {/* Manage Exams (Accessible to both Admin & Faculty) */}
                 <button
-                  onClick={() => toggleSection('courseSetup')}
-                  className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
+                  onClick={() => handleTabClick('exams')}
+                  title={!isExpanded ? (isAdmin ? 'Manage Exams (4 Live)' : 'Exams & Courses (4 Live)') : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
+                    activeTab === 'exams'
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
                 >
-                  <span className="whitespace-nowrap">Course Setup</span>
-                  {collapsedSections.courseSetup ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+                    <BookOpen className={`w-4 h-4 shrink-0 ${activeTab === 'exams' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">{isAdmin ? 'Manage Exams' : 'Exams & Courses'}</span>}
+                  </div>
+                  {isExpanded && (
+                    <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
+                      4 Live
+                    </span>
+                  )}
                 </button>
-              ) : (
-                <div className="my-1 border-t border-slate-100" />
-              )}
 
-              {(!collapsedSections.courseSetup || !isExpanded) && (
-                <div className="space-y-1">
-                  {/* Manage Exams */}
-                  <button
-                    onClick={() => handleTabClick('exams')}
-                    title={!isExpanded ? 'Manage Exams (4 Live)' : undefined}
-                    className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                      isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
-                    } ${
-                      activeTab === 'exams'
-                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                      <BookOpen className={`w-4 h-4 shrink-0 ${activeTab === 'exams' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                      {isExpanded && <span className="whitespace-nowrap shrink-0">Manage Exams</span>}
-                    </div>
-                    {isExpanded && (
-                      <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
-                        4 Live
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Manage Packages */}
+                {/* Manage Packages (Admin Only) */}
+                {isAdmin && (
                   <button
                     onClick={() => handleTabClick('packages')}
                     title={!isExpanded ? 'Manage Packages (12 Tiers)' : undefined}
@@ -246,10 +246,10 @@ export default function AdminSidebar({
                       </span>
                     )}
                   </button>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
 
           {/* SECTION 3: PEOPLE (Faculty admin-only, Students scoped) */}
           <div className="space-y-1 pt-1.5 border-t border-slate-100">

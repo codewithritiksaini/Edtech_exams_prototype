@@ -1585,6 +1585,7 @@ export const testService = {
   },
 
   addTest: (testData) => {
+    const questionList = testData.questions && Array.isArray(testData.questions) ? testData.questions : [];
     const newTest = {
       id: `test-${Date.now()}`,
       name: testData.name,
@@ -1596,7 +1597,8 @@ export const testService = {
       duration: testData.duration || '45 mins',
       durationSeconds: 2700,
       totalMarks: testData.totalMarks || 100,
-      questionsCount: testData.totalQuestions || 20,
+      questionsCount: questionList.length > 0 ? questionList.length : (testData.totalQuestions || 20),
+      questions: questionList,
       status: 'Scheduled',
       badge: 'Assessment Scheduled',
       pattern: 'Clinical Vignettes (Single Best Response)',
@@ -1604,6 +1606,31 @@ export const testService = {
     };
     testService.saveTest(newTest);
     return newTest;
+  },
+
+  updateTestQuestions: (testId, questions) => {
+    const tests = testService.getTests();
+    const index = tests.findIndex((t) => t.id === testId);
+    if (index !== -1) {
+      tests[index].questions = questions;
+      tests[index].questionsCount = questions.length;
+      try {
+        localStorage.setItem(STORAGE_KEY_TESTS, JSON.stringify(tests));
+        window.dispatchEvent(new CustomEvent('medprep-tests-updated', { detail: tests }));
+      } catch (e) {
+        console.warn('Storage save error:', e);
+      }
+      return tests[index];
+    }
+    return null;
+  },
+
+  getQuestionsForTest: (testId) => {
+    const test = testService.getTestById(testId);
+    if (test && test.questions && Array.isArray(test.questions) && test.questions.length > 0) {
+      return test.questions;
+    }
+    return sampleCbtQuestionBank;
   },
 
   subscribe: (callback) => {

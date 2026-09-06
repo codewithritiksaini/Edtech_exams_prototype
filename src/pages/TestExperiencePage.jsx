@@ -107,11 +107,16 @@ export default function TestExperiencePage() {
     }));
   };
 
+  // Dynamic questions: use custom questions added by Faculty/Admin or fallback to default sample bank
+  const questionsToUse = (test?.questions && Array.isArray(test.questions) && test.questions.length > 0) 
+    ? test.questions 
+    : sampleCbtQuestionBank;
+
   // Calculate palette metrics
-  const totalQuestions = sampleCbtQuestionBank.length;
+  const totalQuestions = questionsToUse.length;
   const answeredCount = Object.keys(userAnswers).length;
   const markedCount = Object.values(markedForReview).filter(Boolean).length;
-  const unansweredCount = totalQuestions - answeredCount;
+  const unansweredCount = Math.max(0, totalQuestions - answeredCount);
 
   // Final Submit Handler
   const handleFinalSubmit = () => {
@@ -122,7 +127,7 @@ export default function TestExperiencePage() {
     let incorrectCount = 0;
     let unattemptedCount = 0;
 
-    sampleCbtQuestionBank.forEach((q) => {
+    questionsToUse.forEach((q) => {
       const chosen = userAnswers[q.id];
       if (!chosen) {
         unattemptedCount++;
@@ -168,7 +173,7 @@ export default function TestExperiencePage() {
     window.scrollTo(0, 0);
   };
 
-  const currentQ = sampleCbtQuestionBank[currentQuestionIndex];
+  const currentQ = questionsToUse[currentQuestionIndex];
   const isCurrentAnswered = Boolean(userAnswers[currentQ?.id]);
   const isCurrentMarked = Boolean(markedForReview[currentQ?.id]);
 
@@ -507,9 +512,9 @@ export default function TestExperiencePage() {
                   </div>
                 </div>
 
-                {/* 20 Question Button Grid */}
+                {/* Question Button Grid */}
                 <div className="grid grid-cols-5 gap-2 pt-2">
-                  {sampleCbtQuestionBank.map((q, idx) => {
+                  {questionsToUse.map((q, idx) => {
                     const isAnswered = Boolean(userAnswers[q.id]);
                     const isMarked = Boolean(markedForReview[q.id]);
                     const isCurrent = idx === currentQuestionIndex;
@@ -773,7 +778,7 @@ export default function TestExperiencePage() {
 
             {/* Questions Review List */}
             <div className="space-y-4">
-              {sampleCbtQuestionBank
+              {questionsToUse
                 .filter((q) => {
                   const chosen = userAnswers[q.id];
                   if (reviewFilter === 'correct') return chosen === q.correct;
