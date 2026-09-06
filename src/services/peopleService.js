@@ -264,6 +264,10 @@ export const peopleService = {
     return INITIAL_FACULTY;
   },
 
+  getFaculty: () => {
+    return peopleService.getFacultyList();
+  },
+
   saveFaculty: (facultyData) => {
     const list = peopleService.getFacultyList();
     let updated;
