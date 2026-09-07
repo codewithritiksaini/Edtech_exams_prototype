@@ -557,60 +557,88 @@ export default function TestExperiencePage() {
 
           </div>
 
-          {/* Submission Confirmation Popup Modal */}
+          {/* DRAWER: Submission Confirmation */}
           {isSubmitModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-              <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 p-6 shadow-2xl space-y-6 text-slate-900">
-                
-                <div className="text-center space-y-2">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto">
-                    <AlertCircle className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-lg font-black text-slate-900">
-                    Submit Examination?
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Are you sure you want to finalize and submit your test? Once confirmed, your answers will be evaluated immediately.
-                  </p>
-                </div>
+            <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+              {/* Backdrop */}
+              <div 
+                className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+                onClick={() => setIsSubmitModalOpen(false)}
+              />
 
-                {/* Summary Table */}
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-slate-700">
-                    <span>Total Examination Questions:</span>
-                    <strong className="text-slate-900">{totalQuestions}</strong>
+              <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+                <div className="w-screen max-w-md bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300 text-slate-900">
+                  
+                  {/* Sticky Header */}
+                  <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold">
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black text-slate-900">
+                          Submit Examination?
+                        </h3>
+                        <p className="text-xs text-slate-400">Final confirmation</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsSubmitModalOpen(false)}
+                      className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
-                  <div className="flex items-center justify-between text-emerald-700">
-                    <span>Questions Answered:</span>
-                    <strong className="text-emerald-800">{answeredCount}</strong>
-                  </div>
-                  <div className="flex items-center justify-between text-amber-700">
-                    <span>Marked for Review:</span>
-                    <strong className="text-amber-800">{markedCount}</strong>
-                  </div>
-                  <div className="flex items-center justify-between text-rose-700">
-                    <span>Unattempted Questions:</span>
-                    <strong className="text-rose-800">{unansweredCount}</strong>
-                  </div>
-                </div>
 
-                {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <button
-                    onClick={() => setIsSubmitModalOpen(false)}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
-                  >
-                    Return to Exam
-                  </button>
-                  <button
-                    onClick={handleFinalSubmit}
-                    className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-600/25 transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Confirm & Submit</span>
-                  </button>
-                </div>
+                  {/* Scrollable Body */}
+                  <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Are you sure you want to finalize and submit your test? Once confirmed, your answers will be evaluated immediately.
+                    </p>
 
+                    {/* Summary Table */}
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span>Total Examination Questions:</span>
+                        <strong className="text-slate-900">{totalQuestions}</strong>
+                      </div>
+                      <div className="flex items-center justify-between text-emerald-700">
+                        <span>Questions Answered:</span>
+                        <strong className="text-emerald-800">{answeredCount}</strong>
+                      </div>
+                      <div className="flex items-center justify-between text-amber-700">
+                        <span>Marked for Review:</span>
+                        <strong className="text-amber-800">{markedCount}</strong>
+                      </div>
+                      <div className="flex items-center justify-between text-rose-700">
+                        <span>Unattempted Questions:</span>
+                        <strong className="text-rose-800">{unansweredCount}</strong>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900 leading-relaxed">
+                      <span className="font-bold">Notice:</span> A detailed AI performance breakdown, time analytics, and peer cohort percentile ranking will be presented right after submission.
+                    </div>
+                  </div>
+
+                  {/* Sticky Footer */}
+                  <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/90 shrink-0 flex items-center gap-3 sticky bottom-0 z-10">
+                    <button
+                      onClick={() => setIsSubmitModalOpen(false)}
+                      className="flex-1 py-3 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                    >
+                      Return to Exam
+                    </button>
+                    <button
+                      onClick={handleFinalSubmit}
+                      className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-600/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Confirm & Submit</span>
+                    </button>
+                  </div>
+
+                </div>
               </div>
             </div>
           )}

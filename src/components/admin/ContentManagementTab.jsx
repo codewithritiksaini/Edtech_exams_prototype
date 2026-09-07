@@ -1157,32 +1157,42 @@ export default function ContentManagementTab() {
       {/* 4. SELECT CONTENT TYPE -> 5. TAILORED FORM -> 6. REDIRECT TO LIST    */}
       {/* ===================================================================== */}
       {isAddContentModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl w-full max-w-2xl border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-5 my-8 max-h-[92vh] overflow-y-auto">
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold mb-1">
-                  <Sparkles className="w-3 h-3 text-indigo-600" />
-                  <span>Fresh Curriculum Upload Form</span>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setIsAddContentModalOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-2xl bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              
+              {/* Drawer Header */}
+              <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold mb-1">
+                    <Sparkles className="w-3 h-3 text-indigo-600" />
+                    <span>Fresh Curriculum Upload Drawer</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900">
+                    Add & Publish Curriculum Content
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Select <strong>Course ➔ Week ➔ Day</strong>, choose content type, fill details, and save to publish.
+                  </p>
                 </div>
-                <h3 className="text-lg sm:text-xl font-black text-slate-900">
-                  Add & Publish Curriculum Content
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Select <strong>Course ➔ Week ➔ Day</strong>, choose content type, fill details, and save to publish.
-                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAddContentModalOpen(false)}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsAddContentModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+              {/* Drawer Scrollable Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
 
             {/* ================================================================= */}
             {/* STEP 1-3 HIERARCHY SELECTORS: COURSE -> WEEK -> DAY               */}
@@ -1616,7 +1626,7 @@ export default function ContentManagementTab() {
                                 type="button"
                                 onClick={() => setQueuedCards(prev => prev.filter((_, idx) => idx !== i))}
                                 className="p-1 text-slate-400 hover:text-rose-600"
-                              >
+>
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
@@ -1711,284 +1721,344 @@ export default function ContentManagementTab() {
               </form>
             </div>
 
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* ===================================================================== */}
-      {/* PREVIEW MODALS                                                        */}
+      {/* PREVIEW DRAWERS                                                       */}
       {/* ===================================================================== */}
-      {/* 1. PDF Preview Modal */}
+      {/* 1. PDF Preview Drawer */}
       {previewPdfModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-lg font-black text-slate-900">{previewPdfModal.title}</h3>
-                <span className="text-xs text-slate-400">{previewPdfModal.fileName} • {previewPdfModal.pages} Pages</span>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setPreviewPdfModal(null)}
+          />
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-2xl bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">{previewPdfModal.title}</h3>
+                  <span className="text-xs text-slate-400">{previewPdfModal.fileName} • {previewPdfModal.pages} Pages</span>
+                </div>
+                <button
+                  onClick={() => setPreviewPdfModal(null)}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                onClick={() => setPreviewPdfModal(null)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-8 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-3">
-              <FileText className="w-12 h-12 text-blue-600 mx-auto" />
-              <p className="text-sm font-bold text-slate-800">Interactive PDF Clinical Viewer</p>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Demonstration document configured. In the production build, this embeds a full-featured PDF.js viewer with bookmarking, highlighting, and clinical note search.
-              </p>
-            </div>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setPreviewPdfModal(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
-              >
-                Close Viewer
-              </button>
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                <div className="p-8 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-3">
+                  <FileText className="w-12 h-12 text-blue-600 mx-auto" />
+                  <p className="text-sm font-bold text-slate-800">Interactive PDF Clinical Viewer</p>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Demonstration document configured. In the production build, this embeds a full-featured PDF.js viewer with bookmarking, highlighting, and clinical note search.
+                  </p>
+                </div>
+              </div>
+              <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/90 flex justify-end shrink-0">
+                <button
+                  onClick={() => setPreviewPdfModal(null)}
+                  className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Close Viewer
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 2. Image Enlarge Modal */}
+      {/* 2. Image Enlarge Drawer */}
       {previewImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-4xl border border-slate-200 shadow-2xl p-6 space-y-3 max-h-[95vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">{previewImage.title}</h3>
-              <button
-                onClick={() => setPreviewImage(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setPreviewImage(null)}
+          />
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-3xl bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                <h3 className="text-base font-bold text-slate-900">{previewImage.title}</h3>
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                <div className="rounded-2xl overflow-hidden border border-slate-200 bg-black flex items-center justify-center min-h-[300px]">
+                  <img src={previewImage.url} alt={previewImage.title} className="max-h-[65vh] w-auto object-contain" />
+                </div>
+                <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">{previewImage.caption}</p>
+              </div>
+              <div className="p-4 border-t border-slate-100 bg-slate-50/90 flex justify-end shrink-0">
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
-            <div className="rounded-2xl overflow-hidden border border-slate-200 bg-black max-h-[60vh] flex items-center justify-center">
-              <img src={previewImage.url} alt={previewImage.title} className="max-h-[60vh] w-auto object-contain" />
-            </div>
-            <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">{previewImage.caption}</p>
           </div>
         </div>
       )}
 
-      {/* 3. Video Player Preview Modal */}
+      {/* 3. Video Player Preview Drawer */}
       {previewVideoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-3xl border border-slate-200 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-base font-black text-slate-900">{previewVideoModal.title}</h3>
-                <span className="text-xs text-slate-400">{previewVideoModal.duration} • Instructor: {previewVideoModal.instructor}</span>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setPreviewVideoModal(null)}
+          />
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-2xl bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">{previewVideoModal.title}</h3>
+                  <span className="text-xs text-slate-400">{previewVideoModal.duration} • Instructor: {previewVideoModal.instructor}</span>
+                </div>
+                <button
+                  onClick={() => setPreviewVideoModal(null)}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                onClick={() => setPreviewVideoModal(null)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="aspect-video bg-slate-900 rounded-2xl flex items-center justify-center text-white overflow-hidden relative">
-              <iframe
-                src={previewVideoModal.url}
-                title={previewVideoModal.title}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setPreviewVideoModal(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
-              >
-                Close Player
-              </button>
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                <div className="aspect-video bg-slate-900 rounded-2xl flex items-center justify-center text-white overflow-hidden relative shadow-md">
+                  <iframe
+                    src={previewVideoModal.url}
+                    title={previewVideoModal.title}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+              <div className="p-4 border-t border-slate-100 bg-slate-50/90 flex justify-end shrink-0">
+                <button
+                  onClick={() => setPreviewVideoModal(null)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Close Player
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 4. Flashcards Preview Modal */}
+      {/* 4. Flashcards Preview Drawer */}
       {previewFlashcardsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-xl border border-slate-200 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-base font-black text-slate-900">{previewFlashcardsModal.title}</h3>
-                <span className="text-xs text-slate-400">{previewFlashcardsModal.cards.length} Interactive Flashcards</span>
-              </div>
-              <button
-                onClick={() => setPreviewFlashcardsModal(null)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-              {previewFlashcardsModal.cards.map((card, idx) => (
-                <div key={idx} className="p-4 bg-amber-50/40 rounded-2xl border border-amber-200/80 space-y-2">
-                  <div className="text-xs font-bold text-amber-900">
-                    <span className="text-amber-600 font-mono mr-1.5">Q{idx + 1}:</span>
-                    {card.question}
-                  </div>
-                  <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-amber-100">
-                    <span className="text-emerald-700 font-bold font-mono mr-1.5">Answer:</span>
-                    {card.answer}
-                  </div>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setPreviewFlashcardsModal(null)}
+          />
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-xl bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">{previewFlashcardsModal.title}</h3>
+                  <span className="text-xs text-slate-400">{previewFlashcardsModal.cards.length} Interactive Flashcards</span>
                 </div>
-              ))}
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                onClick={() => setPreviewFlashcardsModal(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
-              >
-                Close Deck
-              </button>
+                <button
+                  onClick={() => setPreviewFlashcardsModal(null)}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-3">
+                {previewFlashcardsModal.cards.map((card, idx) => (
+                  <div key={idx} className="p-4 bg-amber-50/40 rounded-2xl border border-amber-200/80 space-y-2">
+                    <div className="text-xs font-bold text-amber-900">
+                      <span className="text-amber-600 font-mono mr-1.5">Q{idx + 1}:</span>
+                      {card.question}
+                    </div>
+                    <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-amber-100">
+                      <span className="text-emerald-700 font-bold font-mono mr-1.5">Answer:</span>
+                      {card.answer}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 border-t border-slate-100 bg-slate-50/90 flex justify-end shrink-0">
+                <button
+                  onClick={() => setPreviewFlashcardsModal(null)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Close Deck
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 5. Live Session Preview Modal */}
+      {/* 5. Live Session Preview Drawer */}
       {previewLiveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-lg border border-slate-200 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Radio className="w-4 h-4 text-rose-600 animate-pulse" />
-                <h3 className="text-base font-black text-slate-900">Live Interactive Masterclass</h3>
-              </div>
-              <button
-                onClick={() => setPreviewLiveModal(null)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 p-4 bg-rose-50/40 rounded-2xl border border-rose-100">
-              <div>
-                <span className="text-xs font-bold text-rose-900 block">{previewLiveModal.title}</span>
-                <span className="text-[11px] text-slate-500 mt-1 block">Instructor: {previewLiveModal.faculty}</span>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-slate-700">
-                <span className="font-semibold">⏰ {previewLiveModal.time}</span>
-                <span>•</span>
-                <span className="font-semibold">⏱️ {previewLiveModal.duration}</span>
-              </div>
-              {previewLiveModal.zoomUrl && (
-                <div className="pt-2">
-                  <a
-                    href={previewLiveModal.zoomUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs"
-                  >
-                    <span>Join Interactive Round (Zoom / Stream)</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setPreviewLiveModal(null)}
+          />
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-lg bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                <div className="flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-rose-600 animate-pulse" />
+                  <h3 className="text-base font-black text-slate-900">Live Interactive Masterclass</h3>
                 </div>
-              )}
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                onClick={() => setPreviewLiveModal(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
-              >
-                Close
-              </button>
+                <button
+                  onClick={() => setPreviewLiveModal(null)}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                <div className="space-y-3 p-4 bg-rose-50/40 rounded-2xl border border-rose-100">
+                  <div>
+                    <span className="text-xs font-bold text-rose-900 block">{previewLiveModal.title}</span>
+                    <span className="text-[11px] text-slate-500 mt-1 block">Instructor: {previewLiveModal.faculty}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-slate-700">
+                    <span className="font-semibold">⏰ {previewLiveModal.time}</span>
+                    <span>•</span>
+                    <span className="font-semibold">⏱️ {previewLiveModal.duration}</span>
+                  </div>
+                  {previewLiveModal.zoomUrl && (
+                    <div className="pt-2">
+                      <a
+                        href={previewLiveModal.zoomUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <span>Join Interactive Round (Zoom / Stream)</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-4 border-t border-slate-100 bg-slate-50/90 flex justify-end shrink-0">
+                <button
+                  onClick={() => setPreviewLiveModal(null)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 6. Add Week Modal */}
+      {/* 6. Add Week Drawer */}
       {isAddWeekModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md border border-slate-200 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Add New Curriculum Week</h3>
-              <button onClick={() => setIsAddWeekModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700">
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setIsAddWeekModalOpen(false)}
+          />
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-md bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                <h3 className="text-base font-bold text-slate-900">Add New Curriculum Week</h3>
+                <button onClick={() => setIsAddWeekModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <form onSubmit={handleAddWeekSubmit} className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Week Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Week 4 — High-Yield Grand Mocks"
+                      value={newWeekTitle}
+                      onChange={(e) => setNewWeekTitle(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="p-4 border-t border-slate-100 bg-slate-50/90 flex justify-end gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddWeekModalOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs"
+                  >
+                    Create Week
+                  </button>
+                </div>
+              </form>
             </div>
-            <form onSubmit={handleAddWeekSubmit} className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Week Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Week 4 — High-Yield Grand Mocks"
-                  value={newWeekTitle}
-                  onChange={(e) => setNewWeekTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddWeekModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl"
-                >
-                  Create Week
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
 
-      {/* 7. Add Day Modal */}
+      {/* 7. Add Day Drawer */}
       {isAddDayModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md border border-slate-200 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Add New Day to Week</h3>
-              <button onClick={() => setIsAddDayModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700">
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setIsAddDayModalOpen(false)}
+          />
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-md bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                <h3 className="text-base font-bold text-slate-900">Add New Day to Week</h3>
+                <button onClick={() => setIsAddDayModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <form onSubmit={handleAddDaySubmit} className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Day Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Day 10 — Acute Pulmonary Embolism & DVT"
+                      value={newDayTitle}
+                      onChange={(e) => setNewDayTitle(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="p-4 border-t border-slate-100 bg-slate-50/90 flex justify-end gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddDayModalOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs"
+                  >
+                    Create Day
+                  </button>
+                </div>
+              </form>
             </div>
-            <form onSubmit={handleAddDaySubmit} className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Day Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Day 10 — Acute Pulmonary Embolism & DVT"
-                  value={newDayTitle}
-                  onChange={(e) => setNewDayTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddDayModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl"
-                >
-                  Create Day
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

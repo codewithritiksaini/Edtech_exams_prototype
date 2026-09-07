@@ -7,6 +7,7 @@ import {
   Trash2, 
   AlertTriangle, 
   CheckCircle2, 
+  Check,
   X, 
   Layers, 
   Users, 
@@ -359,200 +360,209 @@ export default function ManageExamsTab() {
       </div>
 
       {/* ======================================================================= */}
-      {/* MODAL: ADD / EDIT EXAM                                                  */}
+      {/* SLIDE-OVER DRAWER: ADD / EDIT EXAM                                      */}
       {/* ======================================================================= */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-slate-200 shadow-xl space-y-5">
-            
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                  {editingExam ? 'Edit Exam Track' : 'Create New Category'}
-                </span>
-                <h3 className="text-lg font-black text-slate-900 mt-1">
-                  {editingExam ? `Edit "${editingExam.name}"` : 'Add New Medical Exam Track'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setIsModalOpen(false)}
+          />
 
-            <form onSubmit={handleSaveExam} className="space-y-4 text-xs">
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-lg bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
               
-              {/* Exam Name */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Exam Title / Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. AMC (Australian Medical Council)"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
+              {/* Sticky Header */}
+              <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                    {editingExam ? 'Edit Exam Track' : 'Create New Category'}
+                  </span>
+                  <h3 className="text-lg font-black text-slate-900 mt-1">
+                    {editingExam ? `Edit "${editingExam.name}"` : 'Add New Medical Exam Track'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Region & Flag Selection */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Country / Region *</label>
-                  <select
-                    value={formCountry}
-                    onChange={(e) => {
-                      const matched = AVAILABLE_FLAGS.find(f => f.country === e.target.value);
-                      if (matched) {
-                        setFormCountry(matched.country);
-                        setFormFlag(matched.flag);
-                      }
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
-                  >
-                    {AVAILABLE_FLAGS.map((f, i) => (
-                      <option key={i} value={f.country}>
-                        {f.flag} {f.country}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* Scrollable Form */}
+              <form onSubmit={handleSaveExam} className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
+                  
+                  {/* Exam Name */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Exam Title / Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. AMC (Australian Medical Council)"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                  </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Flag / Icon Indicator</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-3xl px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-xl">
-                      {formFlag}
-                    </span>
-                    <div className="flex items-center gap-1 overflow-x-auto py-1">
-                      {AVAILABLE_FLAGS.slice(0, 5).map((f, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => handleFlagSelect(f)}
-                          className="text-lg p-1 hover:scale-110 transition-transform cursor-pointer"
-                        >
-                          {f.flag}
-                        </button>
+                  {/* Country / Region Selection (Flag automatically associated) */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Country / Target Region *</label>
+                    <select
+                      value={formCountry}
+                      onChange={(e) => {
+                        const matched = AVAILABLE_FLAGS.find(f => f.country === e.target.value);
+                        if (matched) {
+                          setFormCountry(matched.country);
+                          setFormFlag(matched.flag);
+                        }
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white cursor-pointer"
+                    >
+                      {AVAILABLE_FLAGS.map((f, i) => (
+                        <option key={i} value={f.country}>
+                          {f.flag} {f.country}
+                        </option>
                       ))}
+                    </select>
+                  </div>
+
+                  {/* Short Description */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">
+                      Short Description (Shown on Homepage Card) *
+                    </label>
+                    <textarea
+                      rows={2}
+                      required
+                      placeholder="Targeted clinical guidelines, mock CBT tests, and high-yield question solving..."
+                      value={formDescription}
+                      onChange={(e) => setFormDescription(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                  </div>
+
+                  {/* Accreditation Tag & Status Toggle */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Accreditation Tag</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. GMC Approved"
+                        value={formTag}
+                        onChange={(e) => setFormTag(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Catalog Visibility</label>
+                      <button
+                        type="button"
+                        onClick={() => setFormStatus(formStatus === 'Active' ? 'Draft' : 'Active')}
+                        className={`w-full py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          formStatus === 'Active' 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300' 
+                            : 'bg-slate-100 text-slate-500 border-slate-200'
+                        }`}
+                      >
+                        {formStatus === 'Active' ? <Check className="w-3.5 h-3.5" /> : null}
+                        <span>{formStatus === 'Active' ? 'Active on Catalog' : 'Draft / Inactive'}</span>
+                      </button>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Short Description */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">
-                  Short Description (Shown on Homepage Card) *
-                </label>
-                <textarea
-                  rows={2}
-                  required
-                  placeholder="Targeted clinical guidelines, mock CBT tests, and high-yield question solving..."
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
-
-              {/* Accreditation Tag & Status Toggle */}
-              <div className="grid grid-cols-2 gap-3 items-center">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Accreditation Tag</label>
-                  <input
-                    type="text"
-                    value={formTag}
-                    onChange={(e) => setFormTag(e.target.value)}
-                    placeholder="e.g. National Medical Commission"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900"
-                  />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Status</label>
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setFormStatus(formStatus === 'Active' ? 'Inactive' : 'Active')}
-                      className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                        formStatus === 'Active'
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      {formStatus === 'Active' ? '✓ Active on Platform' : '✕ Inactive (Hidden)'}
-                    </button>
-                  </div>
+                {/* Sticky Footer */}
+                <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/90 shrink-0 flex items-center justify-end gap-2 sticky bottom-0 z-10">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs cursor-pointer"
+                  >
+                    {editingExam ? 'Save Changes' : 'Create Exam Track'}
+                  </button>
                 </div>
-              </div>
+              </form>
 
-              {/* Modal Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs cursor-pointer"
-                >
-                  {editingExam ? 'Save Changes' : 'Create Exam Track'}
-                </button>
-              </div>
-
-            </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* ======================================================================= */}
-      {/* MODAL: SAFETY DELETION WARNING RULE                                     */}
+      {/* SLIDE-OVER DRAWER: SAFETY DELETION WARNING                              */}
       {/* ======================================================================= */}
       {safetyModalOpen && safetyWarningData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-rose-200 shadow-xl space-y-4">
-            
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
-              <ShieldAlert className="w-6 h-6" />
-            </div>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setSafetyModalOpen(false)}
+          />
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-md bg-white shadow-2xl border-l border-rose-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              
+              {/* Header */}
+              <div className="p-5 sm:p-6 border-b border-rose-100 flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">
+                      Cannot Delete Exam Track
+                    </h3>
+                    <p className="text-xs text-rose-700 font-bold">
+                      "{safetyWarningData.exam.name}"
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSafetyModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-            <div className="space-y-1">
-              <h3 className="text-lg font-black text-slate-900">
-                Cannot Delete Exam Track
-              </h3>
-              <p className="text-xs text-rose-700 font-bold">
-                "{safetyWarningData.exam.name}"
-              </p>
-              <p className="text-xs text-slate-600 pt-1 leading-relaxed">
-                {safetyWarningData.reason}
-              </p>
-            </div>
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
+                <p className="text-slate-600 leading-relaxed">
+                  {safetyWarningData.reason}
+                </p>
 
-            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
-              Deleting this exam would break active packages, student study plans, and historical mock test records. 
-              Instead, toggle its status to <strong>Inactive</strong> to safely remove it from the public homepage.
-            </div>
+                <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900">
+                  Deleting this exam would break active packages, student study plans, and historical mock test records. 
+                  Instead, toggle its status to <strong>Inactive</strong> to safely remove it from the public homepage.
+                </div>
+              </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setSafetyModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-xs text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleDeactivateInstead}
-                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer"
-              >
-                Deactivate Exam Instead
-              </button>
-            </div>
+              {/* Footer */}
+              <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/90 shrink-0 flex items-center justify-end gap-2 sticky bottom-0 z-10">
+                <button
+                  onClick={() => setSafetyModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 cursor-pointer text-xs"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleDeactivateInstead}
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer"
+                >
+                  Deactivate Exam Instead
+                </button>
+              </div>
 
+            </div>
           </div>
         </div>
       )}

@@ -1035,161 +1035,172 @@ export default function FacultyDashboardPage() {
               </div>
 
               {/* ============================================================= */}
-              {/* POPUP MODAL: Cohort Test Results View (Part A.3)              */}
+              {/* DRAWER: Cohort Test Results View (Part A.3)                   */}
               {/* ============================================================= */}
               {activeResultsModalTest && cohortResultsData && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-                  <div className="bg-white rounded-3xl max-w-4xl w-full border border-slate-200 p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
-                    
-                    {/* Modal Header */}
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                      <div>
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold uppercase tracking-wider mb-1">
-                          <span>Cohort Examination Performance Report</span>
+                <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+                  {/* Backdrop */}
+                  <div 
+                    className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+                    onClick={() => setActiveResultsModalTest(null)}
+                  />
+
+                  <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+                    <div className="w-screen max-w-3xl bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+                      
+                      {/* Drawer Sticky Header */}
+                      <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
+                        <div>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold uppercase tracking-wider mb-1">
+                            <span>Cohort Examination Performance Report</span>
+                          </div>
+                          <h3 className="text-xl font-black text-slate-900">
+                            {activeResultsModalTest.name}
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            Track: {activeResultsModalTest.course || 'NEET PG'} • Target Batch: {activeResultsModalTest.batch || 'All Students'}
+                          </p>
                         </div>
-                        <h3 className="text-xl font-black text-slate-900">
-                          {activeResultsModalTest.name}
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                          Track: {activeResultsModalTest.course || 'NEET PG'} • Target Batch: {activeResultsModalTest.batch || 'All Students'}
-                        </p>
+
+                        <button
+                          onClick={() => setActiveResultsModalTest(null)}
+                          className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
                       </div>
 
-                      <button
-                        onClick={() => setActiveResultsModalTest(null)}
-                        className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
+                      {/* Scrollable Body */}
+                      <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+                        {/* Top Summary Metrics */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
+                            <div className="text-[11px] text-slate-500 font-medium">Average Score</div>
+                            <div className="text-xl font-black text-slate-900 mt-1">
+                              {cohortResultsData.summary.averageScore}
+                            </div>
+                            <div className="text-[10px] text-slate-400">Cohort Mean</div>
+                          </div>
 
-                    {/* Top Summary Metrics */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
-                        <div className="text-[11px] text-slate-500 font-medium">Average Score</div>
-                        <div className="text-xl font-black text-slate-900 mt-1">
-                          {cohortResultsData.summary.averageScore}
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
+                            <div className="text-[11px] text-slate-500 font-medium">Highest Score</div>
+                            <div className="text-xl font-black text-emerald-600 mt-1">
+                              {cohortResultsData.summary.highestScore}
+                            </div>
+                            <div className="text-[10px] text-slate-400">Top Candidate</div>
+                          </div>
+
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
+                            <div className="text-[11px] text-slate-500 font-medium">Candidates Attempted</div>
+                            <div className="text-xl font-black text-indigo-600 mt-1">
+                              {cohortResultsData.summary.attemptedCount} / {cohortResultsData.summary.totalEligible || 450}
+                            </div>
+                            <div className="text-[10px] text-slate-400">Submissions</div>
+                          </div>
+
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
+                            <div className="text-[11px] text-slate-500 font-medium">Cohort Pass Rate</div>
+                            <div className="text-xl font-black text-amber-600 mt-1">
+                              {cohortResultsData.summary.passRate}
+                            </div>
+                            <div className="text-[10px] text-slate-400">Threshold: ≥50%</div>
+                          </div>
                         </div>
-                        <div className="text-[10px] text-slate-400">Cohort Mean</div>
-                      </div>
 
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
-                        <div className="text-[11px] text-slate-500 font-medium">Highest Score</div>
-                        <div className="text-xl font-black text-emerald-600 mt-1">
-                          {cohortResultsData.summary.highestScore}
-                        </div>
-                        <div className="text-[10px] text-slate-400">Top Candidate</div>
-                      </div>
+                        {/* Candidate Submissions Table */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                              Candidate Attempts & Diagnostic Scores
+                            </h4>
+                            <span className="text-[11px] text-slate-500">
+                              {cohortResultsData.students?.length || 0} Submissions Recorded
+                            </span>
+                          </div>
 
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
-                        <div className="text-[11px] text-slate-500 font-medium">Candidates Attempted</div>
-                        <div className="text-xl font-black text-indigo-600 mt-1">
-                          {cohortResultsData.summary.attemptedCount} / {cohortResultsData.summary.totalEligible || 450}
-                        </div>
-                        <div className="text-[10px] text-slate-400">Submissions</div>
-                      </div>
-
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
-                        <div className="text-[11px] text-slate-500 font-medium">Cohort Pass Rate</div>
-                        <div className="text-xl font-black text-amber-600 mt-1">
-                          {cohortResultsData.summary.passRate}
-                        </div>
-                        <div className="text-[10px] text-slate-400">Threshold: ≥50%</div>
-                      </div>
-                    </div>
-
-                    {/* Candidate Submissions Table */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          Candidate Attempts & Diagnostic Scores
-                        </h4>
-                        <span className="text-[11px] text-slate-500">
-                          {cohortResultsData.students?.length || 0} Submissions Recorded
-                        </span>
-                      </div>
-
-                      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200 text-slate-500">
-                              <th className="py-3 px-4">Student Name</th>
-                              <th className="py-3 px-4">Score</th>
-                              <th className="py-3 px-4">Percentage</th>
-                              <th className="py-3 px-4">Time Taken</th>
-                              <th className="py-3 px-4">Status</th>
-                              <th className="py-3 px-4 text-right">Submitted At</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {cohortResultsData.students?.map((s) => {
-                              const isRitik = s.name === 'Dr. Ritik Saini';
-                              return (
-                                <tr 
-                                  key={s.id} 
-                                  className={`hover:bg-slate-50 transition-colors ${
-                                    isRitik ? 'bg-indigo-50/50 border-l-4 border-indigo-600' : ''
-                                  }`}
-                                >
-                                  <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2.5">
-                                    <img 
-                                      src={s.avatar} 
-                                      alt={s.name} 
-                                      className="w-7 h-7 rounded-full object-cover border border-slate-200" 
-                                    />
-                                    <div>
-                                      <div className="flex items-center gap-1.5">
-                                        <span>{s.name}</span>
-                                        {isRitik && (
-                                          <span className="text-[9px] bg-indigo-600 text-white font-bold px-1.5 py-0.2 rounded">
-                                            Current Candidate
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="text-[10px] text-slate-500 font-normal">{s.course}</div>
-                                    </div>
-                                  </td>
-                                  <td className="py-3.5 px-4 font-bold text-slate-900">{s.score}</td>
-                                  <td className="py-3.5 px-4 font-bold text-indigo-600">{s.percentage}</td>
-                                  <td className="py-3.5 px-4 text-slate-500">{s.timeTaken}</td>
-                                  <td className="py-3.5 px-4">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                      s.status === 'Pass' 
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                        : 'bg-rose-50 text-rose-700 border border-rose-200'
-                                    }`}>
-                                      {s.status}
-                                    </span>
-                                  </td>
-                                  <td className="py-3.5 px-4 text-right text-slate-400 text-[11px]">
-                                    {s.submittedAt}
-                                  </td>
+                          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500">
+                                  <th className="py-3 px-4">Student Name</th>
+                                  <th className="py-3 px-4">Score</th>
+                                  <th className="py-3 px-4">Percentage</th>
+                                  <th className="py-3 px-4">Time Taken</th>
+                                  <th className="py-3 px-4">Status</th>
+                                  <th className="py-3 px-4 text-right">Submitted At</th>
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {cohortResultsData.students?.map((s) => {
+                                  const isRitik = s.name === 'Dr. Ritik Saini';
+                                  return (
+                                    <tr 
+                                      key={s.id} 
+                                      className={`hover:bg-slate-50 transition-colors ${
+                                        isRitik ? 'bg-indigo-50/50 border-l-4 border-indigo-600' : ''
+                                      }`}
+                                    >
+                                      <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2.5">
+                                        <img 
+                                          src={s.avatar} 
+                                          alt={s.name} 
+                                          className="w-7 h-7 rounded-full object-cover border border-slate-200" 
+                                        />
+                                        <div>
+                                          <div className="flex items-center gap-1.5">
+                                            <span>{s.name}</span>
+                                            {isRitik && (
+                                              <span className="text-[9px] bg-indigo-600 text-white font-bold px-1.5 py-0.2 rounded">
+                                                Current Candidate
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="text-[10px] text-slate-500 font-normal">{s.course}</div>
+                                        </div>
+                                      </td>
+                                      <td className="py-3.5 px-4 font-bold text-slate-900">{s.score}</td>
+                                      <td className="py-3.5 px-4 font-bold text-indigo-600">{s.percentage}</td>
+                                      <td className="py-3.5 px-4 text-slate-500">{s.timeTaken}</td>
+                                      <td className="py-3.5 px-4">
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                          s.status === 'Pass' 
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                            : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                        }`}>
+                                          {s.status}
+                                        </span>
+                                      </td>
+                                      <td className="py-3.5 px-4 text-right text-slate-400 text-[11px]">
+                                        {s.submittedAt}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
                       </div>
+
+                      {/* Sticky Footer */}
+                      <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/90 shrink-0 flex items-center justify-between sticky bottom-0 z-10">
+                        <button
+                          onClick={() => triggerUploadSuccess('Grade sheet exported in CSV format')}
+                          className="text-xs text-indigo-600 hover:text-indigo-700 font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          <span>Export Cohort CSV</span>
+                        </button>
+
+                        <button
+                          onClick={() => setActiveResultsModalTest(null)}
+                          className="px-6 py-2.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                        >
+                          Close Window
+                        </button>
+                      </div>
+
                     </div>
-
-                    {/* Bottom Modal Actions */}
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                      <button
-                        onClick={() => triggerUploadSuccess('Grade sheet exported in CSV format')}
-                        className="text-xs text-indigo-600 hover:text-indigo-700 font-bold flex items-center gap-1"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Export Cohort CSV</span>
-                      </button>
-
-                      <button
-                        onClick={() => setActiveResultsModalTest(null)}
-                        className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
-                      >
-                        Close Window
-                      </button>
-                    </div>
-
                   </div>
                 </div>
               )}

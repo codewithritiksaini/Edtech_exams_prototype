@@ -74,180 +74,176 @@ export default function TestTakingModal({ isOpen, onClose, test }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+      {/* Backdrop */}
       <div 
-        className="bg-white rounded-3xl w-full max-w-4xl h-[90vh] max-h-[740px] overflow-hidden shadow-2xl flex flex-col relative"
-        onClick={(e) => e.stopPropagation()}
-      >
-        
-        {/* CBT Header Bar */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold bg-brand-500 text-white px-2 py-0.5 rounded uppercase">
-                CBT Simulation Mode
-              </span>
-              <span className="text-xs font-semibold text-slate-300">
-                {test.name}
-              </span>
+        className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity cursor-pointer"
+        onClick={onClose}
+      />
+
+      {/* Slide-over panel */}
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-4 sm:pl-10">
+        <div className="w-screen max-w-3xl bg-white border-l border-slate-200 shadow-2xl flex flex-col h-full animate-in slide-in-from-right duration-300">
+          
+          {/* CBT Header Bar */}
+          <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0 sticky top-0 z-10">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold bg-brand-500 text-white px-2 py-0.5 rounded uppercase">
+                  CBT Simulation Mode
+                </span>
+                <span className="text-xs font-semibold text-slate-300">
+                  {test.name}
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-white mt-1">
+                Candidate: Dr. Ritik Saini (Seat: CBT-ONLINE-2026)
+              </h3>
             </div>
-            <h3 className="text-sm font-bold text-white mt-0.5">
-              Candidate: Dr. Ritik Saini (Seat: CBT-ONLINE-2026)
-            </h3>
-          </div>
 
-          <div className="flex items-center gap-4">
-            {!submitted && (
-              <div className="flex items-center gap-1.5 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-amber-400 font-mono font-bold text-sm">
-                <Clock className="w-4 h-4" />
-                <span>{formatTime(secondsRemaining)}</span>
-              </div>
-            )}
-            <button
-              onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Center Test Body */}
-        <div className="flex-grow overflow-y-auto p-6 sm:p-8">
-          {!submitted ? (
-            <div className="max-w-3xl mx-auto space-y-6">
-              
-              {/* Question Index & Status */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <span className="text-xs font-extrabold text-brand-700 uppercase tracking-wider">
-                  Question {currentQuestionIndex + 1} of {sampleQuestions.length}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">
-                  +4 Marks | -1 Negative Marking
-                </span>
-              </div>
-
-              {/* Patient Clinical Vignette Box */}
-              <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 text-slate-800 text-sm sm:text-base leading-relaxed font-sans font-medium">
-                {currentQ.vignette}
-              </div>
-
-              {/* Specific Question Prompt */}
-              <h4 className="text-base font-bold text-slate-900">
-                {currentQ.question}
-              </h4>
-
-              {/* Options */}
-              <div className="space-y-3">
-                {currentQ.options.map((option) => {
-                  const isSelected = selectedOption === option.key;
-                  return (
-                    <button
-                      key={option.key}
-                      onClick={() => setSelectedOption(option.key)}
-                      className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center gap-3.5 ${
-                        isSelected
-                          ? 'border-brand-500 bg-brand-50/70 text-brand-900 shadow-sm ring-1 ring-brand-500/30'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 text-slate-800'
-                      }`}
-                    >
-                      <span className={`w-8 h-8 rounded-xl font-bold flex items-center justify-center shrink-0 text-xs transition-colors ${
-                        isSelected ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {option.key}
-                      </span>
-                      <span className="text-sm font-medium leading-snug">
-                        {option.text}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-            </div>
-          ) : (
-            /* Result Screen */
-            <div className="max-w-xl mx-auto text-center py-6 space-y-6 animate-in zoom-in-95">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-md">
-                <Award className="w-10 h-10" />
-              </div>
-
-              <div>
-                <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
-                  Test Completed Successfully
-                </span>
-                <h3 className="text-2xl font-black text-slate-900 mt-1">
-                  Score Report & Analytics
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Exam: {test.name}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 p-5 bg-slate-50 rounded-2xl border border-slate-200">
-                <div>
-                  <span className="text-xs text-slate-500 block">Marks Obtained</span>
-                  <span className="text-2xl font-black text-slate-900">8 / 8</span>
+            <div className="flex items-center gap-4">
+              {!submitted && (
+                <div className="flex items-center gap-1.5 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-amber-400 font-mono font-bold text-sm">
+                  <Clock className="w-4 h-4" />
+                  <span>{formatTime(secondsRemaining)}</span>
                 </div>
-                <div>
-                  <span className="text-xs text-slate-500 block">National Percentile</span>
-                  <span className="text-2xl font-black text-brand-600">99.4%ile</span>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 block">Accuracy</span>
-                  <span className="text-2xl font-black text-emerald-600">100%</span>
-                </div>
-              </div>
-
-              <div className="p-4 bg-emerald-50 text-emerald-800 rounded-xl text-xs text-left border border-emerald-200 leading-relaxed">
-                <span className="font-bold">Clinical Feedback:</span> Excellent grasp of acute rate control algorithms and sarcomeric gene mutations in hypertrophic cardiomyopathy.
-              </div>
-
+              )}
               <button
                 onClick={onClose}
-                className="w-full py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl shadow-md transition-colors"
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                Return to Dashboard
+                <X className="w-5 h-5" />
               </button>
             </div>
-          )}
-        </div>
-
-        {/* CBT Footer Controls */}
-        {!submitted && (
-          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
-            <button
-              onClick={() => setSelectedOption(null)}
-              className="text-xs font-semibold text-slate-500 hover:text-slate-800"
-            >
-              Clear Choice
-            </button>
-
-            <div className="flex items-center gap-3">
-              {currentQuestionIndex < sampleQuestions.length - 1 ? (
-                <button
-                  onClick={() => {
-                    setCurrentQuestionIndex(currentQuestionIndex + 1);
-                    setSelectedOption(null);
-                  }}
-                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl flex items-center gap-1.5"
-                >
-                  <span>Next Question</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={handleSubmitTest}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Submit Test</span>
-                </button>
-              )}
-            </div>
           </div>
-        )}
 
+          {/* Test Body (Scrollable) */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {!submitted ? (
+              <>
+                {/* Question metadata & flag button */}
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Question {currentQuestionIndex + 1} of {sampleQuestions.length}
+                  </span>
+                  <button className="flex items-center gap-1 text-xs text-amber-600 font-bold hover:text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 cursor-pointer">
+                    <Flag className="w-3.5 h-3.5" />
+                    <span>Flag for Review</span>
+                  </button>
+                </div>
+
+                {/* Question Prompt */}
+                <div className="space-y-3">
+                  <h4 className="text-base font-bold text-slate-900 leading-relaxed">
+                    {currentQ.question}
+                  </h4>
+                </div>
+
+                {/* Multiple Choice Options */}
+                <div className="space-y-2.5">
+                  {currentQ.options.map((opt, idx) => {
+                    const letter = String.fromCharCode(65 + idx);
+                    const isSelected = selectedOption === letter;
+
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => setSelectedOption(letter)}
+                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                          isSelected
+                            ? 'border-brand-600 bg-brand-50/50 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                          isSelected
+                            ? 'bg-brand-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {letter}
+                        </span>
+                        <span className="text-xs text-slate-800 font-medium leading-relaxed pt-1">
+                          {opt}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              /* Submission Result Card */
+              <div className="py-10 text-center space-y-4 animate-in zoom-in-95">
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                  <CheckCircle2 className="w-9 h-9" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900">
+                  Assessment Completed Successfully!
+                </h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                  Your answers have been cryptographically verified and recorded in the NEET PG Cohort Gradebook.
+                </p>
+
+                <div className="max-w-xs mx-auto p-4 bg-slate-50 rounded-2xl border border-slate-200 text-left space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Candidate:</span>
+                    <span className="font-bold text-slate-800">Dr. Ritik Saini</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Raw Score:</span>
+                    <span className="font-bold text-emerald-600">82.5% (High Pass)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Percentile Rank:</span>
+                    <span className="font-bold text-brand-600">94th Percentile</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={onClose}
+                  className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-colors"
+                >
+                  Return to Dashboard
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* CBT Sticky Footer Controls */}
+          {!submitted && (
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0 sticky bottom-0 z-10">
+              <button
+                onClick={() => setSelectedOption(null)}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
+              >
+                Clear Choice
+              </button>
+
+              <div className="flex items-center gap-3">
+                {currentQuestionIndex < sampleQuestions.length - 1 ? (
+                  <button
+                    onClick={() => {
+                      setCurrentQuestionIndex(currentQuestionIndex + 1);
+                      setSelectedOption(null);
+                    }}
+                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <span>Next Question</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSubmitTest}
+                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Submit Test</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );

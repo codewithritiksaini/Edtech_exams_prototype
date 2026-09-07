@@ -553,76 +553,93 @@ export default function LiveSessionsTab() {
 
       </div>
 
-      {/* MODAL: Upload / Attach Session Recording */}
+      {/* DRAWER: Upload / Attach Session Recording */}
       {recordingModalSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full border border-slate-200 shadow-2xl space-y-4">
-            
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                  <UploadCloud className="w-4 h-4" />
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setRecordingModalSession(null)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-lg bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              
+              {/* Sticky Header */}
+              <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                    <UploadCloud className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-base">Upload / Attach Session Recording</h4>
+                    <span className="text-xs text-slate-400">
+                      Day {recordingModalSession.dayId} • {recordingModalSession.examName}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm">Upload / Attach Session Recording</h4>
-                  <span className="text-[11px] text-slate-400">
-                    Day {recordingModalSession.dayId} • {recordingModalSession.examName}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setRecordingModalSession(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUploadRecordingSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Session Topic</label>
-                <input
-                  type="text"
-                  disabled
-                  value={recordingModalSession.topic}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Cloud Recording URL (.mp4 or CDN Stream) *</label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://medprep.storage/recordings/grand-round-cardio.mp4"
-                  value={customRecordingUrl}
-                  onChange={(e) => setCustomRecordingUrl(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-mono text-slate-800 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 leading-relaxed">
-                <span className="font-bold">Student View Effect:</span> Attaching this link will update the <strong>Live Session tab on Day {recordingModalSession.dayId}</strong> in the Student Day Content View to show <em>"Recorded Faculty Grand Round Available"</em>.
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
                 <button
-                  type="button"
                   onClick={() => setRecordingModalSession(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
-                >
-                  <UploadCloud className="w-3.5 h-3.5" />
-                  <span>Publish Recording to Student LMS</span>
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-            </form>
 
+              {/* Scrollable Form Body */}
+              <form onSubmit={handleUploadRecordingSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 text-sm">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Session Topic</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={recordingModalSession.topic}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Cloud Recording URL (.mp4 or CDN Stream) *</label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://medprep.storage/recordings/grand-round-cardio.mp4"
+                    value={customRecordingUrl}
+                    onChange={(e) => setCustomRecordingUrl(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-slate-800 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-900 leading-relaxed space-y-1">
+                  <span className="font-bold flex items-center gap-1.5 text-emerald-800">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Student View Effect
+                  </span>
+                  <p>
+                    Attaching this link will update the <strong>Live Session tab on Day {recordingModalSession.dayId}</strong> in the Student Day Content View to show <em>"Recorded Faculty Grand Round Available"</em>.
+                  </p>
+                </div>
+
+                {/* Sticky / Dedicated Footer Actions */}
+                <div className="pt-6 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setRecordingModalSession(null)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-2 text-sm transition-colors"
+                  >
+                    <UploadCloud className="w-4 h-4" />
+                    <span>Publish Recording to Student LMS</span>
+                  </button>
+                </div>
+              </form>
+
+            </div>
           </div>
         </div>
       )}

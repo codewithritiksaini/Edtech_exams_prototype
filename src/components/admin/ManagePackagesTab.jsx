@@ -420,272 +420,282 @@ export default function ManagePackagesTab() {
       </div>
 
       {/* ======================================================================= */}
-      {/* MODAL: ADD / EDIT PACKAGE                                               */}
+      {/* DRAWER: ADD / EDIT PACKAGE                                              */}
       {/* ======================================================================= */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full border border-slate-200 shadow-xl space-y-5">
-            
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
-                  {editingPackage ? 'Edit Package Tier' : 'Create Pricing Tier'}
-                </span>
-                <h3 className="text-lg font-black text-slate-900 mt-1">
-                  {editingPackage ? `Edit "${editingPackage.name}"` : 'Add New Package Tier'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setIsModalOpen(false)}
+          />
 
-            <form onSubmit={handleSavePackage} className="space-y-4 text-xs">
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-xl bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
               
-              {/* Select Exam (Rule 4: Mandatory Parent Dependency) */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 flex items-center justify-between">
-                  <span>Parent Exam Track (Mandatory) *</span>
-                  <span className="text-[10px] text-indigo-600 font-semibold">Rule 4: Exam ➔ Package Dependency</span>
-                </label>
-                <select
-                  required
-                  value={formExamId}
-                  onChange={(e) => {
-                    const newExamId = e.target.value;
-                    setFormExamId(newExamId);
-                    // Adjust default currency price
-                    if (newExamId === 'usmle') setFormPrice(469);
-                    else if (newExamId === 'plab') setFormPrice(299);
-                    else if (newExamId === 'europe') setFormPrice(389);
-                    else setFormPrice(22999);
-                  }}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
-                >
-                  <option value="" disabled>-- Select An Exam Category --</option>
-                  {exams.map((exam) => (
-                    <option key={exam.id} value={exam.id}>
-                      {exam.flag} {exam.name} ({exam.country})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Package Name & Duration */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Package Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Standard Tier / Sprint Pass"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Validity Duration *</label>
-                  <select
-                    value={formDuration}
-                    onChange={(e) => setFormDuration(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  >
-                    <option value="1 Month">1 Month Fast-Track</option>
-                    <option value="3 Months">3 Months Essential</option>
-                    <option value="6 Months">6 Months Comprehensive</option>
-                    <option value="12 Months">12 Months Complete VIP</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Price with Auto-Detected Currency */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 flex items-center justify-between">
-                  <span>Price ({currentCurrency}) *</span>
-                  <span className="text-[11px] text-slate-400 font-medium">Auto-derived from Exam region</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-slate-500 text-sm">
-                    {currentCurrency}
+              {/* Drawer Sticky Header */}
+              <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+                    {editingPackage ? 'Edit Package Tier' : 'Create Pricing Tier'}
                   </span>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={formPrice}
-                    onChange={(e) => setFormPrice(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  />
+                  <h3 className="text-lg font-black text-slate-900 mt-1">
+                    {editingPackage ? `Edit "${editingPackage.name}"` : 'Add New Package Tier'}
+                  </h3>
                 </div>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Feature Matrix Toggles (Most Important CMS Element) */}
-              <div className="space-y-2 pt-1">
-                <label className="font-bold text-slate-800 flex items-center justify-between">
-                  <span>Included Learning Features (Student LMS Permissions)</span>
-                  <span className="text-[10px] text-slate-400">Click to toggle ON/OFF</span>
-                </label>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  
-                  {/* PDF Notes */}
-                  <div 
-                    onClick={() => handleToggleFeature('pdfNotes')}
-                    className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                      formFeatures.pdfNotes ? 'bg-blue-50/70 border-blue-200 text-blue-900' : 'bg-slate-50 border-slate-200 text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-blue-600" />
-                      <div>
-                        <div className="font-bold text-[11px]">PDF Clinical Notes</div>
-                        <div className="text-[10px] opacity-70">19 subjects & summaries</div>
-                      </div>
-                    </div>
-                    <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-bold ${formFeatures.pdfNotes ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                      {formFeatures.pdfNotes ? '✓' : ''}
-                    </span>
+              <form onSubmit={handleSavePackage} className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
+                  {/* Select Exam (Rule 4: Mandatory Parent Dependency) */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 flex items-center justify-between">
+                      <span>Parent Exam Track (Mandatory) *</span>
+                      <span className="text-[10px] text-indigo-600 font-semibold">Rule 4: Exam ➔ Package Dependency</span>
+                    </label>
+                    <select
+                      required
+                      value={formExamId}
+                      onChange={(e) => {
+                        const newExamId = e.target.value;
+                        setFormExamId(newExamId);
+                        // Adjust default currency price
+                        if (newExamId === 'usmle') setFormPrice(469);
+                        else if (newExamId === 'plab') setFormPrice(299);
+                        else if (newExamId === 'europe') setFormPrice(389);
+                        else setFormPrice(22999);
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
+                    >
+                      <option value="" disabled>-- Select An Exam Category --</option>
+                      {exams.map((exam) => (
+                        <option key={exam.id} value={exam.id}>
+                          {exam.flag} {exam.name} ({exam.country})
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* Video Lectures */}
-                  <div 
-                    onClick={() => handleToggleFeature('videoLectures')}
-                    className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                      formFeatures.videoLectures ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900' : 'bg-slate-50 border-slate-200 text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Video className="w-4 h-4 text-indigo-600" />
-                      <div>
-                        <div className="font-bold text-[11px]">Video Masterclasses</div>
-                        <div className="text-[10px] opacity-70">Full HD clinical lectures</div>
-                      </div>
+                  {/* Package Name & Duration */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Package Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Standard Tier / Sprint Pass"
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
                     </div>
-                    <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-bold ${formFeatures.videoLectures ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                      {formFeatures.videoLectures ? '✓' : ''}
-                    </span>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Validity Duration *</label>
+                      <select
+                        value={formDuration}
+                        onChange={(e) => setFormDuration(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      >
+                        <option value="1 Month">1 Month Fast-Track</option>
+                        <option value="3 Months">3 Months Essential</option>
+                        <option value="6 Months">6 Months Comprehensive</option>
+                        <option value="12 Months">12 Months Complete VIP</option>
+                      </select>
+                    </div>
                   </div>
 
-                  {/* Flashcards */}
-                  <div 
-                    onClick={() => handleToggleFeature('flashcards')}
-                    className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                      formFeatures.flashcards ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-slate-50 border-slate-200 text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Brain className="w-4 h-4 text-emerald-600" />
-                      <div>
-                        <div className="font-bold text-[11px]">Smart Flashcards</div>
-                        <div className="text-[10px] opacity-70">Spaced recall decks</div>
-                      </div>
+                  {/* Price with Auto-Detected Currency */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 flex items-center justify-between">
+                      <span>Price ({currentCurrency}) *</span>
+                      <span className="text-[11px] text-slate-400 font-medium">Auto-derived from Exam region</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-slate-500 text-sm">
+                        {currentCurrency}
+                      </span>
+                      <input
+                        type="number"
+                        required
+                        min={0}
+                        value={formPrice}
+                        onChange={(e) => setFormPrice(e.target.value)}
+                        className="w-full pl-8 pr-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
                     </div>
-                    <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-bold ${formFeatures.flashcards ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                      {formFeatures.flashcards ? '✓' : ''}
-                    </span>
                   </div>
 
-                  {/* Live Sessions */}
-                  <div 
-                    onClick={() => handleToggleFeature('liveSessions')}
-                    className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                      formFeatures.liveSessions ? 'bg-amber-50/70 border-amber-200 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Radio className="w-4 h-4 text-amber-600" />
-                      <div>
-                        <div className="font-bold text-[11px]">Live Grand Rounds</div>
-                        <div className="text-[10px] opacity-70">Weekly interactive case drills</div>
+                  {/* Feature Matrix Toggles (Most Important CMS Element) */}
+                  <div className="space-y-2 pt-1">
+                    <label className="font-bold text-slate-800 flex items-center justify-between">
+                      <span>Included Learning Features (Student LMS Permissions)</span>
+                      <span className="text-[10px] text-slate-400">Click to toggle ON/OFF</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      
+                      {/* PDF Notes */}
+                      <div 
+                        onClick={() => handleToggleFeature('pdfNotes')}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                          formFeatures.pdfNotes ? 'bg-blue-50/70 border-blue-200 text-blue-900' : 'bg-slate-50 border-slate-200 text-slate-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-blue-600" />
+                          <div>
+                            <div className="font-bold text-[11px]">PDF Clinical Notes</div>
+                            <div className="text-[10px] opacity-70">19 subjects & summaries</div>
+                          </div>
+                        </div>
+                        <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-bold ${formFeatures.pdfNotes ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                          {formFeatures.pdfNotes ? '✓' : ''}
+                        </span>
                       </div>
+
+                      {/* Video Lectures */}
+                      <div 
+                        onClick={() => handleToggleFeature('videoLectures')}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                          formFeatures.videoLectures ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900' : 'bg-slate-50 border-slate-200 text-slate-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Video className="w-4 h-4 text-indigo-600" />
+                          <div>
+                            <div className="font-bold text-[11px]">Video Masterclasses</div>
+                            <div className="text-[10px] opacity-70">Full HD clinical lectures</div>
+                          </div>
+                        </div>
+                        <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-bold ${formFeatures.videoLectures ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                          {formFeatures.videoLectures ? '✓' : ''}
+                        </span>
+                      </div>
+
+                      {/* Flashcards */}
+                      <div 
+                        onClick={() => handleToggleFeature('flashcards')}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                          formFeatures.flashcards ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-slate-50 border-slate-200 text-slate-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Brain className="w-4 h-4 text-emerald-600" />
+                          <div>
+                            <div className="font-bold text-[11px]">Smart Flashcards</div>
+                            <div className="text-[10px] opacity-70">Spaced recall decks</div>
+                          </div>
+                        </div>
+                        <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-bold ${formFeatures.flashcards ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                          {formFeatures.flashcards ? '✓' : ''}
+                        </span>
+                      </div>
+
+                      {/* Live Sessions */}
+                      <div 
+                        onClick={() => handleToggleFeature('liveSessions')}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                          formFeatures.liveSessions ? 'bg-amber-50/70 border-amber-200 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Radio className="w-4 h-4 text-amber-600" />
+                          <div>
+                            <div className="font-bold text-[11px]">Live Grand Rounds</div>
+                            <div className="text-[10px] opacity-70">Weekly interactive case drills</div>
+                          </div>
+                        </div>
+                        <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-bold ${formFeatures.liveSessions ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                          {formFeatures.liveSessions ? '✓' : ''}
+                        </span>
+                      </div>
+
+                      {/* Test Series */}
+                      <div 
+                        onClick={() => handleToggleFeature('testSeries')}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all sm:col-span-2 ${
+                          formFeatures.testSeries ? 'bg-rose-50/70 border-rose-200 text-rose-900' : 'bg-slate-50 border-slate-200 text-slate-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-rose-600" />
+                          <div>
+                            <div className="font-bold text-[11px]">CBT Grand Mock Tests & National Rank Benchmarking</div>
+                            <div className="text-[10px] opacity-70">Simulated exam engine with percentiles & answer rationales</div>
+                          </div>
+                        </div>
+                        <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-bold ${formFeatures.testSeries ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                          {formFeatures.testSeries ? '✓' : ''}
+                        </span>
+                      </div>
+
                     </div>
-                    <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-bold ${formFeatures.liveSessions ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                      {formFeatures.liveSessions ? '✓' : ''}
-                    </span>
                   </div>
 
-                  {/* Test Series */}
-                  <div 
-                    onClick={() => handleToggleFeature('testSeries')}
-                    className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all sm:col-span-2 ${
-                      formFeatures.testSeries ? 'bg-rose-50/70 border-rose-200 text-rose-900' : 'bg-slate-50 border-slate-200 text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-rose-600" />
-                      <div>
-                        <div className="font-bold text-[11px]">CBT Grand Mock Tests & National Rank Benchmarking</div>
-                        <div className="text-[10px] opacity-70">Simulated exam engine with percentiles & answer rationales</div>
-                      </div>
-                    </div>
-                    <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-bold ${formFeatures.testSeries ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                      {formFeatures.testSeries ? '✓' : ''}
+                  {/* DYNAMIC LIVE PREVIEW BAR (Required by Phase 5.2 spec) */}
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-700 space-y-1">
+                    <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                      Live Student Access Preview:
                     </span>
+                    <p className="text-slate-600">
+                      "Students on this package will see: <span className="font-bold text-indigo-700">{getEnabledFeaturesList()}</span> only"
+                    </p>
                   </div>
 
+                  {/* Badging & Status */}
+                  <div className="grid grid-cols-2 gap-3 items-center pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={formPopular}
+                        onChange={(e) => setFormPopular(e.target.checked)}
+                        className="w-4 h-4 text-indigo-600 rounded"
+                      />
+                      <span>Mark as "Most Popular"</span>
+                    </label>
+
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="font-bold text-slate-700 text-[11px]">Status:</span>
+                      <button
+                        type="button"
+                        onClick={() => setFormStatus(formStatus === 'Active' ? 'Inactive' : 'Active')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          formStatus === 'Active' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {formStatus === 'Active' ? 'Active' : 'Inactive'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* DYNAMIC LIVE PREVIEW BAR (Required by Phase 5.2 spec) */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-700 space-y-1">
-                <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                  Live Student Access Preview:
-                </span>
-                <p className="text-slate-600">
-                  "Students on this package will see: <span className="font-bold text-indigo-700">{getEnabledFeaturesList()}</span> only"
-                </p>
-              </div>
-
-              {/* Badging & Status */}
-              <div className="grid grid-cols-2 gap-3 items-center pt-1">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={formPopular}
-                    onChange={(e) => setFormPopular(e.target.checked)}
-                    className="w-4 h-4 text-indigo-600 rounded"
-                  />
-                  <span>Mark as "Most Popular"</span>
-                </label>
-
-                <div className="flex items-center justify-end gap-2">
-                  <span className="font-bold text-slate-700 text-[11px]">Status:</span>
+                {/* Drawer Sticky Footer */}
+                <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/90 flex items-center justify-end gap-2 shrink-0 sticky bottom-0 z-10">
                   <button
                     type="button"
-                    onClick={() => setFormStatus(formStatus === 'Active' ? 'Inactive' : 'Active')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      formStatus === 'Active' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
-                    }`}
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
                   >
-                    {formStatus === 'Active' ? 'Active' : 'Inactive'}
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs cursor-pointer"
+                  >
+                    {editingPackage ? 'Save Changes' : 'Save Package'}
                   </button>
                 </div>
-              </div>
+              </form>
 
-              {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs cursor-pointer"
-                >
-                  {editingPackage ? 'Save Changes' : 'Save Package'}
-                </button>
-              </div>
-
-            </form>
+            </div>
           </div>
         </div>
       )}

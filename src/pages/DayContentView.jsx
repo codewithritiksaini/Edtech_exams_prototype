@@ -955,27 +955,58 @@ export default function DayContentView() {
         }}
       />
 
-      {/* Fullscreen PDF Modal Preview */}
+      {/* DRAWER: Fullscreen PDF Reader */}
       {fullscreenPdfOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-4xl h-[85vh] overflow-hidden shadow-2xl flex flex-col">
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold text-brand-400 uppercase">Fullscreen PDF Reader</span>
-                <h4 className="text-sm font-bold text-white">{currentDayData.pdf?.title}</h4>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setFullscreenPdfOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-4 sm:pl-10">
+            <div className="w-screen max-w-4xl bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              
+              {/* Sticky Header */}
+              <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0 sticky top-0 z-10">
+                <div>
+                  <span className="text-[10px] font-bold text-brand-400 uppercase tracking-wider">PDF Clinical Handout</span>
+                  <h4 className="text-sm font-bold text-white mt-0.5">{currentDayData.pdf?.title}</h4>
+                </div>
+                <button 
+                  onClick={() => setFullscreenPdfOpen(false)} 
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
-              <button onClick={() => setFullscreenPdfOpen(false)} className="text-slate-400 hover:text-white">✕</button>
-            </div>
-            <div className="flex-grow p-8 overflow-y-auto space-y-4 bg-slate-50 text-xs sm:text-sm text-slate-800 leading-relaxed">
-              <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                <h5 className="font-extrabold text-slate-900 text-base">Section 1: Clinical Electrophysiology</h5>
-                <p>Action potentials in cardiac pacemaker cells (SA node) are driven by Phase 4 spontaneous diastolic depolarization via If (funny) sodium currents, followed by Phase 0 Ca2+ influx.</p>
-                <p>Non-pacemaker ventricular myocytes rely on rapid Phase 0 Na+ influx (Nav1.5), followed by Phase 1 transient outward K+ current, Phase 2 plateau Ca2+ influx via L-type channels, and Phase 3 repolarization via IKr and IKs potassium channels.</p>
+
+              {/* Scrollable PDF Content */}
+              <div className="flex-1 p-6 sm:p-8 overflow-y-auto space-y-4 bg-slate-50 text-xs sm:text-sm text-slate-800 leading-relaxed">
+                <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                  <h5 className="font-extrabold text-slate-900 text-base">Section 1: Clinical Electrophysiology</h5>
+                  <p>Action potentials in cardiac pacemaker cells (SA node) are driven by Phase 4 spontaneous diastolic depolarization via If (funny) sodium currents, followed by Phase 0 Ca2+ influx.</p>
+                  <p>Non-pacemaker ventricular myocytes rely on rapid Phase 0 Na+ influx (Nav1.5), followed by Phase 1 transient outward K+ current, Phase 2 plateau Ca2+ influx via L-type channels, and Phase 3 repolarization via IKr and IKs potassium channels.</p>
+                </div>
+                <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                  <h5 className="font-extrabold text-slate-900 text-base">Section 2: High-Yield Antiarrhythmic Drug Classes</h5>
+                  <p><strong>Class IA (Procainamide, Quinidine):</strong> Moderate Na+ channel block; prolongs repolarization (AP duration ↑, QT ↑). Indicated in atrial and ventricular arrhythmias.</p>
+                  <p><strong>Class IB (Lidocaine, Mexiletine):</strong> Weak Na+ channel block; shortens repolarization (AP duration ↓). Highly ischemic tissue selective; post-MI VT.</p>
+                  <p><strong>Class IC (Flecainide, Propafenone):</strong> Strong Na+ channel block with minimal AP duration effect. Contraindicated in structural heart disease (CAST trial).</p>
+                </div>
               </div>
-            </div>
-            <div className="px-6 py-3 bg-slate-100 border-t border-slate-200 flex justify-between items-center text-xs">
-              <span>Page 1 of {currentDayData.pdf?.pages}</span>
-              <button onClick={() => setFullscreenPdfOpen(false)} className="px-4 py-1.5 bg-slate-800 text-white rounded-lg font-bold">Exit Fullscreen</button>
+
+              {/* Sticky Footer */}
+              <div className="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-between items-center text-xs shrink-0 sticky bottom-0 z-10">
+                <span className="font-semibold text-slate-600">Page 1 of {currentDayData.pdf?.pages || 12}</span>
+                <button 
+                  onClick={() => setFullscreenPdfOpen(false)} 
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors cursor-pointer"
+                >
+                  Exit Reader
+                </button>
+              </div>
+
             </div>
           </div>
         </div>

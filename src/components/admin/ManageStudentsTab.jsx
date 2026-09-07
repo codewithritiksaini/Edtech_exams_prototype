@@ -353,208 +353,229 @@ export default function ManageStudentsTab() {
       </div>
 
       {/* ======================================================================= */}
-      {/* MODAL: STUDENT DETAIL PROFILE & ACTIONS (ADMIN / FACULTY)               */}
+      {/* DRAWER: STUDENT DETAIL PROFILE & ACTIONS (ADMIN / FACULTY)              */}
       {/* ======================================================================= */}
       {selectedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full border border-slate-200 shadow-xl space-y-6 max-h-[90vh] overflow-y-auto">
-            
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3.5">
-                <img 
-                  src={selectedStudent.avatar} 
-                  alt={selectedStudent.name} 
-                  className="w-12 h-12 rounded-full object-cover border border-slate-200" 
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-black text-slate-900">
-                      {selectedStudent.name}
-                    </h3>
-                    <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold border ${
-                      selectedStudent.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
-                    }`}>
-                      {selectedStudent.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 font-mono">
-                    {selectedStudent.roll} • {selectedStudent.email}
-                  </p>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setSelectedStudent(null)}
+          />
 
-              <button
-                onClick={() => setSelectedStudent(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Quick Metrics Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Enrolled Exam</span>
-                <div className="font-bold text-slate-900 line-clamp-1">{selectedStudent.examName}</div>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Package Tier</span>
-                <div className="font-bold text-indigo-700">{selectedStudent.packageTier}</div>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Enrolled Date</span>
-                <div className="font-bold text-slate-700">{selectedStudent.enrollmentDate}</div>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Valid Until</span>
-                <div className="font-bold text-slate-700">{selectedStudent.expiryDate}</div>
-              </div>
-            </div>
-
-            {/* Curriculum Progress Breakdown */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Week-Wise Curriculum Completion</span>
-              </h4>
-              <div className="space-y-2 text-xs">
-                {selectedStudent.weekProgress?.map((wp, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex items-center justify-between text-[11px] font-semibold">
-                      <span className="text-slate-700">{wp.week}</span>
-                      <span className="font-bold text-indigo-700">{wp.completion}%</span>
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            <div className="w-screen max-w-2xl bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full animate-in slide-in-from-right duration-300">
+              
+              {/* Drawer Sticky Header */}
+              <div className="p-5 sm:p-6 border-b border-slate-100 flex items-start justify-between shrink-0 bg-white sticky top-0 z-10">
+                <div className="flex items-center gap-3.5">
+                  <img 
+                    src={selectedStudent.avatar} 
+                    alt={selectedStudent.name} 
+                    className="w-12 h-12 rounded-full object-cover border border-slate-200" 
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-black text-slate-900">
+                        {selectedStudent.name}
+                      </h3>
+                      <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold border ${
+                        selectedStudent.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}>
+                        {selectedStudent.status}
+                      </span>
                     </div>
-                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          wp.completion === 100 ? 'bg-emerald-500' : wp.completion > 50 ? 'bg-indigo-600' : 'bg-amber-500'
+                    <p className="text-xs text-slate-400 font-mono">
+                      {selectedStudent.roll} • {selectedStudent.email}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setSelectedStudent(null)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Drawer Scrollable Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+                {/* Quick Metrics Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-0.5">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Enrolled Exam</span>
+                    <div className="font-bold text-slate-900 line-clamp-1">{selectedStudent.examName}</div>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-0.5">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Package Tier</span>
+                    <div className="font-bold text-indigo-700">{selectedStudent.packageTier}</div>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-0.5">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Enrolled Date</span>
+                    <div className="font-bold text-slate-700">{selectedStudent.enrollmentDate}</div>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-0.5">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Valid Until</span>
+                    <div className="font-bold text-slate-700">{selectedStudent.expiryDate}</div>
+                  </div>
+                </div>
+
+                {/* Curriculum Progress Breakdown */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Week-Wise Curriculum Completion</span>
+                  </h4>
+                  <div className="space-y-2 text-xs">
+                    {selectedStudent.weekProgress?.map((wp, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-semibold">
+                          <span className="text-slate-700">{wp.week}</span>
+                          <span className="font-bold text-indigo-700">{wp.completion}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              wp.completion === 100 ? 'bg-emerald-500' : wp.completion > 50 ? 'bg-indigo-600' : 'bg-amber-500'
+                            }`}
+                            style={{ width: `${wp.completion}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Test Performance & Live Attendance Logs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Scheduled CBT Performance</span>
+                    </div>
+                    <div className="text-sm font-black text-slate-900">
+                      Score: {selectedStudent.mockScore}
+                    </div>
+                    <div className="text-[11px] text-brand-600 font-bold">
+                      National Percentile: {selectedStudent.percentile}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                      <Radio className="w-4 h-4 text-amber-600" />
+                      <span>Live Grand Rounds Attendance</span>
+                    </div>
+                    <div className="text-sm font-black text-slate-900">
+                      {selectedStudent.liveAttendance}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Verified live webinar logging
+                    </div>
+                  </div>
+                </div>
+
+                {/* ADMIN ACTIONS SECTION (Strictly Hidden for Faculty!) */}
+                {isAdmin && (
+                  <div className="pt-4 border-t border-slate-100 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+                        Administrative Account Actions (Admin Only)
+                      </span>
+                      <span className="text-[10px] bg-purple-50 text-purple-700 font-bold px-2 py-0.5 rounded">
+                        Billing & Access Control
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      
+                      {/* Action 1: Extend Validity */}
+                      <div className="p-3.5 rounded-2xl border border-slate-200 bg-white space-y-2">
+                        <span className="font-bold text-slate-800 block">Extend Package Validity</span>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={extendMonths}
+                            onChange={(e) => setExtendMonths(e.target.value)}
+                            className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none"
+                          >
+                            <option value={1}>+1 Month</option>
+                            <option value={3}>+3 Months</option>
+                            <option value={6}>+6 Months</option>
+                            <option value={12}>+12 Months</option>
+                          </select>
+                          <button
+                            onClick={handleExtendPackage}
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs cursor-pointer text-xs"
+                          >
+                            Extend
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Action 2: Change Package Tier */}
+                      <div className="p-3.5 rounded-2xl border border-slate-200 bg-white space-y-2">
+                        <span className="font-bold text-slate-800 block">Upgrade / Downgrade Tier</span>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={selectedNewTier}
+                            onChange={(e) => setSelectedNewTier(e.target.value)}
+                            className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none"
+                          >
+                            <option value="Basic Tier">Basic Tier</option>
+                            <option value="Standard Tier">Standard Tier</option>
+                            <option value="Premium Tier">Premium Tier</option>
+                          </select>
+                          <button
+                            onClick={handleUpdateTier}
+                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-xs cursor-pointer text-xs"
+                          >
+                            Update
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Action 3: Suspend / Deactivate */}
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-xs text-slate-500">
+                        Account Status: <strong>{selectedStudent.status}</strong>
+                      </span>
+                      <button
+                        onClick={handleToggleStudentStatus}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-colors ${
+                          selectedStudent.status === 'Active'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                         }`}
-                        style={{ width: `${wp.completion}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Test Performance & Live Attendance Logs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-xs">
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Scheduled CBT Performance</span>
-                </div>
-                <div className="text-sm font-black text-slate-900">
-                  Score: {selectedStudent.mockScore}
-                </div>
-                <div className="text-[11px] text-brand-600 font-bold">
-                  National Percentile: {selectedStudent.percentile}
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                  <Radio className="w-4 h-4 text-amber-600" />
-                  <span>Live Grand Rounds Attendance</span>
-                </div>
-                <div className="text-sm font-black text-slate-900">
-                  {selectedStudent.liveAttendance}
-                </div>
-                <div className="text-[11px] text-slate-500">
-                  Verified live webinar logging
-                </div>
-              </div>
-            </div>
-
-            {/* ADMIN ACTIONS SECTION (Strictly Hidden for Faculty!) */}
-            {isAdmin && (
-              <div className="pt-4 border-t border-slate-100 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-400">
-                    Administrative Account Actions (Admin Only)
-                  </span>
-                  <span className="text-[10px] bg-purple-50 text-purple-700 font-bold px-2 py-0.5 rounded">
-                    Billing & Access Control
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  
-                  {/* Action 1: Extend Validity */}
-                  <div className="p-3.5 rounded-2xl border border-slate-200 bg-white space-y-2">
-                    <span className="font-bold text-slate-800 block">Extend Package Validity</span>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={extendMonths}
-                        onChange={(e) => setExtendMonths(e.target.value)}
-                        className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none"
                       >
-                        <option value={1}>+1 Month</option>
-                        <option value={3}>+3 Months</option>
-                        <option value={6}>+6 Months</option>
-                        <option value={12}>+12 Months</option>
-                      </select>
-                      <button
-                        onClick={handleExtendPackage}
-                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs cursor-pointer text-xs"
-                      >
-                        Extend
+                        {selectedStudent.status === 'Active' ? 'Deactivate Student Account' : 'Re-Activate Account'}
                       </button>
                     </div>
+
                   </div>
+                )}
 
-                  {/* Action 2: Change Package Tier */}
-                  <div className="p-3.5 rounded-2xl border border-slate-200 bg-white space-y-2">
-                    <span className="font-bold text-slate-800 block">Upgrade / Downgrade Tier</span>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={selectedNewTier}
-                        onChange={(e) => setSelectedNewTier(e.target.value)}
-                        className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none"
-                      >
-                        <option value="Basic Tier">Basic Tier</option>
-                        <option value="Standard Tier">Standard Tier</option>
-                        <option value="Premium Tier">Premium Tier</option>
-                      </select>
-                      <button
-                        onClick={handleUpdateTier}
-                        className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-xs cursor-pointer text-xs"
-                      >
-                        Update
-                      </button>
-                    </div>
+                {/* Read-only notice for Faculty */}
+                {isFaculty && (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 text-center">
+                    Account lifecycle actions (package extension, tier upgrade, suspension) are restricted to platform administrators.
                   </div>
-
-                </div>
-
-                {/* Action 3: Suspend / Deactivate */}
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-xs text-slate-500">
-                    Account Status: <strong>{selectedStudent.status}</strong>
-                  </span>
-                  <button
-                    onClick={handleToggleStudentStatus}
-                    className={`px-3 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-colors ${
-                      selectedStudent.status === 'Active'
-                        ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
-                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                    }`}
-                  >
-                    {selectedStudent.status === 'Active' ? 'Deactivate Student Account' : 'Re-Activate Account'}
-                  </button>
-                </div>
-
+                )}
               </div>
-            )}
 
-            {/* Read-only notice for Faculty */}
-            {isFaculty && (
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 text-center">
-                Account lifecycle actions (package extension, tier upgrade, suspension) are restricted to platform administrators.
+              {/* Drawer Sticky Footer */}
+              <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/90 flex justify-end shrink-0 sticky bottom-0 z-10">
+                <button
+                  onClick={() => setSelectedStudent(null)}
+                  className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  Close Profile
+                </button>
               </div>
-            )}
 
+            </div>
           </div>
         </div>
       )}
