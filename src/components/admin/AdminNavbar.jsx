@@ -57,9 +57,10 @@ export default function AdminNavbar({ onToggleSidebar }) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-xs font-sans">
-      <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <>
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-200 shadow-xs font-sans h-16">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
           
           {/* Left: Hamburger + Brand Logo + Auto-Detected Role Badge */}
           <div className="flex items-center gap-3 sm:gap-4">
@@ -246,5 +247,8 @@ export default function AdminNavbar({ onToggleSidebar }) {
         </div>
       </div>
     </header>
+    {/* Permanent spacer taking 64px (h-16) document flow space so page content starts below the fixed navbar */}
+    <div className="h-16 shrink-0 w-full" aria-hidden="true" />
+  </>
   );
 }
