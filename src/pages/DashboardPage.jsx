@@ -49,9 +49,11 @@ import {
   dashboardTests,
   testService 
 } from '../data/mockData';
+import CurriculumRoadmapView from '../components/CurriculumRoadmapView';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const [planViewMode, setPlanViewMode] = useState('hierarchy'); // 'hierarchy' | 'legacy'
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
 
@@ -601,42 +603,56 @@ export default function DashboardPage() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 3: STUDY PLAN (28-DAY CURRICULUM ROADMAP)                             */}
+          {/* TAB 3: STUDY PLAN (5-TIER PRODUCT HIERARCHY & CHAPTER SCHEDULES)          */}
           {/* ========================================================================= */}
           {activeTab === 'plan' && (
             <div className="space-y-6 animate-in fade-in">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs">
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-100 text-brand-800 text-xs font-bold uppercase tracking-wider mb-2">
                     <Calendar className="w-3.5 h-3.5 text-brand-600" />
-                    <span>Drip-Fed Structured Syllabus</span>
+                    <span>Academic Curriculum & Schedules</span>
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                     Your Study Plan
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                    Structured week-by-week clinical curriculum. Click on any unlocked Day to view notes, video lessons, and active flashcards.
+                    Structured syllabus roadmap: Exam ➔ Curriculum ➔ Chapter (with 1:1 Schedule) ➔ Topic ➔ Mixed Content.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center gap-1 font-semibold text-emerald-700">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                    Completed
-                  </span>
-                  <span className="flex items-center gap-1 font-semibold text-brand-700">
-                    <span className="w-2.5 h-2.5 rounded-full bg-brand-500" />
-                    In Progress
-                  </span>
-                  <span className="flex items-center gap-1 font-semibold text-slate-400">
-                    <Lock className="w-3 h-3" />
-                    Locked
-                  </span>
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Mode Switcher */}
+                  <div className="flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold">
+                    <button
+                      onClick={() => setPlanViewMode('hierarchy')}
+                      className={`px-3.5 py-2 rounded-xl transition-all ${
+                        planViewMode === 'hierarchy' 
+                          ? 'bg-white text-slate-900 shadow-xs' 
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      5-Tier Hierarchy & Schedules
+                    </button>
+                    <button
+                      onClick={() => setPlanViewMode('legacy')}
+                      className={`px-3.5 py-2 rounded-xl transition-all ${
+                        planViewMode === 'legacy' 
+                          ? 'bg-white text-slate-900 shadow-xs' 
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      Legacy 4-Week Schedule
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Expandable Week Cards */}
-              <div className="space-y-4">
+              {planViewMode === 'hierarchy' ? (
+                <CurriculumRoadmapView defaultExamId={examParam === 'usmle' ? 'exam-usmle' : 'exam-neet-pg'} />
+              ) : (
+                /* Expandable Week Cards */
+                <div className="space-y-4">
                 {studyPlanWeeks.map((week) => {
                   const isExpanded = expandedWeeks[week.weekNumber];
                   const isCurrentWeek = week.status === 'current';
@@ -811,8 +827,9 @@ export default function DashboardPage() {
                   );
                 })}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
           {/* ========================================================================= */}
           {/* TAB 4: LIVE SESSIONS HUB                                                  */}
