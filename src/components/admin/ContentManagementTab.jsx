@@ -30,15 +30,12 @@ import {
   Search,
   Filter,
   ArrowRight,
-  RotateCcw,
-  Presentation
+  RotateCcw
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { contentService } from '../../services/contentService';
 import { authService, USER_ROLES } from '../../services/authService';
 import { catalogService } from '../../services/catalogService';
-import { curriculumHierarchyService } from '../../services/curriculumHierarchyService';
-import CurriculumHierarchyTab from './CurriculumHierarchyTab';
 
 export default function ContentManagementTab() {
   const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
@@ -56,12 +53,11 @@ export default function ContentManagementTab() {
 
   // ---------------------------------------------------------------------------
   // View Modes:
-  // 'hierarchy' -> 5-Tier Product Hierarchy & Schedules (DEFAULT TARGET MODEL)
-  // 'list'      -> All Uploaded Content Library
-  // 'editor'    -> Day Content Manager (Step-by-step day inspector)
-  // 'matrix'    -> Curriculum Completeness Matrix
+  // 'list'   -> All Uploaded Content Library (DEFAULT VIEW AS REQUESTED)
+  // 'editor' -> Day Content Manager (Step-by-step day inspector)
+  // 'matrix' -> Curriculum Completeness Matrix
   // ---------------------------------------------------------------------------
-  const [activeViewMode, setActiveViewMode] = useState('hierarchy');
+  const [activeViewMode, setActiveViewMode] = useState('list');
 
   // ---------------------------------------------------------------------------
   // Master Content List & Search / Filter State
@@ -120,14 +116,6 @@ export default function ContentManagementTab() {
   const [liveDuration, setLiveDuration] = useState('60 mins');
   const [liveZoomUrl, setLiveZoomUrl] = useState('https://zoom.us/j/9876543210');
   const [liveDescription, setLiveDescription] = useState('High-Yield Case Discussion & Interactive Problem Solving');
-
-  // 6. PPT Presentation Form State
-  const [pptTitle, setPptTitle] = useState('');
-  const [pptFileName, setPptFileName] = useState('Clinical_Grand_Rounds_Deck.pptx');
-  const [pptSlideCount, setPptSlideCount] = useState(36);
-  const [pptPresenter, setPptPresenter] = useState(() => currentUser?.name || 'Dr. Siddharth V.');
-  const [pptUrl, setPptUrl] = useState('https://view.officeapps.live.com/op/view.aspx?src=sample_deck.pptx');
-  const [pptNotes, setPptNotes] = useState('High-yield clinical grand rounds case presentation.');
 
   // ---------------------------------------------------------------------------
   // Hierarchy State for the Day Editor View (Inspection)
@@ -301,25 +289,6 @@ export default function ContentManagementTab() {
         description: liveDescription.trim()
       });
       showToast(`✅ Live Session "${liveTitle}" scheduled for ${locationStr}!`);
-    } else if (selectedContentType === 'ppt') {
-      if (!pptTitle.trim()) {
-        alert('Please enter a Presentation Title.');
-        return;
-      }
-      curriculumHierarchyService.createContent({
-        topic_id: 'top-valvular-disorders',
-        content_type: 'ppt',
-        title: pptTitle.trim(),
-        description: pptNotes.trim() || 'Clinical slide deck',
-        media_url: pptUrl.trim(),
-        meta: {
-          file_name: pptFileName.trim() || 'Clinical_Deck.pptx',
-          slide_count: Number(pptSlideCount) || 30,
-          presenter: pptPresenter.trim() || currentUser?.name || 'Faculty Lead',
-          keyNotes: pptNotes.trim()
-        }
-      });
-      showToast(`✅ PPT Presentation "${pptTitle}" saved to curriculum!`);
     }
 
     // Reset and redirect back to LIST view
@@ -517,18 +486,7 @@ export default function ContentManagementTab() {
             </button>
 
             {/* View Mode Toggle */}
-            <div className="flex flex-wrap items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold gap-1">
-              <button
-                onClick={() => setActiveViewMode('hierarchy')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeViewMode === 'hierarchy' 
-                    ? 'bg-brand-600 text-white shadow-xs' 
-                    : 'text-brand-700 hover:text-brand-900 bg-brand-50'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>5-Tier Hierarchy & Schedules</span>
-              </button>
+            <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
               <button
                 onClick={() => setActiveViewMode('list')}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
@@ -633,16 +591,6 @@ export default function ContentManagementTab() {
             <div className="text-[10px] text-rose-600 mt-0.5">Interactive rounds</div>
           </div>
         </div>
-
-        {/* ===================================================================== */}
-        {/* VIEW 0: 5-TIER PRODUCT HIERARCHY & SCHEDULES (PRIMARY)                */}
-        {/* ===================================================================== */}
-        {activeViewMode === 'hierarchy' && (
-          <CurriculumHierarchyTab onOpenAddContentModal={(opts) => {
-            if (opts?.examId) setAddCourse(opts.examId === 'exam-usmle' ? 'usmle' : 'neet-pg');
-            setIsAddContentModalOpen(true);
-          }} />
-        )}
 
         {/* ===================================================================== */}
         {/* VIEW 1: MASTER CONTENT LIBRARY (DEFAULT)                              */}
@@ -1441,24 +1389,6 @@ export default function ContentManagementTab() {
                   <span className="text-[10px] text-slate-400 block mt-0.5">Interactive round</span>
                 </button>
 
-                {/* 6. PPT Presentation */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedContentType('ppt')}
-                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    selectedContentType === 'ppt'
-                      ? 'border-amber-500 bg-amber-50/70 shadow-xs ring-1 ring-amber-500'
-                      : 'border-slate-200 bg-white hover:border-amber-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <Presentation className={`w-4 h-4 ${selectedContentType === 'ppt' ? 'text-amber-600' : 'text-slate-400'}`} />
-                    {selectedContentType === 'ppt' && <Check className="w-3.5 h-3.5 text-amber-600" />}
-                  </div>
-                  <span className="font-bold text-slate-900 text-xs block">PPT Deck</span>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">Slide deck</span>
-                </button>
-
               </div>
             </div>
 
@@ -1767,71 +1697,6 @@ export default function ContentManagementTab() {
                         value={liveZoomUrl}
                         onChange={(e) => setLiveZoomUrl(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-xs text-slate-900 bg-white focus:outline-none focus:border-rose-500"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* 6. PPT Presentation Form */}
-                {selectedContentType === 'ppt' && (
-                  <div className="space-y-3 animate-in fade-in">
-                    <div className="flex items-center gap-2 text-xs font-bold text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-                      <Presentation className="w-4 h-4 text-amber-600" />
-                      <span>PPT Clinical Presentation Deck</span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700">Presentation Title *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Clinical Case: Severe Aortic Stenosis Grand Rounds"
-                        value={pptTitle}
-                        onChange={(e) => setPptTitle(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-700">File Name</label>
-                        <input
-                          type="text"
-                          value={pptFileName}
-                          onChange={(e) => setPptFileName(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-700">Slide Count</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="200"
-                          value={pptSlideCount}
-                          onChange={(e) => setPptSlideCount(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-700">Presenter / Faculty</label>
-                        <input
-                          type="text"
-                          value={pptPresenter}
-                          onChange={(e) => setPptPresenter(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700">Speaker Notes & Key Case Takeaway</label>
-                      <textarea
-                        rows={2}
-                        value={pptNotes}
-                        onChange={(e) => setPptNotes(e.target.value)}
-                        placeholder="High-yield examination takeaway for candidates..."
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
                       />
                     </div>
                   </div>
