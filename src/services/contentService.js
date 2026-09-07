@@ -300,6 +300,191 @@ class ContentService {
     return day;
   }
 
+  // 5. Live Interactive Session
+  saveLiveSession(dayId, liveData) {
+    const day = this.getDayContent(dayId);
+    const newLive = {
+      hasSession: true,
+      isScheduled: true,
+      title: liveData.title || 'Live Clinical Interactive Masterclass',
+      faculty: liveData.faculty || 'Dr. Siddharth V.',
+      time: liveData.time || '7:30 PM IST',
+      duration: liveData.duration || '60 mins',
+      zoomUrl: liveData.zoomUrl || 'https://zoom.us/j/9876543210',
+      description: liveData.description || 'Interactive Case Discussions & Clinical Problem Solving'
+    };
+    day.live = newLive;
+    this.saveStore();
+    return day;
+  }
+
+  deleteLiveSession(dayId) {
+    const day = this.getDayContent(dayId);
+    day.live = { hasSession: false };
+    this.saveStore();
+    return day;
+  }
+
+  // Unified Delete Content Item Helper
+  deleteContentItem(type, dayId, itemId) {
+    if (type === 'pdf') {
+      return this.deletePdf(dayId, itemId);
+    } else if (type === 'video') {
+      return this.deleteVideo(dayId);
+    } else if (type === 'image') {
+      return this.deleteImage(dayId, itemId);
+    } else if (type === 'flashcards') {
+      const day = this.getDayContent(dayId);
+      day.flashcards = [];
+      this.saveStore();
+      return day;
+    } else if (type === 'live') {
+      return this.deleteLiveSession(dayId);
+    }
+  }
+
+  // Get All Uploaded Content List across all Exams, Weeks, and Days
+  getAllContentList(filterExamId = null) {
+    const items = [];
+    const examKeys = filterExamId ? [filterExamId] : Object.keys(this.curriculumStore);
+
+    examKeys.forEach(examId => {
+      const track = this.curriculumStore[examId];
+      if (!track || !track.weeks) return;
+
+      track.weeks.forEach(week => {
+        if (!week.days) return;
+        week.days.forEach(day => {
+          const content = this.store[String(day.id)] || dayContentStore[String(day.id)] || null;
+          if (!content) return;
+
+          // 1. PDFs
+          if (content.pdfList && content.pdfList.length > 0) {
+            content.pdfList.forEach((pdf, idx) => {
+              items.push({
+                id: pdf.id || `pdf-${day.id}-${idx}`,
+                type: 'pdf',
+                typeLabel: 'PDF Notes',
+                title: pdf.title || 'Clinical Notes',
+                subtitle: pdf.fileName || 'document.pdf',
+                details: `${pdf.pages || 18} Pages`,
+                author: pdf.author || 'Faculty Lead',
+                examId,
+                examName: track.name,
+                weekId: week.id,
+                weekTitle: week.title,
+                dayId: day.id,
+                dayTitle: day.title,
+                raw: pdf
+              });
+            });
+          } else if (content.pdf) {
+            items.push({
+              id: content.pdf.id || `pdf-${day.id}`,
+              type: 'pdf',
+              typeLabel: 'PDF Notes',
+              title: content.pdf.title || 'Clinical Notes',
+              subtitle: content.pdf.fileName || 'document.pdf',
+              details: `${content.pdf.pages || 18} Pages`,
+              author: content.pdf.author || 'Faculty Lead',
+              examId,
+              examName: track.name,
+              weekId: week.id,
+              weekTitle: week.title,
+              dayId: day.id,
+              dayTitle: day.title,
+              raw: content.pdf
+            });
+          }
+
+          // 2. Video
+          if (content.video && content.video.title) {
+            items.push({
+              id: `video-${day.id}`,
+              type: 'video',
+              typeLabel: 'Video Lecture',
+              title: content.video.title,
+              subtitle: content.video.url || 'Lecture Stream',
+              details: content.video.duration || '45 mins',
+              author: content.video.instructor || 'Specialist Faculty',
+              examId,
+              examName: track.name,
+              weekId: week.id,
+              weekTitle: week.title,
+              dayId: day.id,
+              dayTitle: day.title,
+              raw: content.video
+            });
+          }
+
+          // 3. Images
+          if (content.images && content.images.length > 0) {
+            content.images.forEach((img, idx) => {
+              items.push({
+                id: img.id || `img-${day.id}-${idx}`,
+                type: 'image',
+                typeLabel: 'Clinical Diagram',
+                title: img.title || 'Diagnostic Diagram',
+                subtitle: img.caption || 'Clinical reference',
+                details: 'High-Res Specimen',
+                author: 'Clinical Specialist',
+                examId,
+                examName: track.name,
+                weekId: week.id,
+                weekTitle: week.title,
+                dayId: day.id,
+                dayTitle: day.title,
+                raw: img
+              });
+            });
+          }
+
+          // 4. Flashcards
+          if (content.flashcards && content.flashcards.length > 0) {
+            items.push({
+              id: `fc-${day.id}`,
+              type: 'flashcards',
+              typeLabel: 'Flashcards Deck',
+              title: `${day.title} Flashcards Deck`,
+              subtitle: `${content.flashcards.length} Active-Recall Flashcards`,
+              details: `${content.flashcards.length} Cards`,
+              author: 'Faculty Lead',
+              examId,
+              examName: track.name,
+              weekId: week.id,
+              weekTitle: week.title,
+              dayId: day.id,
+              dayTitle: day.title,
+              raw: content.flashcards
+            });
+          }
+
+          // 5. Live Session
+          if (content.live && content.live.hasSession) {
+            items.push({
+              id: `live-${day.id}`,
+              type: 'live',
+              typeLabel: 'Live Session',
+              title: content.live.title || 'Clinical Case Discussion',
+              subtitle: content.live.time || '7:30 PM IST',
+              details: content.live.duration || '60 mins',
+              author: content.live.faculty || 'Specialist',
+              examId,
+              examName: track.name,
+              weekId: week.id,
+              weekTitle: week.title,
+              dayId: day.id,
+              dayTitle: day.title,
+              raw: content.live
+            });
+          }
+        });
+      });
+    });
+
+    return items;
+  }
+
   // Bulk Overview Matrix Helper
   getCurriculumOverview(examId, weekId) {
     const curriculum = this.getCurriculumStructure(examId);

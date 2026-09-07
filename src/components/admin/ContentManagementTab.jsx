@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   UploadCloud, 
   FileText, 
@@ -24,7 +24,13 @@ import {
   Maximize2,
   Lock,
   Edit3,
-  BookOpen
+  BookOpen,
+  PlusCircle,
+  HelpCircle,
+  Search,
+  Filter,
+  ArrowRight,
+  RotateCcw
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { contentService } from '../../services/contentService';
@@ -35,79 +41,139 @@ export default function ContentManagementTab() {
   const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
   const [activeCatalogExams, setActiveCatalogExams] = useState(() => catalogService.getActiveExams());
   
-  // Scoping: Admin sees all exams; Faculty sees only assigned exams (Rule 2 & Phase 5.1 routing)
+  // Scoping: Admin sees all exams; Faculty sees only assigned exams
   const isAdmin = currentUser?.role === USER_ROLES.ADMIN;
   const isFaculty = currentUser?.role === USER_ROLES.FACULTY;
   const facultyAllowedExams = ['neet-pg', 'usmle'];
 
-  // 1. Exam Options
+  // Available Exams based on permissions
   const availableExams = isAdmin 
     ? activeCatalogExams 
     : activeCatalogExams.filter(e => facultyAllowedExams.includes(e.id));
 
-  // Hierarchy Selection State (Rule 5: Exam -> Week -> Day -> Content)
-  const [selectedExam, setSelectedExam] = useState(() => availableExams[0]?.id || 'neet-pg');
+  // ---------------------------------------------------------------------------
+  // View Modes:
+  // 'list'   -> All Uploaded Content Library (DEFAULT VIEW AS REQUESTED)
+  // 'editor' -> Day Content Manager (Step-by-step day inspector)
+  // 'matrix' -> Curriculum Completeness Matrix
+  // ---------------------------------------------------------------------------
+  const [activeViewMode, setActiveViewMode] = useState('list');
 
-  // 2. Week Options based on Exam
-  const [curriculum, setCurriculum] = useState(() => contentService.getCurriculumStructure(selectedExam));
-  const [selectedWeek, setSelectedWeek] = useState(() => curriculum.weeks[0]?.id || '1');
-  
-  // 3. Day Options based on Week
-  const currentWeekObj = curriculum.weeks.find(w => w.id === String(selectedWeek)) || curriculum.weeks[0];
-  const [selectedDay, setSelectedDay] = useState(() => currentWeekObj?.days[0]?.id || '1');
-
-  // Hierarchy validation flag: All 3 must be selected to unlock content panels
-  const isHierarchySelected = Boolean(selectedExam && selectedWeek && selectedDay);
-
-  // Current Day Content Data
-  const [dayData, setDayData] = useState(() => contentService.getDayContent(selectedDay));
-  
-  // View Toggle: 'editor' (Single Day Upload) | 'matrix' (Curriculum Completeness Matrix)
-  const [activeViewMode, setActiveViewMode] = useState('editor');
+  // ---------------------------------------------------------------------------
+  // Master Content List & Search / Filter State
+  // ---------------------------------------------------------------------------
+  const [contentList, setContentList] = useState(() => contentService.getAllContentList());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCourse, setFilterCourse] = useState('all');
+  const [filterType, setFilterType] = useState('all');
 
   // Toast notification
   const [toastMessage, setToastMessage] = useState('');
 
   // ---------------------------------------------------------------------------
-  // Upload Form States
+  // Fresh Add Content Form State (Modal)
+  // Step-by-step: Course -> Week -> Day -> Content Type -> Form Fields
   // ---------------------------------------------------------------------------
-  // 1. PDF Form
+  const [isAddContentModalOpen, setIsAddContentModalOpen] = useState(false);
+  
+  // Hierarchy selection for the Add Form
+  const [addCourse, setAddCourse] = useState(() => availableExams[0]?.id || 'neet-pg');
+  const [addCurriculum, setAddCurriculum] = useState(() => contentService.getCurriculumStructure(addCourse));
+  const [addWeek, setAddWeek] = useState(() => addCurriculum.weeks[0]?.id || '1');
+  const currentAddWeekObj = addCurriculum.weeks.find(w => w.id === String(addWeek)) || addCurriculum.weeks[0];
+  const [addDay, setAddDay] = useState(() => currentAddWeekObj?.days[0]?.id || '1');
+
+  // Content Type selection: 'pdf' | 'video' | 'image' | 'flashcards' | 'live'
+  const [selectedContentType, setSelectedContentType] = useState('pdf');
+
+  // Form Fields:
+  // 1. PDF Form State
   const [pdfTitle, setPdfTitle] = useState('');
   const [pdfFileName, setPdfFileName] = useState('Clinical_Cardiology_Summary.pdf');
   const [pdfPages, setPdfPages] = useState(24);
+  const [pdfAuthor, setPdfAuthor] = useState(() => currentUser?.name || 'Dr. Siddharth V.');
 
-  // 2. Image Form
-  const [imageCaption, setImageCaption] = useState('');
-  const [imageTitle, setImageTitle] = useState('Diagnostic ECG Rhythm Strip');
-
-  // 3. Video Form
-  const [videoMode, setVideoMode] = useState('link'); // 'link' | 'file'
+  // 2. Video Form State
   const [videoTitle, setVideoTitle] = useState('');
   const [videoDuration, setVideoDuration] = useState('45 mins');
   const [videoUrl, setVideoUrl] = useState('https://www.youtube.com/embed/dQw4w9WgXcQ');
+  const [videoInstructor, setVideoInstructor] = useState(() => currentUser?.name || 'Dr. Siddharth V.');
 
-  // 4. Flashcards Form (Repeatable mini-form)
+  // 3. Clinical Diagram / Image Form State
+  const [imageTitle, setImageTitle] = useState('Diagnostic ECG Rhythm Strip');
+  const [imageCaption, setImageCaption] = useState('');
+  const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80');
+
+  // 4. Flashcards Form State
   const [cardQuestion, setCardQuestion] = useState('');
   const [cardAnswer, setCardAnswer] = useState('');
   const [queuedCards, setQueuedCards] = useState([]);
 
-  // Modals
-  const [previewImage, setPreviewImage] = useState(null);
+  // 5. Live Session Form State
+  const [liveTitle, setLiveTitle] = useState('');
+  const [liveFaculty, setLiveFaculty] = useState(() => currentUser?.name || 'Dr. Siddharth V.');
+  const [liveTime, setLiveTime] = useState('Today, 7:30 PM IST');
+  const [liveDuration, setLiveDuration] = useState('60 mins');
+  const [liveZoomUrl, setLiveZoomUrl] = useState('https://zoom.us/j/9876543210');
+  const [liveDescription, setLiveDescription] = useState('High-Yield Case Discussion & Interactive Problem Solving');
+
+  // ---------------------------------------------------------------------------
+  // Hierarchy State for the Day Editor View (Inspection)
+  // ---------------------------------------------------------------------------
+  const [selectedExam, setSelectedExam] = useState(() => availableExams[0]?.id || 'neet-pg');
+  const [curriculum, setCurriculum] = useState(() => contentService.getCurriculumStructure(selectedExam));
+  const [selectedWeek, setSelectedWeek] = useState(() => curriculum.weeks[0]?.id || '1');
+  const currentWeekObj = curriculum.weeks.find(w => w.id === String(selectedWeek)) || curriculum.weeks[0];
+  const [selectedDay, setSelectedDay] = useState(() => currentWeekObj?.days[0]?.id || '1');
+  const [dayData, setDayData] = useState(() => contentService.getDayContent(selectedDay));
+
+  // Previews & Management Modals
   const [previewPdfModal, setPreviewPdfModal] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [previewVideoModal, setPreviewVideoModal] = useState(null);
+  const [previewFlashcardsModal, setPreviewFlashcardsModal] = useState(null);
+  const [previewLiveModal, setPreviewLiveModal] = useState(null);
+
   const [isAddWeekModalOpen, setIsAddWeekModalOpen] = useState(false);
   const [isAddDayModalOpen, setIsAddDayModalOpen] = useState(false);
   const [newWeekTitle, setNewWeekTitle] = useState('');
   const [newDayTitle, setNewDayTitle] = useState('');
 
-  // Sync with contentService updates
+  // ---------------------------------------------------------------------------
+  // Synchronization with contentService
+  // ---------------------------------------------------------------------------
+  const refreshContentList = () => {
+    setContentList(contentService.getAllContentList());
+    setDayData(contentService.getDayContent(selectedDay));
+  };
+
   useEffect(() => {
-    const unsubscribeContent = contentService.subscribe(() => {
-      setDayData(contentService.getDayContent(selectedDay));
+    const unsubscribe = contentService.subscribe(() => {
+      refreshContentList();
     });
-    return unsubscribeContent;
+    return unsubscribe;
   }, [selectedDay]);
 
-  // When Exam changes, re-sync Week and Day
+  // Sync Add Form Hierarchy when Course changes
+  useEffect(() => {
+    const cur = contentService.getCurriculumStructure(addCourse);
+    setAddCurriculum(cur);
+    const firstWeek = cur.weeks[0];
+    setAddWeek(firstWeek?.id || '');
+    setAddDay(firstWeek?.days[0]?.id || '');
+  }, [addCourse]);
+
+  // Sync Add Form Hierarchy when Week changes
+  useEffect(() => {
+    const weekObj = addCurriculum.weeks.find(w => w.id === String(addWeek));
+    if (weekObj?.days?.length > 0) {
+      setAddDay(weekObj.days[0].id);
+    } else {
+      setAddDay('');
+    }
+  }, [addWeek, addCurriculum]);
+
+  // Sync Day Editor Hierarchy when selectedExam changes
   useEffect(() => {
     const cur = contentService.getCurriculumStructure(selectedExam);
     setCurriculum(cur);
@@ -116,7 +182,7 @@ export default function ContentManagementTab() {
     setSelectedDay(firstWeek?.days[0]?.id || '');
   }, [selectedExam]);
 
-  // When Week changes, re-sync Day
+  // Sync Day Editor Hierarchy when selectedWeek changes
   useEffect(() => {
     const weekObj = curriculum.weeks.find(w => w.id === String(selectedWeek));
     if (weekObj?.days?.length > 0) {
@@ -126,7 +192,7 @@ export default function ContentManagementTab() {
     }
   }, [selectedWeek, curriculum]);
 
-  // When Day changes, fetch day content
+  // Sync Day Editor data when selectedDay changes
   useEffect(() => {
     if (selectedDay) {
       setDayData(contentService.getDayContent(selectedDay));
@@ -135,74 +201,103 @@ export default function ContentManagementTab() {
 
   const showToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 4500);
+    setTimeout(() => setToastMessage(''), 5000);
   };
 
-  // ---------------------------------------------------------------------------
-  // Action Handlers
-  // ---------------------------------------------------------------------------
-  // 1. Upload PDF
-  const handleUploadPdf = (e) => {
-    e.preventDefault();
-    if (!pdfTitle.trim()) {
-      alert('Please enter a PDF document title.');
-      return;
-    }
-    contentService.uploadPdf(selectedDay, {
-      fileName: pdfFileName,
-      title: pdfTitle.trim(),
-      pages: Number(pdfPages),
-      author: currentUser?.name || 'Dr. Siddharth V.'
-    });
+  // Open Add Content Modal
+  const handleOpenAddModal = (presetType = 'pdf') => {
+    setSelectedContentType(presetType);
     setPdfTitle('');
-    showToast(`✅ PDF "${pdfTitle}" uploaded and published to Day ${selectedDay}!`);
-  };
-
-  const handleDeletePdf = (pdfId) => {
-    contentService.deletePdf(selectedDay, pdfId);
-    showToast('PDF notes document removed.');
-  };
-
-  // 2. Upload Image
-  const handleUploadImage = (e) => {
-    e.preventDefault();
-    contentService.uploadImage(selectedDay, {
-      title: imageTitle.trim() || 'Clinical Diagram',
-      caption: imageCaption.trim() || 'Clinical high-yield reference diagram with labeled anatomic landmarks.',
-      url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80'
-    });
-    setImageCaption('');
-    showToast(`✅ Clinical diagram uploaded to Day ${selectedDay}!`);
-  };
-
-  const handleDeleteImage = (imgId) => {
-    contentService.deleteImage(selectedDay, imgId);
-    showToast('Clinical image removed.');
-  };
-
-  // 3. Save Video
-  const handleSaveVideo = (e) => {
-    e.preventDefault();
-    if (!videoTitle.trim()) {
-      alert('Please enter a video lecture title.');
-      return;
-    }
-    contentService.saveVideo(selectedDay, {
-      title: videoTitle.trim(),
-      duration: videoDuration,
-      url: videoUrl,
-      instructor: currentUser?.name || 'Dr. Siddharth V.'
-    });
     setVideoTitle('');
-    showToast(`✅ Video masterclass published for Day ${selectedDay}!`);
+    setImageCaption('');
+    setQueuedCards([]);
+    setLiveTitle('');
+    setIsAddContentModalOpen(true);
   };
 
-  const handleDeleteVideo = () => {
-    contentService.deleteVideo(selectedDay);
-    showToast('Video lecture removed.');
+  // ---------------------------------------------------------------------------
+  // Action Handlers for Saving New Content
+  // After saving: close form and redirect back to LIST view
+  // ---------------------------------------------------------------------------
+  const handleSaveContentSubmit = (e) => {
+    e.preventDefault();
+
+    const selectedCourseObj = availableExams.find(ex => ex.id === addCourse);
+    const selectedWeekObj = addCurriculum.weeks.find(w => w.id === String(addWeek));
+    const selectedDayObj = selectedWeekObj?.days?.find(d => d.id === String(addDay));
+    const locationStr = `${selectedCourseObj?.name || addCourse} ➔ ${selectedWeekObj?.title || `Week ${addWeek}`} ➔ ${selectedDayObj?.title || `Day ${addDay}`}`;
+
+    if (selectedContentType === 'pdf') {
+      if (!pdfTitle.trim()) {
+        alert('Please enter a Document Title for the PDF notes.');
+        return;
+      }
+      contentService.uploadPdf(addDay, {
+        fileName: pdfFileName,
+        title: pdfTitle.trim(),
+        pages: Number(pdfPages) || 18,
+        author: pdfAuthor.trim() || currentUser?.name || 'Faculty Specialist'
+      });
+      showToast(`✅ PDF Notes "${pdfTitle}" successfully uploaded to ${locationStr}!`);
+    } else if (selectedContentType === 'video') {
+      if (!videoTitle.trim()) {
+        alert('Please enter a Title for the Video Lecture.');
+        return;
+      }
+      contentService.saveVideo(addDay, {
+        title: videoTitle.trim(),
+        duration: videoDuration.trim() || '45 mins',
+        url: videoUrl.trim(),
+        instructor: videoInstructor.trim() || currentUser?.name || 'Faculty Specialist'
+      });
+      showToast(`✅ Video Masterclass "${videoTitle}" published to ${locationStr}!`);
+    } else if (selectedContentType === 'image') {
+      if (!imageTitle.trim()) {
+        alert('Please enter a Title for the Clinical Diagram.');
+        return;
+      }
+      contentService.uploadImage(addDay, {
+        title: imageTitle.trim(),
+        caption: imageCaption.trim() || 'High-yield clinical diagnostic illustration and anatomic landmarks.',
+        url: imageUrl.trim()
+      });
+      showToast(`✅ Clinical Diagram "${imageTitle}" uploaded to ${locationStr}!`);
+    } else if (selectedContentType === 'flashcards') {
+      const cardsToSave = [...queuedCards];
+      if (cardQuestion.trim() && cardAnswer.trim()) {
+        cardsToSave.push({ question: cardQuestion.trim(), answer: cardAnswer.trim() });
+      }
+      if (cardsToSave.length === 0) {
+        alert('Please add at least one question and answer to create flashcards.');
+        return;
+      }
+      cardsToSave.forEach(card => {
+        contentService.addFlashcard(addDay, card);
+      });
+      showToast(`✅ ${cardsToSave.length} Smart Flashcards saved to ${locationStr}!`);
+    } else if (selectedContentType === 'live') {
+      if (!liveTitle.trim()) {
+        alert('Please enter a Topic/Title for the Live Interactive Session.');
+        return;
+      }
+      contentService.saveLiveSession(addDay, {
+        title: liveTitle.trim(),
+        faculty: liveFaculty.trim() || currentUser?.name || 'Dr. Siddharth V.',
+        time: liveTime.trim() || '7:30 PM IST',
+        duration: liveDuration.trim() || '60 mins',
+        zoomUrl: liveZoomUrl.trim(),
+        description: liveDescription.trim()
+      });
+      showToast(`✅ Live Session "${liveTitle}" scheduled for ${locationStr}!`);
+    }
+
+    // Reset and redirect back to LIST view
+    setIsAddContentModalOpen(false);
+    setActiveViewMode('list');
+    refreshContentList();
   };
 
-  // 4. Flashcards Form (Repeatable mini-form)
+  // Add card to queue in Flashcards form
   const handleQueueCard = () => {
     if (!cardQuestion.trim() || !cardAnswer.trim()) {
       alert('Please enter both a Question and an Answer before queuing.');
@@ -211,73 +306,142 @@ export default function ContentManagementTab() {
     setQueuedCards(prev => [...prev, { question: cardQuestion.trim(), answer: cardAnswer.trim() }]);
     setCardQuestion('');
     setCardAnswer('');
-    showToast('Card queued! Click "+ Add Another Flashcard" or "Save Flashcard Set" to publish.');
+    showToast('Card queued! You can queue more or click Save below.');
   };
 
-  const handleSaveFlashcardSet = () => {
-    if (queuedCards.length === 0 && !cardQuestion.trim()) {
-      alert('Please add at least one flashcard before saving.');
-      return;
+  // Delete Content Item from List
+  const handleDeleteContentItem = (item) => {
+    if (window.confirm(`Are you sure you want to remove "${item.title}" from ${item.dayTitle}?`)) {
+      contentService.deleteContentItem(item.type, item.dayId, item.id);
+      refreshContentList();
+      showToast(`Removed "${item.title}" from ${item.dayTitle}.`);
     }
-
-    const cardsToSave = [...queuedCards];
-    if (cardQuestion.trim() && cardAnswer.trim()) {
-      cardsToSave.push({ question: cardQuestion.trim(), answer: cardAnswer.trim() });
-    }
-
-    cardsToSave.forEach(card => {
-      contentService.addFlashcard(selectedDay, card);
-    });
-
-    setQueuedCards([]);
-    setCardQuestion('');
-    setCardAnswer('');
-    showToast(`✅ ${cardsToSave.length} smart flashcards saved to Day ${selectedDay}!`);
   };
 
-  const handleDeleteFlashcard = (cardId) => {
-    contentService.deleteFlashcard(selectedDay, cardId);
-    showToast('Flashcard removed.');
-  };
-
-  // Quick Add Week
+  // Quick Add Week in Hierarchy
   const handleAddWeekSubmit = (e) => {
     e.preventDefault();
     if (!newWeekTitle.trim()) return;
-    const added = contentService.addWeek(selectedExam, newWeekTitle.trim());
-    const updatedCurriculum = contentService.getCurriculumStructure(selectedExam);
-    setCurriculum(updatedCurriculum);
-    setSelectedWeek(added.id);
-    setSelectedDay(added.days[0].id);
+    const targetExam = isAddContentModalOpen ? addCourse : selectedExam;
+    const added = contentService.addWeek(targetExam, newWeekTitle.trim());
+    if (isAddContentModalOpen) {
+      const updated = contentService.getCurriculumStructure(targetExam);
+      setAddCurriculum(updated);
+      setAddWeek(added.id);
+      setAddDay(added.days[0].id);
+    } else {
+      const updated = contentService.getCurriculumStructure(targetExam);
+      setCurriculum(updated);
+      setSelectedWeek(added.id);
+      setSelectedDay(added.days[0].id);
+    }
     setNewWeekTitle('');
     setIsAddWeekModalOpen(false);
     showToast(`✅ Created "${added.title}" with Day 1 initialized!`);
   };
 
-  // Quick Add Day
+  // Quick Add Day in Hierarchy
   const handleAddDaySubmit = (e) => {
     e.preventDefault();
     if (!newDayTitle.trim()) return;
-    const added = contentService.addDay(selectedExam, selectedWeek, newDayTitle.trim());
-    const updatedCurriculum = contentService.getCurriculumStructure(selectedExam);
-    setCurriculum(updatedCurriculum);
-    if (added) {
-      setSelectedDay(added.id);
+    const targetExam = isAddContentModalOpen ? addCourse : selectedExam;
+    const targetWeek = isAddContentModalOpen ? addWeek : selectedWeek;
+    const added = contentService.addDay(targetExam, targetWeek, newDayTitle.trim());
+    if (isAddContentModalOpen) {
+      const updated = contentService.getCurriculumStructure(targetExam);
+      setAddCurriculum(updated);
+      if (added) setAddDay(added.id);
+    } else {
+      const updated = contentService.getCurriculumStructure(targetExam);
+      setCurriculum(updated);
+      if (added) setSelectedDay(added.id);
     }
     setNewDayTitle('');
     setIsAddDayModalOpen(false);
-    showToast(`✅ Created "${added?.title}" under ${currentWeekObj?.title}!`);
+    showToast(`✅ Created "${added?.title}"!`);
   };
 
-  // Completeness stats for summary panel
-  const hasPdf = Boolean(dayData?.pdf || (dayData?.pdfList && dayData?.pdfList.length > 0));
-  const pdfCount = dayData?.pdfList?.length || (dayData?.pdf ? 1 : 0);
-  const imagesCount = dayData?.images?.length || 0;
-  const hasVideo = Boolean(dayData?.video);
-  const flashcardCount = dayData?.flashcards?.length || 0;
-  const hasLive = Boolean(dayData?.live?.hasSession);
+  // ---------------------------------------------------------------------------
+  // Filtered Content List
+  // ---------------------------------------------------------------------------
+  const filteredContentList = useMemo(() => {
+    return contentList.filter(item => {
+      // 1. Course Filter
+      if (filterCourse !== 'all' && item.examId !== filterCourse) {
+        return false;
+      }
+      // 2. Type Filter
+      if (filterType !== 'all' && item.type !== filterType) {
+        return false;
+      }
+      // 3. Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchTitle = item.title?.toLowerCase().includes(q);
+        const matchSub = item.subtitle?.toLowerCase().includes(q);
+        const matchAuthor = item.author?.toLowerCase().includes(q);
+        const matchDay = item.dayTitle?.toLowerCase().includes(q);
+        const matchExam = item.examName?.toLowerCase().includes(q);
+        if (!matchTitle && !matchSub && !matchAuthor && !matchDay && !matchExam) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [contentList, filterCourse, filterType, searchQuery]);
 
-  // Overview Matrix data
+  // Metrics summary counts
+  const totalCount = contentList.length;
+  const pdfCount = contentList.filter(i => i.type === 'pdf').length;
+  const videoCount = contentList.filter(i => i.type === 'video').length;
+  const imageCount = contentList.filter(i => i.type === 'image').length;
+  const flashcardCount = contentList.filter(i => i.type === 'flashcards').length;
+  const liveCount = contentList.filter(i => i.type === 'live').length;
+
+  // Content Type Pill Component
+  const renderTypeBadge = (type) => {
+    switch (type) {
+      case 'pdf':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            <FileText className="w-3.5 h-3.5 text-blue-600" />
+            <span>PDF Notes</span>
+          </span>
+        );
+      case 'video':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+            <Video className="w-3.5 h-3.5 text-purple-600" />
+            <span>Video Masterclass</span>
+          </span>
+        );
+      case 'image':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Clinical Diagram</span>
+          </span>
+        );
+      case 'flashcards':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+            <Brain className="w-3.5 h-3.5 text-amber-600" />
+            <span>Flashcards</span>
+          </span>
+        );
+      case 'live':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+            <Radio className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
+            <span>Live Session</span>
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Matrix Days for matrix view
   const matrixDays = contentService.getCurriculumOverview(selectedExam, selectedWeek);
 
   return (
@@ -294,697 +458,615 @@ export default function ContentManagementTab() {
       {/* Main Container Card */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
         
-        {/* Header Bar with View Switcher */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+        {/* ===================================================================== */}
+        {/* HEADER BAR & PRIMARY ACTIONS                                          */}
+        {/* ===================================================================== */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-1.5">
               <UploadCloud className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Direct Student Bridge (Phase 5.4)</span>
+              <span>Direct Curriculum Upload Hub</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Day-Wise Content Management & Uploads
+              Curriculum Content Library
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Rule 5 Enforced: Content follows strict hierarchy (<strong>Exam → Week → Day → Content Type</strong>). Whatever is published here is what students unlock in their Day Content View.
+            <p className="text-xs text-slate-500 mt-0.5 max-w-2xl">
+              All added curriculum study materials are listed below. Click <strong>"+ Add / Upload Content"</strong> to open a fresh form, select Course ➔ Week ➔ Day ➔ Content Type, and publish directly to students.
             </p>
           </div>
 
-          {/* View Mode Toggle: Day Editor vs Overview Matrix */}
-          <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold self-start sm:self-auto">
+          {/* Top Right Action Controls: "+ Add / Upload Content" & View Switcher */}
+          <div className="flex items-center gap-3 flex-wrap">
             <button
-              onClick={() => setActiveViewMode('editor')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                activeViewMode === 'editor' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              onClick={() => handleOpenAddModal('pdf')}
+              className="px-4 sm:px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl text-xs sm:text-sm flex items-center gap-2 transition-all shadow-sm hover:shadow-indigo-100 cursor-pointer"
             >
-              Day Upload Editor
+              <PlusCircle className="w-4 h-4" />
+              <span>+ Add / Upload Content</span>
             </button>
-            <button
-              onClick={() => setActiveViewMode('matrix')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                activeViewMode === 'matrix' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Curriculum Overview Matrix
-            </button>
-          </div>
-        </div>
 
-        {/* STEP-BY-STEP HIERARCHY SELECTOR (RULE 5) */}
-        <div className="p-5 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-indigo-600" />
-              <span>Step-by-Step Curriculum Hierarchy (Strict Rule 5)</span>
-            </span>
-            <div className="flex items-center gap-2">
-              {isFaculty && (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  Faculty Scoped
-                </span>
-              )}
-              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                Rule 5: Exam → Week → Day
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            
-            {/* 1. Exam Track (Auto-Scoped for Faculty) */}
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700 text-xs flex items-center justify-between">
-                <span>1. Select Exam Track *</span>
-                {isFaculty && <span className="text-[10px] text-emerald-600 font-bold">Scoped</span>}
-              </label>
-              <select
-                value={selectedExam}
-                onChange={(e) => setSelectedExam(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-900 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              >
-                <option value="" disabled>-- Select Exam Track --</option>
-                {availableExams.map((exam) => (
-                  <option key={exam.id} value={exam.id}>
-                    {exam.flag} {exam.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 2. Select Week */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-slate-700 text-xs">2. Select Week *</label>
-                <button
-                  type="button"
-                  onClick={() => setIsAddWeekModalOpen(true)}
-                  className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer flex items-center gap-0.5"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>Add Week</span>
-                </button>
-              </div>
-              <select
-                value={selectedWeek}
-                disabled={!selectedExam}
-                onChange={(e) => setSelectedWeek(e.target.value)}
-                className={`w-full px-3 py-2.5 rounded-xl border font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
-                  selectedExam 
-                    ? 'border-slate-200 text-slate-900 bg-white' 
-                    : 'border-slate-200 text-slate-400 bg-slate-100 cursor-not-allowed'
+            {/* View Mode Toggle */}
+            <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
+              <button
+                onClick={() => setActiveViewMode('list')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeViewMode === 'list' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <option value="" disabled>-- Select Week --</option>
-                {curriculum.weeks.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 3. Select Day */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-slate-700 text-xs">3. Select Day *</label>
-                <button
-                  type="button"
-                  onClick={() => setIsAddDayModalOpen(true)}
-                  disabled={!selectedWeek}
-                  className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer flex items-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>Add Day</span>
-                </button>
-              </div>
-              <select
-                value={selectedDay}
-                disabled={!selectedWeek}
-                onChange={(e) => setSelectedDay(e.target.value)}
-                className={`w-full px-3 py-2.5 rounded-xl border font-black text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
-                  selectedWeek 
-                    ? 'border-indigo-300 text-indigo-950 bg-white ring-1 ring-indigo-500/20' 
-                    : 'border-slate-200 text-slate-400 bg-slate-100 cursor-not-allowed'
+                Content Library
+              </button>
+              <button
+                onClick={() => setActiveViewMode('editor')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeViewMode === 'editor' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <option value="" disabled>-- Select Day --</option>
-                {currentWeekObj?.days.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.title}
-                  </option>
-                ))}
-              </select>
+                Day Inspector
+              </button>
+              <button
+                onClick={() => setActiveViewMode('matrix')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeViewMode === 'matrix' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Completeness Matrix
+              </button>
             </div>
-
           </div>
         </div>
 
         {/* ===================================================================== */}
-        {/* VIEW 1: DAY UPLOAD EDITOR (MAIN CMS WORKSPACE)                         */}
+        {/* STATS METRIC SUMMARY STRIP                                            */}
         {/* ===================================================================== */}
-        {activeViewMode === 'editor' && (
-          <div className="relative">
-            
-            {/* Disabled Overlay if Hierarchy is not fully selected */}
-            {!isHierarchySelected && (
-              <div className="mb-6 p-6 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-2">
-                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-slate-900 text-sm">Upload Panel Locked by Hierarchy (Rule 5)</h3>
-                <p className="text-xs text-slate-600 max-w-md mx-auto">
-                  Please select <strong>Exam → Week → Day</strong> using the step-by-step selector above to activate content upload sections.
-                </p>
-              </div>
-            )}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Assets</div>
+            <div className="text-xl font-black text-slate-900 mt-0.5">{totalCount}</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">Across all tracks</div>
+          </div>
 
-            <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 items-start ${!isHierarchySelected ? 'opacity-40 pointer-events-none select-none' : ''}`}>
+          <div 
+            onClick={() => { setActiveViewMode('list'); setFilterType(filterType === 'pdf' ? 'all' : 'pdf'); }}
+            className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 hover:border-blue-300 transition-all cursor-pointer"
+          >
+            <div className="text-[11px] font-bold text-blue-700 flex items-center justify-between">
+              <span>PDF Notes</span>
+              <FileText className="w-3.5 h-3.5 text-blue-600" />
+            </div>
+            <div className="text-xl font-black text-blue-900 mt-0.5">{pdfCount}</div>
+            <div className="text-[10px] text-blue-600 mt-0.5">Clinical handouts</div>
+          </div>
+
+          <div 
+            onClick={() => { setActiveViewMode('list'); setFilterType(filterType === 'video' ? 'all' : 'video'); }}
+            className="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-100 hover:border-purple-300 transition-all cursor-pointer"
+          >
+            <div className="text-[11px] font-bold text-purple-700 flex items-center justify-between">
+              <span>Video Lectures</span>
+              <Video className="w-3.5 h-3.5 text-purple-600" />
+            </div>
+            <div className="text-xl font-black text-purple-900 mt-0.5">{videoCount}</div>
+            <div className="text-[10px] text-purple-600 mt-0.5">Masterclass streams</div>
+          </div>
+
+          <div 
+            onClick={() => { setActiveViewMode('list'); setFilterType(filterType === 'image' ? 'all' : 'image'); }}
+            className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 hover:border-emerald-300 transition-all cursor-pointer"
+          >
+            <div className="text-[11px] font-bold text-emerald-700 flex items-center justify-between">
+              <span>Diagrams</span>
+              <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+            </div>
+            <div className="text-xl font-black text-emerald-900 mt-0.5">{imageCount}</div>
+            <div className="text-[10px] text-emerald-600 mt-0.5">ECG & Pathology</div>
+          </div>
+
+          <div 
+            onClick={() => { setActiveViewMode('list'); setFilterType(filterType === 'flashcards' ? 'all' : 'flashcards'); }}
+            className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 hover:border-amber-300 transition-all cursor-pointer"
+          >
+            <div className="text-[11px] font-bold text-amber-700 flex items-center justify-between">
+              <span>Flashcard Sets</span>
+              <Brain className="w-3.5 h-3.5 text-amber-600" />
+            </div>
+            <div className="text-xl font-black text-amber-900 mt-0.5">{flashcardCount}</div>
+            <div className="text-[10px] text-amber-600 mt-0.5">Active recall decks</div>
+          </div>
+
+          <div 
+            onClick={() => { setActiveViewMode('list'); setFilterType(filterType === 'live' ? 'all' : 'live'); }}
+            className="p-3.5 rounded-2xl bg-rose-50/60 border border-rose-100 hover:border-rose-300 transition-all cursor-pointer"
+          >
+            <div className="text-[11px] font-bold text-rose-700 flex items-center justify-between">
+              <span>Live Sessions</span>
+              <Radio className="w-3.5 h-3.5 text-rose-600" />
+            </div>
+            <div className="text-xl font-black text-rose-900 mt-0.5">{liveCount}</div>
+            <div className="text-[10px] text-rose-600 mt-0.5">Interactive rounds</div>
+          </div>
+        </div>
+
+        {/* ===================================================================== */}
+        {/* VIEW 1: MASTER CONTENT LIBRARY (DEFAULT)                              */}
+        {/* SBSE PEHLE LIST AANI CHAIYE JO CONTENT ADD KIYA GYA HAI               */}
+        {/* ===================================================================== */}
+        {activeViewMode === 'list' && (
+          <div className="space-y-4">
+            
+            {/* Filter & Search Bar */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               
-              {/* Left 2 Columns: 4 Independent Upload Panels */}
-              <div className="lg:col-span-2 space-y-6">
+              {/* Search Box */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search by asset title, instructor, module, or document name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-white font-medium text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filters */}
+              <div className="flex items-center gap-2 flex-wrap text-xs">
                 
-                {/* ------------------------------------------------------------- */}
-                {/* PANEL 1: PDF NOTES SECTION                                    */}
-                {/* ------------------------------------------------------------- */}
-                <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                        <FileText className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900">1. PDF Clinical Notes</h3>
-                        <p className="text-[11px] text-slate-400">High-yield annotated PDF summaries for mobile & web viewing</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                      {pdfCount} Published
-                    </span>
-                  </div>
+                {/* Course Filter */}
+                <select
+                  value={filterCourse}
+                  onChange={(e) => setFilterCourse(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-700 cursor-pointer focus:outline-none"
+                >
+                  <option value="all">All Courses / Exams</option>
+                  {availableExams.map(ex => (
+                    <option key={ex.id} value={ex.id}>{ex.flag} {ex.name}</option>
+                  ))}
+                </select>
 
-                  <form onSubmit={handleUploadPdf} className="space-y-3 text-xs">
-                    {/* Drag-and-drop dummy box */}
-                    <div 
-                      onClick={() => showToast('PDF file selected: Cardiology_High_Yield_Notes.pdf (4.8 MB)')}
-                      className="p-4 border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/20 rounded-2xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all text-center"
-                    >
-                      <UploadCloud className="w-6 h-6 text-slate-400" />
-                      <span className="font-bold text-slate-700">Click or drag & drop PDF notes file here</span>
-                      <span className="text-[10px] text-slate-400">Max file size: 50 MB • Formats: .pdf</span>
-                    </div>
+                {/* Content Type Filter Pills */}
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-700 cursor-pointer focus:outline-none"
+                >
+                  <option value="all">All Content Types</option>
+                  <option value="pdf">PDF Notes</option>
+                  <option value="video">Video Lectures</option>
+                  <option value="image">Clinical Diagrams</option>
+                  <option value="flashcards">Flashcards</option>
+                  <option value="live">Live Sessions</option>
+                </select>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <div className="sm:col-span-2 space-y-1">
-                        <label className="font-bold text-slate-700">Document Title *</label>
-                        <input 
-                          type="text"
-                          required
-                          placeholder="e.g. Arrhythmias & ECG Clinical Pearls"
-                          value={pdfTitle}
-                          onChange={(e) => setPdfTitle(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-700">Page Count</label>
-                        <input 
-                          type="number"
-                          value={pdfPages}
-                          onChange={(e) => setPdfPages(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
+                {(filterCourse !== 'all' || filterType !== 'all' || searchQuery) && (
+                  <button
+                    onClick={() => {
+                      setFilterCourse('all');
+                      setFilterType('all');
+                      setSearchQuery('');
+                    }}
+                    className="px-2.5 py-2 text-slate-500 hover:text-slate-800 font-bold flex items-center gap-1 hover:bg-slate-200/60 rounded-xl transition-colors"
+                    title="Reset Filters"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset</span>
+                  </button>
+                )}
+              </div>
+            </div>
 
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <UploadCloud className="w-3.5 h-3.5" />
-                      <span>Upload & Publish PDF</span>
-                    </button>
-                  </form>
-
-                  {/* List of already uploaded PDFs */}
-                  {dayData?.pdfList && dayData.pdfList.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-slate-100">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Published Notes for Day {selectedDay}:
-                      </span>
-                      {dayData.pdfList.map((pdf, idx) => (
-                        <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2.5">
-                            <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-                            <div>
-                              <div className="font-bold text-slate-900">{pdf.title}</div>
-                              <div className="text-[10px] text-slate-400 font-mono">
-                                {pdf.fileName} • {pdf.pages} Pages • {pdf.size}
+            {/* List Table / Content Cards */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-black uppercase tracking-wider text-slate-500">
+                      <th className="py-3 px-4">Content Asset</th>
+                      <th className="py-3 px-4">Curriculum Hierarchy</th>
+                      <th className="py-3 px-4">Content Type</th>
+                      <th className="py-3 px-4">Details / Scope</th>
+                      <th className="py-3 px-4">Faculty / Author</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white font-medium text-slate-700">
+                    {filteredContentList.length > 0 ? (
+                      filteredContentList.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                          
+                          {/* 1. Content Asset Title */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                item.type === 'pdf' ? 'bg-blue-100 text-blue-700' :
+                                item.type === 'video' ? 'bg-purple-100 text-purple-700' :
+                                item.type === 'image' ? 'bg-emerald-100 text-emerald-700' :
+                                item.type === 'flashcards' ? 'bg-amber-100 text-amber-700' :
+                                'bg-rose-100 text-rose-700'
+                              }`}>
+                                {item.type === 'pdf' && <FileText className="w-4 h-4" />}
+                                {item.type === 'video' && <Video className="w-4 h-4" />}
+                                {item.type === 'image' && <ImageIcon className="w-4 h-4" />}
+                                {item.type === 'flashcards' && <Brain className="w-4 h-4" />}
+                                {item.type === 'live' && <Radio className="w-4 h-4" />}
+                              </div>
+                              <div className="min-w-0 max-w-xs sm:max-w-sm">
+                                <span className="font-bold text-slate-900 block truncate text-xs sm:text-sm">
+                                  {item.title}
+                                </span>
+                                <span className="text-[11px] text-slate-400 block truncate mt-0.5">
+                                  {item.subtitle}
+                                </span>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => setPreviewPdfModal(pdf)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                              title="Preview Document"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeletePdf(pdf.id)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                              title="Remove PDF"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                          </td>
 
-                {/* ------------------------------------------------------------- */}
-                {/* PANEL 2: IMAGES SECTION                                       */}
-                {/* ------------------------------------------------------------- */}
-                <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                        <ImageIcon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900">2. Clinical Diagrams & ECG Strips</h3>
-                        <p className="text-[11px] text-slate-400">High-resolution anatomical schematics, ECGs, and histology slides</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      {imagesCount} Diagrams
-                    </span>
-                  </div>
+                          {/* 2. Hierarchy Path */}
+                          <td className="py-3 px-4">
+                            <div className="space-y-1">
+                              <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px] inline-block">
+                                {item.examName}
+                              </span>
+                              <div className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
+                                <span>{item.weekTitle.split('—')[0]}</span>
+                                <span>➔</span>
+                                <span className="font-bold text-indigo-700">{item.dayTitle.split('—')[0]}</span>
+                              </div>
+                            </div>
+                          </td>
 
-                  <form onSubmit={handleUploadImage} className="space-y-3 text-xs">
-                    <div 
-                      onClick={() => showToast('Image file selected: ecg_rhythm_strip_03.png (1920x1080)')}
-                      className="p-3 border-2 border-dashed border-slate-200 hover:border-emerald-400 bg-slate-50 hover:bg-emerald-50/20 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all"
-                    >
-                      <ImageIcon className="w-5 h-5 text-slate-400" />
-                      <span className="font-bold text-slate-700">Click to upload ECG or Clinical Illustration</span>
-                    </div>
+                          {/* 3. Type Badge */}
+                          <td className="py-3 px-4">
+                            {renderTypeBadge(item.type)}
+                          </td>
 
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700">Caption & Diagnostic Pearl</label>
-                      <input 
-                        type="text"
-                        placeholder="e.g. Fig 1: Ventricular Tachycardia with AV dissociation and capture beats"
-                        value={imageCaption}
-                        onChange={(e) => setImageCaption(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                          {/* 4. Details / Scope */}
+                          <td className="py-3 px-4">
+                            <span className="font-mono text-slate-600 font-bold bg-slate-50 px-2 py-1 rounded-md border border-slate-100 text-[11px]">
+                              {item.details}
+                            </span>
+                          </td>
 
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Upload Image Asset</span>
-                    </button>
-                  </form>
+                          {/* 5. Author / Faculty */}
+                          <td className="py-3 px-4 text-slate-600">
+                            <span className="truncate block font-semibold">{item.author}</span>
+                          </td>
 
-                  {/* Thumbnails grid with Preview & Delete */}
-                  {dayData?.images && dayData.images.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-100">
-                      {dayData.images.map((img) => (
-                        <div key={img.id} className="group relative rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
-                          <img 
-                            src={img.url} 
-                            alt={img.title} 
-                            className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
-                            onClick={() => setPreviewImage(img)}
-                          />
-                          <div className="p-2 text-[10px] space-y-0.5">
-                            <div className="font-bold text-slate-800 line-clamp-1">{img.title}</div>
-                            <div className="text-slate-400 line-clamp-1">{img.caption}</div>
-                          </div>
+                          {/* 6. Actions */}
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Preview Button */}
+                              <button
+                                onClick={() => {
+                                  if (item.type === 'pdf') setPreviewPdfModal(item.raw);
+                                  else if (item.type === 'image') setPreviewImage(item.raw);
+                                  else if (item.type === 'video') setPreviewVideoModal(item.raw);
+                                  else if (item.type === 'flashcards') setPreviewFlashcardsModal({ title: item.title, cards: item.raw });
+                                  else if (item.type === 'live') setPreviewLiveModal(item.raw);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg text-indigo-700 hover:bg-indigo-50 font-bold border border-indigo-200 transition-colors text-xs inline-flex items-center gap-1 cursor-pointer"
+                                title="Preview Content Asset"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Preview</span>
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => handleDeleteContentItem(item)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Delete Asset"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-400">
+                          <UploadCloud className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                          <p className="font-bold text-slate-700 text-sm">No curriculum content found matching filters.</p>
+                          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                            Try resetting your search query or click below to upload new verified curriculum content.
+                          </p>
                           <button
-                            onClick={() => handleDeleteImage(img.id)}
-                            className="absolute top-1.5 right-1.5 p-1 rounded-md bg-white/90 text-rose-600 hover:bg-rose-50 shadow-xs cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Delete image"
+                            onClick={() => handleOpenAddModal('pdf')}
+                            className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Plus className="w-4 h-4" />
+                            <span>Upload First Content Asset</span>
                           </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* List Footer Count */}
+            <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+              <span>Showing <strong>{filteredContentList.length}</strong> of {totalCount} total published curriculum assets</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleOpenAddModal('pdf')}
+                  className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add More Content</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ===================================================================== */}
+        {/* VIEW 2: STEP-BY-STEP DAY CONTENT INSPECTOR (ALTERNATIVE VIEW)         */}
+        {/* ===================================================================== */}
+        {activeViewMode === 'editor' && (
+          <div className="space-y-6">
+            
+            {/* Hierarchy Selector Strip */}
+            <div className="p-5 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-indigo-600" />
+                  <span>Inspect Day by Day</span>
+                </span>
+                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                  Select Exam ➔ Week ➔ Day
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                
+                {/* 1. Exam */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 text-xs">1. Exam Track</label>
+                  <select
+                    value={selectedExam}
+                    onChange={(e) => setSelectedExam(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900 bg-white text-xs cursor-pointer"
+                  >
+                    {availableExams.map((exam) => (
+                      <option key={exam.id} value={exam.id}>{exam.flag} {exam.name}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* ------------------------------------------------------------- */}
-                {/* PANEL 3: VIDEO MASTERCLASS SECTION                            */}
-                {/* ------------------------------------------------------------- */}
-                <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                        <Film className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900">3. Video Lecture Masterclass</h3>
-                        <p className="text-[11px] text-slate-400">Streamed video lesson with dynamic chapter bookmarks</p>
-                      </div>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      hasVideo ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-slate-100 text-slate-500 border-slate-200'
-                    }`}>
-                      {hasVideo ? '1 Active Stream' : 'No Video'}
-                    </span>
-                  </div>
-
-                  <form onSubmit={handleSaveVideo} className="space-y-3 text-xs">
-                    {/* Toggle between Link and File */}
-                    <div className="flex items-center gap-2 pb-1">
-                      <button
-                        type="button"
-                        onClick={() => setVideoMode('link')}
-                        className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                          videoMode === 'link' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        Paste Video Link (YouTube / Vimeo / CDN)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setVideoMode('file')}
-                        className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                          videoMode === 'file' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        Upload Video File (.mp4)
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <div className="sm:col-span-2 space-y-1">
-                        <label className="font-bold text-slate-700">Lesson Title *</label>
-                        <input 
-                          type="text"
-                          required
-                          placeholder="e.g. Dynamic Auscultation & Clinical Murmurs"
-                          value={videoTitle}
-                          onChange={(e) => setVideoTitle(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-700">Duration</label>
-                        <input 
-                          type="text"
-                          value={videoDuration}
-                          onChange={(e) => setVideoDuration(e.target.value)}
-                          placeholder="e.g. 35 mins"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700">
-                        {videoMode === 'link' ? 'Video Stream URL / Embed Link' : 'Select Local Video File (.mp4 / .webm)'}
-                      </label>
-                      <div className="relative">
-                        <LinkIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input 
-                          type="text"
-                          value={videoUrl}
-                          onChange={(e) => setVideoUrl(e.target.value)}
-                          className="w-full pl-8 pr-4 py-2 rounded-xl border border-slate-200 font-mono text-slate-800 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Video className="w-3.5 h-3.5" />
-                      <span>Publish Video Lesson</span>
-                    </button>
-                  </form>
-
-                  {/* Currently live video banner */}
-                  {dayData?.video && (
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs pt-2">
-                      <div className="flex items-center gap-2.5">
-                        <Video className="w-4 h-4 text-purple-600 shrink-0" />
-                        <div>
-                          <div className="font-bold text-slate-900">{dayData.video.title}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            Duration: {dayData.video.duration} • Instructor: {dayData.video.instructor}
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleDeleteVideo}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="Remove Video"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
+                {/* 2. Week */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 text-xs">2. Week</label>
+                  <select
+                    value={selectedWeek}
+                    onChange={(e) => setSelectedWeek(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900 bg-white text-xs cursor-pointer"
+                  >
+                    {curriculum.weeks.map((w) => (
+                      <option key={w.id} value={w.id}>{w.title}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* ------------------------------------------------------------- */}
-                {/* PANEL 4: FLASHCARDS DECK SECTION                              */}
-                {/* ------------------------------------------------------------- */}
-                <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                        <Brain className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900">4. Active Recall Flashcards</h3>
-                        <p className="text-[11px] text-slate-400">Anki-style Q&A flashcards for high-yield diagnostic retention</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                      {flashcardCount} Active Cards
-                    </span>
-                  </div>
-
-                  <div className="space-y-3 text-xs">
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700">Question / Clinical Clue *</label>
-                      <textarea 
-                        rows={2}
-                        placeholder="e.g. Which maneuver uniquely INCREASES the murmur of HCM and MVP?"
-                        value={cardQuestion}
-                        onChange={(e) => setCardQuestion(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700">Answer / Diagnostic Rationale *</label>
-                      <textarea 
-                        rows={2}
-                        placeholder="e.g. Valsalva maneuver (strain) and sudden standing from squatting position."
-                        value={cardAnswer}
-                        onChange={(e) => setCardAnswer(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={handleQueueCard}
-                        className="px-3.5 py-2 border border-slate-300 hover:bg-slate-100 font-bold rounded-xl text-slate-700 cursor-pointer flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>+ Add Another Flashcard</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleSaveFlashcardSet}
-                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1"
-                      >
-                        <Brain className="w-3.5 h-3.5" />
-                        <span>Save Flashcard Set</span>
-                      </button>
-
-                      {queuedCards.length > 0 && (
-                        <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-lg">
-                          {queuedCards.length} in queue ready to save
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Existing Flashcards Table Format */}
-                  {dayData?.flashcards && dayData.flashcards.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-slate-100">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                          Published Flashcard Set ({dayData.flashcards.length} cards total):
-                        </span>
-                      </div>
-                      
-                      <div className="border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold sticky top-0 border-b border-slate-200">
-                            <tr>
-                              <th className="py-2 px-3 w-1/2">Question</th>
-                              <th className="py-2 px-3 w-1/2">Answer</th>
-                              <th className="py-2 px-3 text-right">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {dayData.flashcards.map((card, idx) => (
-                              <tr key={card.id || idx} className="hover:bg-slate-50/70">
-                                <td className="py-2.5 px-3 font-bold text-slate-800 align-top">
-                                  {card.question}
-                                </td>
-                                <td className="py-2.5 px-3 text-slate-600 align-top">
-                                  {card.answer}
-                                </td>
-                                <td className="py-2.5 px-3 text-right align-top">
-                                  <button
-                                    onClick={() => handleDeleteFlashcard(card.id)}
-                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
-                                    title="Delete card"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
+                {/* 3. Day */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 text-xs">3. Day</label>
+                  <select
+                    value={selectedDay}
+                    onChange={(e) => setSelectedDay(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900 bg-white text-xs cursor-pointer"
+                  >
+                    {currentWeekObj?.days?.map((d) => (
+                      <option key={d.id} value={d.id}>{d.title}</option>
+                    ))}
+                  </select>
                 </div>
 
               </div>
 
-              {/* ------------------------------------------------------------- */}
-              {/* RIGHT COLUMN: DAY CONTENT SUMMARY PANEL (PART C)             */}
-              {/* ------------------------------------------------------------- */}
-              <div className="space-y-4 sticky top-20">
-                
-                <div className="p-6 rounded-3xl bg-slate-900 text-white shadow-lg space-y-4">
-                  
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-400">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Day Live Status Panel (Part C)</span>
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-medium">
+                  Inspecting: <strong>{curriculum?.name}</strong> ➔ <strong>{currentWeekObj?.title}</strong> ➔ <strong className="text-indigo-700">{dayData?.title || `Day ${selectedDay}`}</strong>
+                </span>
+                <button
+                  onClick={() => {
+                    setAddCourse(selectedExam);
+                    setAddWeek(selectedWeek);
+                    setAddDay(selectedDay);
+                    handleOpenAddModal('pdf');
+                  }}
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add to this Day</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Day Assets Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* PDF Card */}
+              <div className="p-5 rounded-2xl border border-slate-200 bg-white space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                      <FileText className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-2 py-0.5 rounded-full border border-indigo-500/30">
-                      Day {selectedDay || '—'}
-                    </span>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs">PDF Notes ({dayData?.pdfList?.length || (dayData?.pdf ? 1 : 0)})</h4>
+                      <p className="text-[10px] text-slate-400">High-yield clinical summaries</p>
+                    </div>
                   </div>
-
-                  <div>
-                    <h4 className="text-base font-black text-white">
-                      {dayData?.title || `Day ${selectedDay} Overview`}
-                    </h4>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Curriculum Track: {curriculum?.name}
-                    </p>
-                  </div>
-
-                  {/* Real-time Status List */}
-                  <div className="space-y-2.5 text-xs pt-1">
-                    
-                    {/* PDF */}
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 border border-slate-800">
-                      <span className="flex items-center gap-2">
-                        <FileText className={`w-3.5 h-3.5 ${hasPdf ? 'text-blue-400' : 'text-slate-500'}`} />
-                        <span className={hasPdf ? 'text-slate-200' : 'text-slate-500'}>PDF Notes</span>
-                      </span>
-                      <span className={`font-bold text-[11px] ${hasPdf ? 'text-emerald-400' : 'text-slate-500'}`}>
-                        {hasPdf ? `✅ Active (${pdfCount} file)` : '❌ None'}
-                      </span>
-                    </div>
-
-                    {/* Images */}
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 border border-slate-800">
-                      <span className="flex items-center gap-2">
-                        <ImageIcon className={`w-3.5 h-3.5 ${imagesCount > 0 ? 'text-emerald-400' : 'text-slate-500'}`} />
-                        <span className={imagesCount > 0 ? 'text-slate-200' : 'text-slate-500'}>Images</span>
-                      </span>
-                      <span className={`font-bold text-[11px] ${imagesCount > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-                        {imagesCount > 0 ? `✅ Active (${imagesCount} images)` : '❌ None'}
-                      </span>
-                    </div>
-
-                    {/* Video */}
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 border border-slate-800">
-                      <span className="flex items-center gap-2">
-                        <Video className={`w-3.5 h-3.5 ${hasVideo ? 'text-purple-400' : 'text-slate-500'}`} />
-                        <span className={hasVideo ? 'text-slate-200' : 'text-slate-500'}>Video</span>
-                      </span>
-                      <span className={`font-bold text-[11px] ${hasVideo ? 'text-emerald-400' : 'text-slate-500'}`}>
-                        {hasVideo ? `✅ Active (1 video, ${dayData.video?.duration})` : '❌ None'}
-                      </span>
-                    </div>
-
-                    {/* Flashcards */}
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 border border-slate-800">
-                      <span className="flex items-center gap-2">
-                        <Brain className={`w-3.5 h-3.5 ${flashcardCount > 0 ? 'text-amber-400' : 'text-slate-500'}`} />
-                        <span className={flashcardCount > 0 ? 'text-slate-200' : 'text-slate-500'}>Flashcards</span>
-                      </span>
-                      <span className={`font-bold text-[11px] ${flashcardCount > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-                        {flashcardCount > 0 ? `✅ Active (${flashcardCount} cards)` : '❌ None'}
-                      </span>
-                    </div>
-
-                    {/* Live Session */}
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 border border-slate-800">
-                      <span className="flex items-center gap-2">
-                        <Radio className={`w-3.5 h-3.5 ${hasLive ? 'text-rose-400' : 'text-slate-500'}`} />
-                        <span className={hasLive ? 'text-slate-200' : 'text-slate-500'}>Live Session</span>
-                      </span>
-                      <span className={`font-bold text-[11px] ${hasLive ? 'text-emerald-400' : 'text-slate-500'}`}>
-                        {hasLive ? '✅ Scheduled' : '❌ Not Scheduled'}
-                      </span>
-                    </div>
-
-                  </div>
-
-                  {/* Direct Preview Button (Phase 4 Bridge) */}
-                  <Link
-                    to={`/day-content/${selectedDay}?exam=${selectedExam}`}
-                    target="_blank"
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm block text-center"
+                  <button
+                    onClick={() => {
+                      setAddCourse(selectedExam);
+                      setAddWeek(selectedWeek);
+                      setAddDay(selectedDay);
+                      handleOpenAddModal('pdf');
+                    }}
+                    className="text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer"
                   >
-                    <span>Preview in Student LMS (Phase 4)</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </Link>
-
+                    + Upload
+                  </button>
                 </div>
 
-                {/* Quick Presentation Helper */}
-                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900 space-y-1">
-                  <span className="font-bold flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-600" />
-                    Presentation Cue:
-                  </span>
-                  <p className="text-amber-800 leading-relaxed">
-                    "Notice how whatever is uploaded here immediately updates in the Day Live Status Panel. When a student opens Day {selectedDay}, these are the exact materials unlocked."
-                  </p>
+                {dayData?.pdfList && dayData.pdfList.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {dayData.pdfList.map((pdf, idx) => (
+                      <div key={idx} className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-800 truncate pr-2">{pdf.title}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={() => setPreviewPdfModal(pdf)} className="text-indigo-600 hover:text-indigo-800 font-bold text-[11px]">View</button>
+                          <button onClick={() => { contentService.deletePdf(selectedDay, pdf.id); refreshContentList(); }} className="text-slate-400 hover:text-rose-600 ml-1">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">No PDF notes attached for this day.</p>
+                )}
+              </div>
+
+              {/* Video Card */}
+              <div className="p-5 rounded-2xl border border-slate-200 bg-white space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+                      <Video className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs">Video Masterclass ({dayData?.video ? '1' : '0'})</h4>
+                      <p className="text-[10px] text-slate-400">Recorded clinical lecture</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setAddCourse(selectedExam);
+                      setAddWeek(selectedWeek);
+                      setAddDay(selectedDay);
+                      handleOpenAddModal('video');
+                    }}
+                    className="text-purple-600 hover:text-purple-800 font-bold text-xs cursor-pointer"
+                  >
+                    + Attach
+                  </button>
                 </div>
 
+                {dayData?.video ? (
+                  <div className="p-3 bg-purple-50/40 rounded-xl border border-purple-100 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-slate-900 block">{dayData.video.title}</span>
+                      <span className="text-[11px] text-slate-500">{dayData.video.duration} • {dayData.video.instructor}</span>
+                    </div>
+                    <button onClick={() => setPreviewVideoModal(dayData.video)} className="text-purple-700 hover:text-purple-900 font-bold text-[11px] shrink-0">
+                      Watch
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">No video lecture attached for this day.</p>
+                )}
+              </div>
+
+              {/* Diagrams Card */}
+              <div className="p-5 rounded-2xl border border-slate-200 bg-white space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                      <ImageIcon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs">Clinical Diagrams ({dayData?.images?.length || 0})</h4>
+                      <p className="text-[10px] text-slate-400">ECG strips & histology</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setAddCourse(selectedExam);
+                      setAddWeek(selectedWeek);
+                      setAddDay(selectedDay);
+                      handleOpenAddModal('image');
+                    }}
+                    className="text-emerald-600 hover:text-emerald-800 font-bold text-xs cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                </div>
+
+                {dayData?.images && dayData.images.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {dayData.images.map((img, idx) => (
+                      <div key={idx} onClick={() => setPreviewImage(img)} className="p-2 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:border-emerald-300">
+                        <img src={img.url} alt={img.title} className="h-16 w-full object-cover rounded-lg" />
+                        <span className="text-[11px] font-bold text-slate-800 block truncate mt-1">{img.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">No clinical diagrams uploaded for this day.</p>
+                )}
+              </div>
+
+              {/* Flashcards Card */}
+              <div className="p-5 rounded-2xl border border-slate-200 bg-white space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                      <Brain className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs">Smart Flashcards ({dayData?.flashcards?.length || 0})</h4>
+                      <p className="text-[10px] text-slate-400">Active recall question cards</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setAddCourse(selectedExam);
+                      setAddWeek(selectedWeek);
+                      setAddDay(selectedDay);
+                      handleOpenAddModal('flashcards');
+                    }}
+                    className="text-amber-600 hover:text-amber-800 font-bold text-xs cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                </div>
+
+                {dayData?.flashcards && dayData.flashcards.length > 0 ? (
+                  <div className="p-3 bg-amber-50/40 rounded-xl border border-amber-100 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-slate-900 block">{dayData.flashcards.length} Cards in Deck</span>
+                      <span className="text-[11px] text-slate-500">Spaced repetition enabled</span>
+                    </div>
+                    <button 
+                      onClick={() => setPreviewFlashcardsModal({ title: dayData.title, cards: dayData.flashcards })}
+                      className="text-amber-700 hover:text-amber-900 font-bold text-[11px] shrink-0"
+                    >
+                      Practice
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">No flashcards created for this day.</p>
+                )}
               </div>
 
             </div>
@@ -993,79 +1075,70 @@ export default function ContentManagementTab() {
         )}
 
         {/* ===================================================================== */}
-        {/* VIEW 2: BULK OVERVIEW MATRIX (PART D)                                 */}
+        {/* VIEW 3: CURRICULUM OVERVIEW MATRIX                                    */}
         {/* ===================================================================== */}
         {activeViewMode === 'matrix' && (
           <div className="space-y-4">
-            
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  Course Completeness Matrix — {currentWeekObj?.title}
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Bird's-eye view of published learning materials across all days in this week.
-                </p>
+                <h3 className="text-sm font-bold text-slate-900">Curriculum Completeness Matrix</h3>
+                <p className="text-xs text-slate-500">View upload status and verified content assets across each day.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedExam}
+                  onChange={(e) => setSelectedExam(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-xs cursor-pointer"
+                >
+                  {availableExams.map((e) => (
+                    <option key={e.id} value={e.id}>{e.flag} {e.name}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-xs cursor-pointer"
+                >
+                  {curriculum.weeks.map((w) => (
+                    <option key={w.id} value={w.id}>{w.title}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] font-bold">
-                    <th className="py-3 px-4">Day</th>
-                    <th className="py-3 px-4">Topic</th>
-                    <th className="py-3 px-4 text-center">PDF</th>
-                    <th className="py-3 px-4 text-center">Images</th>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-black uppercase text-slate-500">
+                    <th className="py-3 px-4">Day Topic</th>
+                    <th className="py-3 px-4 text-center">PDF Notes</th>
                     <th className="py-3 px-4 text-center">Video</th>
+                    <th className="py-3 px-4 text-center">Diagrams</th>
                     <th className="py-3 px-4 text-center">Flashcards</th>
-                    <th className="py-3 px-4 text-center">Live</th>
-                    <th className="py-3 px-4 text-right">Action</th>
+                    <th className="py-3 px-4 text-center">Live Session</th>
+                    <th className="py-3 px-4 text-right">Quick Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {matrixDays.map((row) => (
-                    <tr key={row.dayId} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        Day {row.dayId}
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-800">
-                        {row.title}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`text-xs font-bold ${row.hasPdf ? 'text-emerald-600' : 'text-slate-300'}`}>
-                          {row.hasPdf ? '✅' : '❌'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`text-xs font-bold ${row.hasImages ? 'text-emerald-600' : 'text-slate-300'}`}>
-                          {row.hasImages ? '✅' : '❌'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`text-xs font-bold ${row.hasVideo ? 'text-emerald-600' : 'text-slate-300'}`}>
-                          {row.hasVideo ? '✅' : '❌'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`text-xs font-bold ${row.hasFlashcards ? 'text-emerald-600' : 'text-slate-300'}`}>
-                          {row.hasFlashcards ? '✅' : '❌'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`text-xs font-bold ${row.hasLive ? 'text-emerald-600' : 'text-slate-300'}`}>
-                          {row.hasLive ? '✅' : '❌'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
+                  {matrixDays.map((m) => (
+                    <tr key={m.dayId} className="hover:bg-slate-50/60">
+                      <td className="py-3 px-4 font-bold text-slate-900">{m.title}</td>
+                      <td className="py-3 px-4 text-center">{m.hasPdf ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <span className="text-slate-300">—</span>}</td>
+                      <td className="py-3 px-4 text-center">{m.hasVideo ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <span className="text-slate-300">—</span>}</td>
+                      <td className="py-3 px-4 text-center">{m.hasImages ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <span className="text-slate-300">—</span>}</td>
+                      <td className="py-3 px-4 text-center">{m.hasFlashcards ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <span className="text-slate-300">—</span>}</td>
+                      <td className="py-3 px-4 text-center">{m.hasLive ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <span className="text-slate-300">—</span>}</td>
+                      <td className="py-3 px-4 text-right">
                         <button
                           onClick={() => {
-                            setSelectedDay(row.dayId);
-                            setActiveViewMode('editor');
+                            setAddCourse(selectedExam);
+                            setAddWeek(selectedWeek);
+                            setAddDay(m.dayId);
+                            handleOpenAddModal('pdf');
                           }}
-                          className="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg transition-colors cursor-pointer text-xs"
+                          className="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-bold rounded-lg hover:bg-indigo-100 text-xs"
                         >
-                          Edit Day {row.dayId}
+                          + Upload
                         </button>
                       </td>
                     </tr>
@@ -1073,105 +1146,802 @@ export default function ContentManagementTab() {
                 </tbody>
               </table>
             </div>
-
           </div>
         )}
 
       </div>
 
-      {/* MODAL 1: Lightbox Preview for Image Assets */}
-      {previewImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-xl w-full border border-slate-200 shadow-xl space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h4 className="font-bold text-slate-900 text-sm">{previewImage.title}</h4>
+      {/* ===================================================================== */}
+      {/* FRESH ADD CONTENT FORM MODAL (REQUESTED SPECIFICATION)               */}
+      {/* 1. SELECT COURSE -> 2. SELECT WEEK -> 3. SELECT DAY ->               */}
+      {/* 4. SELECT CONTENT TYPE -> 5. TAILORED FORM -> 6. REDIRECT TO LIST    */}
+      {/* ===================================================================== */}
+      {isAddContentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-2xl border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-5 my-8 max-h-[92vh] overflow-y-auto">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold mb-1">
+                  <Sparkles className="w-3 h-3 text-indigo-600" />
+                  <span>Fresh Curriculum Upload Form</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900">
+                  Add & Publish Curriculum Content
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Select <strong>Course ➔ Week ➔ Day</strong>, choose content type, fill details, and save to publish.
+                </p>
+              </div>
+
               <button
-                onClick={() => setPreviewImage(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
+                type="button"
+                onClick={() => setIsAddContentModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <img 
-              src={previewImage.url} 
-              alt={previewImage.title} 
-              className="w-full rounded-2xl border border-slate-200 max-h-96 object-contain bg-slate-900" 
-            />
-            <p className="text-xs text-slate-600 font-medium">
-              {previewImage.caption}
-            </p>
+
+            {/* ================================================================= */}
+            {/* STEP 1-3 HIERARCHY SELECTORS: COURSE -> WEEK -> DAY               */}
+            {/* ================================================================= */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-600">
+                <span className="flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>1. Hierarchy Selection</span>
+                </span>
+                <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Required</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                
+                {/* 1. Select Course */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block">Step 1: Course / Exam *</label>
+                  <select
+                    value={addCourse}
+                    onChange={(e) => setAddCourse(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    {availableExams.map((exam) => (
+                      <option key={exam.id} value={exam.id}>{exam.flag} {exam.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Select Week */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 block">Step 2: Week *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddWeekModalOpen(true)}
+                      className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold"
+                    >
+                      + New
+                    </button>
+                  </div>
+                  <select
+                    value={addWeek}
+                    onChange={(e) => setAddWeek(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    {addCurriculum.weeks.map((w) => (
+                      <option key={w.id} value={w.id}>{w.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Select Day */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 block">Step 3: Day *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddDayModalOpen(true)}
+                      className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold"
+                    >
+                      + New
+                    </button>
+                  </div>
+                  <select
+                    value={addDay}
+                    onChange={(e) => setAddDay(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    {currentAddWeekObj?.days?.map((d) => (
+                      <option key={d.id} value={d.id}>{d.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+              </div>
+
+              {/* Active Hierarchy Path Badge */}
+              <div className="pt-2 border-t border-slate-200/60 flex items-center gap-1.5 text-[11px] text-slate-600">
+                <span className="font-bold text-slate-400">Target:</span>
+                <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  {addCurriculum.name}
+                </span>
+                <span>➔</span>
+                <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  {currentAddWeekObj?.title?.split('—')[0] || `Week ${addWeek}`}
+                </span>
+                <span>➔</span>
+                <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                  {currentAddWeekObj?.days?.find(d => d.id === String(addDay))?.title || `Day ${addDay}`}
+                </span>
+              </div>
+            </div>
+
+            {/* ================================================================= */}
+            {/* STEP 4: SELECT CONTENT TYPE                                       */}
+            {/* ================================================================= */}
+            <div className="space-y-2.5">
+              <label className="text-xs font-black uppercase tracking-wider text-slate-700 block">
+                Step 4: Select Content Type to Upload *
+              </label>
+
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                
+                {/* 1. PDF Notes */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedContentType('pdf')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedContentType === 'pdf'
+                      ? 'border-blue-500 bg-blue-50/70 shadow-xs ring-1 ring-blue-500'
+                      : 'border-slate-200 bg-white hover:border-blue-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <FileText className={`w-4 h-4 ${selectedContentType === 'pdf' ? 'text-blue-600' : 'text-slate-400'}`} />
+                    {selectedContentType === 'pdf' && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                  </div>
+                  <span className="font-bold text-slate-900 text-xs block">PDF Notes</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Clinical handout</span>
+                </button>
+
+                {/* 2. Video Lecture */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedContentType('video')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedContentType === 'video'
+                      ? 'border-purple-500 bg-purple-50/70 shadow-xs ring-1 ring-purple-500'
+                      : 'border-slate-200 bg-white hover:border-purple-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <Video className={`w-4 h-4 ${selectedContentType === 'video' ? 'text-purple-600' : 'text-slate-400'}`} />
+                    {selectedContentType === 'video' && <Check className="w-3.5 h-3.5 text-purple-600" />}
+                  </div>
+                  <span className="font-bold text-slate-900 text-xs block">Video Lecture</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Masterclass stream</span>
+                </button>
+
+                {/* 3. Clinical Diagram */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedContentType('image')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedContentType === 'image'
+                      ? 'border-emerald-500 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
+                      : 'border-slate-200 bg-white hover:border-emerald-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <ImageIcon className={`w-4 h-4 ${selectedContentType === 'image' ? 'text-emerald-600' : 'text-slate-400'}`} />
+                    {selectedContentType === 'image' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                  </div>
+                  <span className="font-bold text-slate-900 text-xs block">Diagram / ECG</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Clinical image</span>
+                </button>
+
+                {/* 4. Flashcards Deck */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedContentType('flashcards')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedContentType === 'flashcards'
+                      ? 'border-amber-500 bg-amber-50/70 shadow-xs ring-1 ring-amber-500'
+                      : 'border-slate-200 bg-white hover:border-amber-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <Brain className={`w-4 h-4 ${selectedContentType === 'flashcards' ? 'text-amber-600' : 'text-slate-400'}`} />
+                    {selectedContentType === 'flashcards' && <Check className="w-3.5 h-3.5 text-amber-600" />}
+                  </div>
+                  <span className="font-bold text-slate-900 text-xs block">Flashcards</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Active recall</span>
+                </button>
+
+                {/* 5. Live Session */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedContentType('live')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedContentType === 'live'
+                      ? 'border-rose-500 bg-rose-50/70 shadow-xs ring-1 ring-rose-500'
+                      : 'border-slate-200 bg-white hover:border-rose-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <Radio className={`w-4 h-4 ${selectedContentType === 'live' ? 'text-rose-600' : 'text-slate-400'}`} />
+                    {selectedContentType === 'live' && <Check className="w-3.5 h-3.5 text-rose-600" />}
+                  </div>
+                  <span className="font-bold text-slate-900 text-xs block">Live Session</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Interactive round</span>
+                </button>
+
+              </div>
+            </div>
+
+            {/* ================================================================= */}
+            {/* STEP 5: DYNAMIC TAILORED FORM (ONLY RENDERS SELECTED TYPE)        */}
+            {/* ================================================================= */}
+            <div className="pt-2 border-t border-slate-100">
+              <form onSubmit={handleSaveContentSubmit} className="space-y-4 text-xs">
+                
+                {/* 1. PDF Form */}
+                {selectedContentType === 'pdf' && (
+                  <div className="space-y-3 animate-in fade-in">
+                    <div className="flex items-center gap-2 text-xs font-bold text-blue-900 bg-blue-50 p-2.5 rounded-xl border border-blue-200">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <span>PDF Document Upload</span>
+                    </div>
+
+                    <div 
+                      onClick={() => showToast('Selected document: Clinical_High_Yield_Notes.pdf')}
+                      className="p-5 border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50 rounded-2xl text-center space-y-1 cursor-pointer transition-colors"
+                    >
+                      <UploadCloud className="w-6 h-6 text-slate-400 mx-auto" />
+                      <span className="font-bold text-slate-700 block">Click or drag & drop PDF file here</span>
+                      <span className="text-[10px] text-slate-400">PDF documents up to 50 MB supported</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Document Title *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Arrhythmias & ECG Clinical Pearls Master Handbook"
+                        value={pdfTitle}
+                        onChange={(e) => setPdfTitle(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">File Name</label>
+                        <input
+                          type="text"
+                          value={pdfFileName}
+                          onChange={(e) => setPdfFileName(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Page Count</label>
+                        <input
+                          type="number"
+                          value={pdfPages}
+                          onChange={(e) => setPdfPages(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Faculty / Author</label>
+                        <input
+                          type="text"
+                          value={pdfAuthor}
+                          onChange={(e) => setPdfAuthor(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Video Form */}
+                {selectedContentType === 'video' && (
+                  <div className="space-y-3 animate-in fade-in">
+                    <div className="flex items-center gap-2 text-xs font-bold text-purple-900 bg-purple-50 p-2.5 rounded-xl border border-purple-200">
+                      <Video className="w-4 h-4 text-purple-600" />
+                      <span>Video Masterclass Details</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Video Lecture Title *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. ECG Interpretation & Hemodynamic Pathways"
+                        value={videoTitle}
+                        onChange={(e) => setVideoTitle(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Video Duration</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 45 mins"
+                          value={videoDuration}
+                          onChange={(e) => setVideoDuration(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Instructor / Specialist</label>
+                        <input
+                          type="text"
+                          value={videoInstructor}
+                          onChange={(e) => setVideoInstructor(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Video Embed URL / Stream Link *</label>
+                      <input
+                        type="url"
+                        required
+                        placeholder="https://www.youtube.com/embed/..."
+                        value={videoUrl}
+                        onChange={(e) => setVideoUrl(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-xs text-slate-900 bg-white focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Clinical Diagram Form */}
+                {selectedContentType === 'image' && (
+                  <div className="space-y-3 animate-in fade-in">
+                    <div className="flex items-center gap-2 text-xs font-bold text-emerald-900 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                      <ImageIcon className="w-4 h-4 text-emerald-600" />
+                      <span>Clinical Diagram / ECG Specimen</span>
+                    </div>
+
+                    <div 
+                      onClick={() => showToast('Selected image: high_res_ecg_specimen.png')}
+                      className="p-5 border-2 border-dashed border-slate-200 hover:border-emerald-400 bg-slate-50 rounded-2xl text-center space-y-1 cursor-pointer transition-colors"
+                    >
+                      <ImageIcon className="w-6 h-6 text-slate-400 mx-auto" />
+                      <span className="font-bold text-slate-700 block">Click or drag & drop high-res diagram / ECG strip</span>
+                      <span className="text-[10px] text-slate-400">PNG, JPG, SVG up to 20 MB</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Diagram / Image Title *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Diagnostic Rhythm Strip — Ventricular Tachycardia vs SVT"
+                        value={imageTitle}
+                        onChange={(e) => setImageTitle(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Image Source URL</label>
+                      <input
+                        type="text"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Clinical Caption & Diagnostic Pearl *</label>
+                      <textarea
+                        rows={3}
+                        required
+                        placeholder="Explain key findings: QRS width, AV dissociation, fusion beats, and immediate ACLS protocol..."
+                        value={imageCaption}
+                        onChange={(e) => setImageCaption(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Flashcards Form */}
+                {selectedContentType === 'flashcards' && (
+                  <div className="space-y-3 animate-in fade-in">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                      <Brain className="w-4 h-4 text-amber-600" />
+                      <span>Smart Active-Recall Flashcards</span>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Question / Clinical Vignette (Front) *</label>
+                        <textarea
+                          rows={2}
+                          placeholder="e.g. What is the classic triad of symptoms seen in severe calcific Aortic Stenosis?"
+                          value={cardQuestion}
+                          onChange={(e) => setCardQuestion(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Answer & Clinical Rationale (Back) *</label>
+                        <textarea
+                          rows={2}
+                          placeholder="e.g. Angina, Syncope, and Exertional Dyspnea (mnemonic: SAD). Once symptomatic, 2-year mortality exceeds 50% without valve replacement."
+                          value={cardAnswer}
+                          onChange={(e) => setCardAnswer(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleQueueCard}
+                          className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Queue This Card</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Queued cards list */}
+                    {queuedCards.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="font-bold text-slate-700 block">
+                          Queued to Publish ({queuedCards.length} Cards):
+                        </span>
+                        <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                          {queuedCards.map((qc, i) => (
+                            <div key={i} className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-[11px]">
+                              <div>
+                                <span className="font-bold text-slate-900 block">{qc.question}</span>
+                                <span className="text-slate-500 line-clamp-1">{qc.answer}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setQueuedCards(prev => prev.filter((_, idx) => idx !== i))}
+                                className="p-1 text-slate-400 hover:text-rose-600"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 5. Live Session Form */}
+                {selectedContentType === 'live' && (
+                  <div className="space-y-3 animate-in fade-in">
+                    <div className="flex items-center gap-2 text-xs font-bold text-rose-900 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+                      <Radio className="w-4 h-4 text-rose-600" />
+                      <span>Live Interactive Masterclass</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Live Session Topic *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Grand Round: Valvular Surgery Timing & TAVI Case Reviews"
+                        value={liveTitle}
+                        onChange={(e) => setLiveTitle(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none focus:border-rose-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Faculty Specialist</label>
+                        <input
+                          type="text"
+                          value={liveFaculty}
+                          onChange={(e) => setLiveFaculty(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Scheduled Time</label>
+                        <input
+                          type="text"
+                          value={liveTime}
+                          onChange={(e) => setLiveTime(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700">Duration</label>
+                        <input
+                          type="text"
+                          value={liveDuration}
+                          onChange={(e) => setLiveDuration(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Live Stream / Zoom Link *</label>
+                      <input
+                        type="url"
+                        required
+                        value={liveZoomUrl}
+                        onChange={(e) => setLiveZoomUrl(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-xs text-slate-900 bg-white focus:outline-none focus:border-rose-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Form Footer Action Buttons */}
+                <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddContentModalOpen(false)}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Save & Publish to Curriculum</span>
+                  </button>
+                </div>
+
+              </form>
+            </div>
+
           </div>
         </div>
       )}
 
-      {/* MODAL 2: Simulated PDF Reader Preview */}
+      {/* ===================================================================== */}
+      {/* PREVIEW MODALS                                                        */}
+      {/* ===================================================================== */}
+      {/* 1. PDF Preview Modal */}
       {previewPdfModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full border border-slate-200 shadow-xl space-y-4">
+          <div className="bg-white rounded-3xl w-full max-w-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-600" />
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm">{previewPdfModal.title}</h4>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {previewPdfModal.fileName} • {previewPdfModal.pages} Pages
-                  </span>
-                </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900">{previewPdfModal.title}</h3>
+                <span className="text-xs text-slate-400">{previewPdfModal.fileName} • {previewPdfModal.pages} Pages</span>
               </div>
               <button
                 onClick={() => setPreviewPdfModal(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-3">
-              <BookOpen className="w-10 h-10 text-blue-500 mx-auto" />
-              <div className="font-bold text-slate-800 text-sm">Medical High-Yield PDF Document Preview</div>
+            <div className="p-8 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-3">
+              <FileText className="w-12 h-12 text-blue-600 mx-auto" />
+              <p className="text-sm font-bold text-slate-800">Interactive PDF Clinical Viewer</p>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Author: {previewPdfModal.author} • Document is ready and unlocked for enrolled students on Day {selectedDay}.
+                Demonstration document configured. In the production build, this embeds a full-featured PDF.js viewer with bookmarking, highlighting, and clinical note search.
               </p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setPreviewPdfModal(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Close Viewer
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL 3: + Add New Week Modal */}
+      {/* 2. Image Enlarge Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-4xl border border-slate-200 shadow-2xl p-6 space-y-3 max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900">{previewImage.title}</h3>
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="rounded-2xl overflow-hidden border border-slate-200 bg-black max-h-[60vh] flex items-center justify-center">
+              <img src={previewImage.url} alt={previewImage.title} className="max-h-[60vh] w-auto object-contain" />
+            </div>
+            <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">{previewImage.caption}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Video Player Preview Modal */}
+      {previewVideoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-3xl border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900">{previewVideoModal.title}</h3>
+                <span className="text-xs text-slate-400">{previewVideoModal.duration} • Instructor: {previewVideoModal.instructor}</span>
+              </div>
+              <button
+                onClick={() => setPreviewVideoModal(null)}
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="aspect-video bg-slate-900 rounded-2xl flex items-center justify-center text-white overflow-hidden relative">
+              <iframe
+                src={previewVideoModal.url}
+                title={previewVideoModal.title}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setPreviewVideoModal(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Close Player
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Flashcards Preview Modal */}
+      {previewFlashcardsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-xl border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900">{previewFlashcardsModal.title}</h3>
+                <span className="text-xs text-slate-400">{previewFlashcardsModal.cards.length} Interactive Flashcards</span>
+              </div>
+              <button
+                onClick={() => setPreviewFlashcardsModal(null)}
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+              {previewFlashcardsModal.cards.map((card, idx) => (
+                <div key={idx} className="p-4 bg-amber-50/40 rounded-2xl border border-amber-200/80 space-y-2">
+                  <div className="text-xs font-bold text-amber-900">
+                    <span className="text-amber-600 font-mono mr-1.5">Q{idx + 1}:</span>
+                    {card.question}
+                  </div>
+                  <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-amber-100">
+                    <span className="text-emerald-700 font-bold font-mono mr-1.5">Answer:</span>
+                    {card.answer}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => setPreviewFlashcardsModal(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Close Deck
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Live Session Preview Modal */}
+      {previewLiveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-lg border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Radio className="w-4 h-4 text-rose-600 animate-pulse" />
+                <h3 className="text-base font-black text-slate-900">Live Interactive Masterclass</h3>
+              </div>
+              <button
+                onClick={() => setPreviewLiveModal(null)}
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 p-4 bg-rose-50/40 rounded-2xl border border-rose-100">
+              <div>
+                <span className="text-xs font-bold text-rose-900 block">{previewLiveModal.title}</span>
+                <span className="text-[11px] text-slate-500 mt-1 block">Instructor: {previewLiveModal.faculty}</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-slate-700">
+                <span className="font-semibold">⏰ {previewLiveModal.time}</span>
+                <span>•</span>
+                <span className="font-semibold">⏱️ {previewLiveModal.duration}</span>
+              </div>
+              {previewLiveModal.zoomUrl && (
+                <div className="pt-2">
+                  <a
+                    href={previewLiveModal.zoomUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <span>Join Interactive Round (Zoom / Stream)</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => setPreviewLiveModal(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Add Week Modal */}
       {isAddWeekModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h4 className="font-bold text-slate-900 text-sm">+ Add New Curriculum Week</h4>
-              <button
-                onClick={() => setIsAddWeekModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
+          <div className="bg-white rounded-3xl w-full max-w-md border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">Add New Curriculum Week</h3>
+              <button onClick={() => setIsAddWeekModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleAddWeekSubmit} className="space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-slate-700">Week Title / Module Theme *</label>
-                <input 
+                <label className="font-bold text-slate-700">Week Title *</label>
+                <input
                   type="text"
                   required
-                  placeholder="e.g. Week 4 — Respiratory & ICU Critical Care"
+                  placeholder="e.g. Week 4 — High-Yield Grand Mocks"
                   value={newWeekTitle}
                   onChange={(e) => setNewWeekTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsAddWeekModalOpen(false)}
-                  className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold cursor-pointer"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs cursor-pointer"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl"
                 >
                   Create Week
                 </button>
@@ -1181,42 +1951,39 @@ export default function ContentManagementTab() {
         </div>
       )}
 
-      {/* MODAL 4: + Add New Day Modal */}
+      {/* 7. Add Day Modal */}
       {isAddDayModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h4 className="font-bold text-slate-900 text-sm">+ Add New Day to {currentWeekObj?.title}</h4>
-              <button
-                onClick={() => setIsAddDayModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
+          <div className="bg-white rounded-3xl w-full max-w-md border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">Add New Day to Week</h3>
+              <button onClick={() => setIsAddDayModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleAddDaySubmit} className="space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-slate-700">Day Title / Clinical Topic *</label>
-                <input 
+                <label className="font-bold text-slate-700">Day Title *</label>
+                <input
                   type="text"
                   required
-                  placeholder="e.g. Day 10 — Acute Pulmonary Embolism & Thrombolysis"
+                  placeholder="e.g. Day 10 — Acute Pulmonary Embolism & DVT"
                   value={newDayTitle}
                   onChange={(e) => setNewDayTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsAddDayModalOpen(false)}
-                  className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold cursor-pointer"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs cursor-pointer"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl"
                 >
                   Create Day
                 </button>

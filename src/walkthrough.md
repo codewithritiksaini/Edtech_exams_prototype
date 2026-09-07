@@ -1,8 +1,16 @@
-# Walkthrough — Student Dashboard Pages Separation & Faculty CBT Question Authoring
+# Walkthrough — MedPrep Pro Prototype Updates
 
-We have completed the two major architectural upgrades requested:
-1. **Student Dashboard Pages Separation**: Separated all 7 sidebar navigation tabs into distinct, dedicated page views (eliminating the single-page scrollable stack).
-2. **Faculty Exam Setup & Dynamic CBT Question Builder**: Empowered Faculty accounts to access Course & Exam setups, compose custom clinical vignette questions with options and explanations, manage test question rosters, and feed them directly into the CBT test-taking engine.
+## 🌟 Latest Update: Direct Curriculum Upload Hub — List-First Master Repository & Dynamic Add Flow
+We have refactored **'Direct Curriculum Upload Hub'** in the Admin/Faculty portal:
+1. **Master Content List First**: The default view upon opening the page is now the comprehensive list/table of all added content across courses, weeks, and days.
+2. **Prominent '+ Add / Upload Content' Button**: Positioned at the top right of the hub.
+3. **Fresh Dedicated Form Modal**: Clicking '+ Add / Upload Content' opens a clean modal with strict step-by-step hierarchy:
+   - **Step 1: Course / Exam Selection**
+   - **Step 2: Week Selection** (cascades with '+ New' week trigger)
+   - **Step 3: Day Selection** (cascades with '+ New' day trigger)
+   - **Step 4: Content Type Selection** (`PDF Notes`, `Video Lecture`, `Clinical Diagram / ECG`, `Flashcards`, `Live Session`)
+   - **Step 5: Dynamic Tailored Form** (only the chosen type's form is shown)
+4. **Auto-Redirect Upon Save**: Clicking "Save & Publish to Curriculum" saves the asset into `contentService`, closes the modal, triggers a success toast, and automatically redirects the user back to the Content List view with the new item immediately visible.
 
 ---
 
