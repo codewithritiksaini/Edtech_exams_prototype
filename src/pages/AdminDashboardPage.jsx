@@ -268,14 +268,14 @@ export default function AdminDashboardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans overflow-x-hidden w-full max-w-full">
       
       {/* Top Persistent Admin Navbar */}
       <AdminNavbar 
         onToggleSidebar={handleToggleSidebar}
       />
 
-      <div className="flex-grow flex">
+      <div className="flex-grow flex min-w-0 w-full max-w-full overflow-x-hidden">
         
         {/* Left Persistent Admin Sidebar (Automatically Scoped) */}
         <AdminSidebar 
@@ -288,7 +288,7 @@ export default function AdminDashboardPage() {
         />
 
         {/* Main Content Viewport */}
-        <main className="flex-grow p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
+        <main className="flex-grow min-w-0 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
 
           {/* ===================================================================== */}
           {/* TAB 1: DASHBOARD OVERVIEW (PHASE 5.1 MISSION CONTROL)                 */}

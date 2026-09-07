@@ -445,7 +445,7 @@ export default function ContentManagementTab() {
   const matrixDays = contentService.getCurriculumOverview(selectedExam, selectedWeek);
 
   return (
-    <div className="space-y-6 animate-in fade-in">
+    <div className="space-y-6 animate-in fade-in min-w-0 max-w-full">
       
       {/* Toast Alert Banner */}
       {toastMessage && (
@@ -456,7 +456,7 @@ export default function ContentManagementTab() {
       )}
 
       {/* Main Container Card */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6 min-w-0 max-w-full overflow-hidden">
         
         {/* ===================================================================== */}
         {/* HEADER BAR & PRIMARY ACTIONS                                          */}
@@ -524,7 +524,7 @@ export default function ContentManagementTab() {
         {/* ===================================================================== */}
         {/* STATS METRIC SUMMARY STRIP                                            */}
         {/* ===================================================================== */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
           <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Assets</div>
             <div className="text-xl font-black text-slate-900 mt-0.5">{totalCount}</div>
@@ -669,9 +669,9 @@ export default function ContentManagementTab() {
             </div>
 
             {/* List Table / Content Cards */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs w-full">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse text-xs min-w-[700px]">
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-black uppercase tracking-wider text-slate-500">
                       <th className="py-3 px-4">Content Asset</th>
@@ -1106,8 +1106,9 @@ export default function ContentManagementTab() {
               </div>
             </div>
 
-            <div className="border border-slate-200 rounded-2xl overflow-hidden">
-              <table className="w-full text-left text-xs">
+            <div className="border border-slate-200 rounded-2xl overflow-hidden w-full">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left text-xs min-w-[640px]">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-black uppercase text-slate-500">
                     <th className="py-3 px-4">Day Topic</th>
@@ -1145,6 +1146,7 @@ export default function ContentManagementTab() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}
