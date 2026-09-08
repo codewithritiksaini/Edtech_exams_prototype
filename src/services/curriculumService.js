@@ -826,6 +826,66 @@ class CurriculumService {
     return this.chapters;
   }
 
+  moveChapterOrder(id, direction) {
+    const chap = this.chapters.find(c => c.id === id);
+    if (!chap) return this.chapters;
+
+    const subjectChaps = this.chapters
+      .filter(c => c.subjectId === chap.subjectId)
+      .sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
+
+    const currentIndex = subjectChaps.findIndex(c => c.id === id);
+    if (currentIndex === -1) return this.chapters;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= subjectChaps.length) return this.chapters;
+
+    const neighbor = subjectChaps[targetIndex];
+    const prevNum = chap.chapterNumber ?? (currentIndex + 1);
+    const neighborNum = neighbor.chapterNumber ?? (targetIndex + 1);
+
+    if (prevNum === neighborNum) {
+      chap.chapterNumber = targetIndex + 1;
+      neighbor.chapterNumber = currentIndex + 1;
+    } else {
+      chap.chapterNumber = neighborNum;
+      neighbor.chapterNumber = prevNum;
+    }
+
+    this.saveChapters();
+    return this.chapters;
+  }
+
+  moveTopicOrder(id, direction) {
+    const top = this.topics.find(t => t.id === id);
+    if (!top) return this.topics;
+
+    const chapTopics = this.topics
+      .filter(t => t.chapterId === top.chapterId)
+      .sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
+
+    const currentIndex = chapTopics.findIndex(t => t.id === id);
+    if (currentIndex === -1) return this.topics;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= chapTopics.length) return this.topics;
+
+    const neighbor = chapTopics[targetIndex];
+    const prevNum = top.topicNumber ?? (currentIndex + 1);
+    const neighborNum = neighbor.topicNumber ?? (targetIndex + 1);
+
+    if (prevNum === neighborNum) {
+      top.topicNumber = targetIndex + 1;
+      neighbor.topicNumber = currentIndex + 1;
+    } else {
+      top.topicNumber = neighborNum;
+      neighbor.topicNumber = prevNum;
+    }
+
+    this.saveTopics();
+    return this.topics;
+  }
+
   // ---------------------------------------------------------------------------
   // 3. TOPICS CRUD
   // ---------------------------------------------------------------------------

@@ -17,15 +17,21 @@ import {
   Layers, 
   ChevronRight, 
   ChevronDown, 
+  ChevronUp, 
   Eye, 
   ExternalLink, 
   UploadCloud, 
   Check, 
-  Filter,
-  ArrowRight,
-  HelpCircle,
-  Play,
-  RotateCw
+  Filter, 
+  ArrowRight, 
+  ArrowUp, 
+  ArrowDown, 
+  HelpCircle, 
+  Play, 
+  RotateCw, 
+  ZoomIn, 
+  Calendar,
+  Maximize2
 } from 'lucide-react';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
@@ -44,8 +50,10 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   const [chapters, setChapters] = useState(() => curriculumService.getChapters());
   const [topics, setTopics] = useState(() => curriculumService.getTopics());
 
-  // Search & Filter
+  // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState('all'); // 'all' | 'High-Yield' | 'Core Clinical' | 'Advanced'
+  const [collapsedChapters, setCollapsedChapters] = useState({});
   const [toastMessage, setToastMessage] = useState('');
 
   // Chapter Modal State
@@ -67,6 +75,9 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   // Topic Content Manager Modal State
   const [contentModalTopic, setContentModalTopic] = useState(null);
   const [contentActiveTab, setContentActiveTab] = useState('pdf'); // 'pdf' | 'images' | 'video' | 'flashcards' | 'notes'
+
+  // Image Lightbox Modal State
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   // Sub-forms inside Content Manager
   // 1. PDF Form
@@ -107,7 +118,13 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     return unsubCurriculum;
   }, []);
 
-  // Sync selectedSubjectId if exam changes
+  // Sync selectedSubjectId if exam changes or initialSubjectId changes
+  useEffect(() => {
+    if (initialSubjectId && subjects.some(s => s.id === initialSubjectId)) {
+      setSelectedSubjectId(initialSubjectId);
+    }
+  }, [initialSubjectId, subjects]);
+
   useEffect(() => {
     const currentSubs = subjects.filter(s => s.examId === selectedExamId);
     if (currentSubs.length > 0 && !currentSubs.some(s => s.id === selectedSubjectId)) {
@@ -139,6 +156,39 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       .filter(c => c.subjectId === activeSubject.id)
       .sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
   }, [chapters, activeSubject]);
+
+  // Accordion toggle
+  const toggleChapterCollapse = (chapId) => {
+    setCollapsedChapters(prev => ({
+      ...prev,
+      [chapId]: !prev[chapId]
+    }));
+  };
+
+  const handleCollapseAll = () => {
+    const nextState = {};
+    subjectChapters.forEach(c => { nextState[c.id] = true; });
+    setCollapsedChapters(nextState);
+  };
+
+  const handleExpandAll = () => {
+    setCollapsedChapters({});
+  };
+
+  // Reordering handlers
+  const handleMoveChapter = (chap, direction, e) => {
+    if (e) e.stopPropagation();
+    curriculumService.moveChapterOrder(chap.id, direction);
+    setChapters(curriculumService.getChapters());
+    showToast(`Chapter reordered ${direction}.`);
+  };
+
+  const handleMoveTopic = (top, direction, e) => {
+    if (e) e.stopPropagation();
+    curriculumService.moveTopicOrder(top.id, direction);
+    setTopics(curriculumService.getTopics());
+    showToast(`Topic reordered ${direction}.`);
+  };
 
   // Open Chapter Modal
   const handleOpenChapterModal = (chap = null) => {
@@ -269,7 +319,6 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       pages: Number(newPdfPages),
       author: newPdfAuthor
     });
-    // Refresh modal topic
     const updated = curriculumService.getTopicById(contentModalTopic.id);
     setContentModalTopic(updated);
     showToast('PDF Notes uploaded to topic!');
@@ -347,7 +396,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     });
     const updated = curriculumService.getTopicById(contentModalTopic.id);
     setContentModalTopic(updated);
-    showToast('Clinical Notes saved!');
+    showToast('Clinical Pearls saved!');
   };
 
   return (
@@ -395,13 +444,14 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
             <Filter className="w-3 h-3" />
-            1. Exam:
+            1. Exam Track:
           </span>
           {exams.map(exam => (
             <button
               key={exam.id}
+              id={`exam-filter-${exam.id}`}
               onClick={() => setSelectedExamId(exam.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
                 selectedExamId === exam.id
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -425,6 +475,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
             availableSubjectsForExam.map(sub => (
               <button
                 key={sub.id}
+                id={`sub-filter-${sub.id}`}
                 onClick={() => setSelectedSubjectId(sub.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
                   selectedSubjectId === sub.id
@@ -442,6 +493,87 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
             ))
           )}
         </div>
+
+        {/* Tier 3: Search & Difficulty Filter Bar */}
+        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+          
+          <div className="flex items-center gap-2 overflow-x-auto self-start sm:self-auto">
+            <button
+              onClick={() => setDifficultyFilter('all')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                difficultyFilter === 'all'
+                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              All Topics
+            </button>
+            <button
+              onClick={() => setDifficultyFilter('High-Yield')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                difficultyFilter === 'High-Yield'
+                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              High-Yield
+            </button>
+            <button
+              onClick={() => setDifficultyFilter('Core Clinical')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                difficultyFilter === 'Core Clinical'
+                  ? 'bg-sky-50 text-sky-700 border border-sky-200'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Core Clinical
+            </button>
+            <button
+              onClick={() => setDifficultyFilter('Advanced / Super-Specialty')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                difficultyFilter === 'Advanced / Super-Specialty'
+                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Advanced
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-grow sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                id="search-topics-input"
+                type="text"
+                placeholder="Search topic title or term..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={handleExpandAll}
+                className="px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              >
+                Expand All
+              </button>
+              <span className="text-slate-300">|</span>
+              <button
+                type="button"
+                onClick={handleCollapseAll}
+                className="px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              >
+                Collapse All
+              </button>
+            </div>
+          </div>
+
+        </div>
+
       </div>
 
       {/* Main Content Area: Chapters & Topics Tree */}
@@ -468,36 +600,88 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
         </div>
       ) : (
         <div className="space-y-6">
-          {subjectChapters.map((chap) => {
-            const chapTopics = topics.filter(t => t.chapterId === chap.id).sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
+          {subjectChapters.map((chap, cIdx) => {
+            const isCollapsed = collapsedChapters[chap.id];
+            const rawTopics = topics.filter(t => t.chapterId === chap.id).sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
+            
+            const q = searchQuery.trim().toLowerCase();
+            const chapterMatches = !q || chap.title.toLowerCase().includes(q) || (chap.description && chap.description.toLowerCase().includes(q));
+
+            const filteredTopics = rawTopics.filter(t => {
+              if (difficultyFilter !== 'all' && t.difficulty !== difficultyFilter) return false;
+              if (q) {
+                return chapterMatches || t.title.toLowerCase().includes(q);
+              }
+              return true;
+            });
+
+            if (q && !chapterMatches && filteredTopics.length === 0) {
+              return null;
+            }
 
             return (
               <div
                 key={chap.id}
-                className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden"
+                className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden transition-all"
               >
                 {/* Chapter Banner Header */}
-                <div className="p-5 sm:p-6 bg-slate-50/80 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
-                        Chapter {chap.chapterNumber}
-                      </span>
-                      <span className="text-xs text-slate-400 font-bold">•</span>
-                      <span className="text-xs font-bold text-slate-500">
-                        {chapTopics.length} {chapTopics.length === 1 ? 'Topic' : 'Topics'}
-                      </span>
+                <div 
+                  onClick={() => toggleChapterCollapse(chap.id)}
+                  className="p-5 sm:p-6 bg-slate-50/90 hover:bg-slate-100/80 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      type="button"
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-800 shrink-0"
+                    >
+                      {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                          Chapter {chap.chapterNumber}
+                        </span>
+                        <span className="text-xs text-slate-400 font-bold">•</span>
+                        <span className="text-xs font-bold text-slate-500">
+                          {rawTopics.length} {rawTopics.length === 1 ? 'Topic' : 'Topics'}
+                        </span>
+                      </div>
+                      <h2 className="text-lg font-bold text-slate-900 truncate">
+                        {chap.title}
+                      </h2>
+                      {chap.description && (
+                        <p className="text-xs text-slate-500 line-clamp-1">{chap.description}</p>
+                      )}
                     </div>
-                    <h2 className="text-lg font-bold text-slate-900 truncate">
-                      {chap.title}
-                    </h2>
-                    {chap.description && (
-                      <p className="text-xs text-slate-500 line-clamp-1">{chap.description}</p>
-                    )}
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  {/* Actions on Header */}
+                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {/* Chapter reorder buttons */}
+                    <div className="flex items-center gap-0.5 mr-1 bg-white p-1 rounded-xl border border-slate-200">
+                      <button
+                        type="button"
+                        disabled={cIdx === 0}
+                        onClick={(e) => handleMoveChapter(chap, 'up', e)}
+                        className="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 cursor-pointer"
+                        title="Move Chapter Up"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={cIdx === subjectChapters.length - 1}
+                        onClick={(e) => handleMoveChapter(chap, 'down', e)}
+                        className="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 cursor-pointer"
+                        title="Move Chapter Down"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
                     <button
+                      id={`btn-add-topic-${chap.id}`}
                       onClick={() => handleOpenTopicModal(chap, null)}
                       className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer"
                     >
@@ -521,115 +705,145 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   </div>
                 </div>
 
-                {/* Topics Container */}
-                <div className="p-4 sm:p-6">
-                  {chapTopics.length === 0 ? (
-                    <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-2xl space-y-2">
-                      <p className="text-xs text-slate-400 font-medium">No topics under this chapter yet.</p>
-                      <button
-                        onClick={() => handleOpenTopicModal(chap, null)}
-                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
-                      >
-                        + Add Topic 1
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-3">
-                      {chapTopics.map((top) => {
-                        const content = top.content || {};
-                        const pdfCount = content.pdfList?.length || (content.pdf ? 1 : 0);
-                        const imgCount = content.images?.length || 0;
-                        const hasVid = Boolean(content.video);
-                        const fcCount = content.flashcards?.length || 0;
+                {/* Topics Container (Collapsible) */}
+                {!isCollapsed && (
+                  <div className="p-4 sm:p-6">
+                    {filteredTopics.length === 0 ? (
+                      <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-2xl space-y-2">
+                        <p className="text-xs text-slate-400 font-medium">
+                          {rawTopics.length === 0 
+                            ? 'No topics under this chapter yet.' 
+                            : 'No topics match the search or filter.'}
+                        </p>
+                        <button
+                          onClick={() => handleOpenTopicModal(chap, null)}
+                          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                        >
+                          + Add Topic
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3">
+                        {filteredTopics.map((top, tIdx) => {
+                          const content = top.content || {};
+                          const pdfCount = content.pdfList?.length || (content.pdf ? 1 : 0);
+                          const imgCount = content.images?.length || 0;
+                          const hasVid = Boolean(content.video);
+                          const fcCount = content.flashcards?.length || 0;
 
-                        return (
-                          <div
-                            key={top.id}
-                            className="bg-slate-50/60 hover:bg-white border border-slate-200 hover:border-indigo-200 rounded-2xl p-4 transition-all shadow-2xs hover:shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 group"
-                          >
-                            {/* Topic Title & Badges */}
-                            <div className="space-y-1.5 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
-                                  Topic {top.topicNumber}
-                                </span>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                                  {top.difficulty || 'High-Yield'}
-                                </span>
-                                <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
-                                  <Clock className="w-3 h-3" />
-                                  {top.duration || '45 mins'}
-                                </span>
+                          return (
+                            <div
+                              key={top.id}
+                              className="bg-slate-50/70 hover:bg-white border border-slate-200 hover:border-indigo-200 rounded-2xl p-4 transition-all shadow-2xs hover:shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                            >
+                              {/* Topic Title & Badges */}
+                              <div className="space-y-1.5 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
+                                    Topic {top.topicNumber}
+                                  </span>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                    {top.difficulty || 'High-Yield'}
+                                  </span>
+                                  <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
+                                    <Clock className="w-3 h-3" />
+                                    {top.duration || '45 mins'}
+                                  </span>
+                                </div>
+
+                                <h4 className="text-sm font-bold text-slate-900 truncate">
+                                  {top.title}
+                                </h4>
+
+                                {/* Asset Indicators */}
+                                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
+                                    pdfCount > 0 ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-slate-100 text-slate-400'
+                                  }`}>
+                                    <FileText className="w-3 h-3" />
+                                    {pdfCount > 0 ? `${pdfCount} PDF` : '0 PDF'}
+                                  </span>
+
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
+                                    imgCount > 0 ? 'bg-sky-50 text-sky-700 border border-sky-100' : 'bg-slate-100 text-slate-400'
+                                  }`}>
+                                    <ImageIcon className="w-3 h-3" />
+                                    {imgCount > 0 ? `${imgCount} Diagrams` : '0 Images'}
+                                  </span>
+
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
+                                    hasVid ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-slate-100 text-slate-400'
+                                  }`}>
+                                    <Video className="w-3 h-3" />
+                                    {hasVid ? 'Video' : 'No Video'}
+                                  </span>
+
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
+                                    fcCount > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-400'
+                                  }`}>
+                                    <Brain className="w-3 h-3" />
+                                    {fcCount > 0 ? `${fcCount} Cards` : '0 Cards'}
+                                  </span>
+                                </div>
                               </div>
 
-                              <h4 className="text-sm font-bold text-slate-900 truncate">
-                                {top.title}
-                              </h4>
+                              {/* Topic Actions & Reorder */}
+                              <div className="flex items-center gap-2 shrink-0">
+                                
+                                {/* Topic Reorder Arrows */}
+                                <div className="flex items-center gap-0.5 bg-white p-1 rounded-xl border border-slate-200">
+                                  <button
+                                    type="button"
+                                    disabled={tIdx === 0}
+                                    onClick={(e) => handleMoveTopic(top, 'up', e)}
+                                    className="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 cursor-pointer"
+                                    title="Move Topic Up"
+                                  >
+                                    <ArrowUp className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={tIdx === filteredTopics.length - 1}
+                                    onClick={(e) => handleMoveTopic(top, 'down', e)}
+                                    className="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 cursor-pointer"
+                                    title="Move Topic Down"
+                                  >
+                                    <ArrowDown className="w-3 h-3" />
+                                  </button>
+                                </div>
 
-                              {/* Asset Indicators */}
-                              <div className="flex items-center gap-2 pt-1">
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
-                                  pdfCount > 0 ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-slate-100 text-slate-400'
-                                }`}>
-                                  <FileText className="w-3 h-3" />
-                                  {pdfCount > 0 ? `${pdfCount} PDF` : '0 PDF'}
-                                </span>
+                                <button
+                                  id={`btn-manage-content-${top.id}`}
+                                  onClick={() => handleOpenContentModal(top)}
+                                  className="px-3.5 py-2 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-800 border border-slate-200 hover:border-indigo-300 font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+                                >
+                                  <UploadCloud className="w-3.5 h-3.5 text-indigo-600" />
+                                  <span>Manage Content</span>
+                                </button>
 
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
-                                  imgCount > 0 ? 'bg-sky-50 text-sky-700 border border-sky-100' : 'bg-slate-100 text-slate-400'
-                                }`}>
-                                  <ImageIcon className="w-3 h-3" />
-                                  {imgCount > 0 ? `${imgCount} Diagrams` : '0 Images'}
-                                </span>
+                                <button
+                                  onClick={() => handleOpenTopicModal(chap, top)}
+                                  title="Edit Topic Details"
+                                  className="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
 
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
-                                  hasVid ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-slate-100 text-slate-400'
-                                }`}>
-                                  <Video className="w-3 h-3" />
-                                  {hasVid ? 'Video' : 'No Video'}
-                                </span>
-
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
-                                  fcCount > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-400'
-                                }`}>
-                                  <Brain className="w-3 h-3" />
-                                  {fcCount > 0 ? `${fcCount} Cards` : '0 Cards'}
-                                </span>
+                                <button
+                                  onClick={() => setDeletingTopic(top)}
+                                  title="Delete Topic"
+                                  className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-all cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </div>
-
-                            {/* Topic Actions */}
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                onClick={() => handleOpenContentModal(top)}
-                                className="px-3.5 py-2 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-800 border border-slate-200 hover:border-indigo-300 font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
-                              >
-                                <UploadCloud className="w-3.5 h-3.5 text-indigo-600" />
-                                <span>Manage Content</span>
-                              </button>
-
-                              <button
-                                onClick={() => handleOpenTopicModal(chap, top)}
-                                title="Edit Topic Details"
-                                className="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                onClick={() => setDeletingTopic(top)}
-                                title="Delete Topic"
-                                className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-all cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -685,6 +899,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     Chapter Title *
                   </label>
                   <input
+                    id="input-chapter-title"
                     type="text"
                     required
                     placeholder="e.g. Cardiac Arrhythmias & Conduction Disorders"
@@ -700,6 +915,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   Description / Sub-areas
                 </label>
                 <textarea
+                  id="input-chapter-description"
                   rows={3}
                   placeholder="Outline key pathologies or syllabus modules in this chapter..."
                   value={chapDesc}
@@ -717,6 +933,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   Cancel
                 </button>
                 <button
+                  id="btn-submit-chapter"
                   type="submit"
                   className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                 >
@@ -777,6 +994,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     Topic Title *
                   </label>
                   <input
+                    id="input-topic-title"
                     type="text"
                     required
                     placeholder="e.g. Ventricular Tachycardias & Brugada Criteria"
@@ -826,6 +1044,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   Cancel
                 </button>
                 <button
+                  id="btn-submit-topic"
                   type="submit"
                   className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                 >
@@ -849,7 +1068,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
-                    Topic Content Editor
+                    Topic Content Studio
                   </span>
                   <span className="text-xs text-slate-400 font-bold">•</span>
                   <span className="text-xs font-bold text-slate-500">Topic {contentModalTopic.topicNumber}</span>
@@ -880,6 +1099,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 return (
                   <button
                     key={tab.id}
+                    id={`tab-content-${tab.id}`}
                     onClick={() => setContentActiveTab(tab.id)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shrink-0 ${
                       isActive
@@ -913,8 +1133,9 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600">PDF Title</label>
+                        <label className="text-[11px] font-bold text-slate-600">PDF Title *</label>
                         <input
+                          id="input-pdf-title"
                           type="text"
                           required
                           value={newPdfTitle}
@@ -925,6 +1146,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                       <div className="space-y-1">
                         <label className="text-[11px] font-bold text-slate-600">File Name</label>
                         <input
+                          id="input-pdf-filename"
                           type="text"
                           value={newPdfFile}
                           onChange={(e) => setNewPdfFile(e.target.value)}
@@ -936,6 +1158,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                       <div className="space-y-1">
                         <label className="text-[11px] font-bold text-slate-600">Pages</label>
                         <input
+                          id="input-pdf-pages"
                           type="number"
                           value={newPdfPages}
                           onChange={(e) => setNewPdfPages(e.target.value)}
@@ -945,6 +1168,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                       <div className="space-y-1 sm:col-span-2">
                         <label className="text-[11px] font-bold text-slate-600">Faculty Author</label>
                         <input
+                          id="input-pdf-author"
                           type="text"
                           value={newPdfAuthor}
                           onChange={(e) => setNewPdfAuthor(e.target.value)}
@@ -954,6 +1178,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     </div>
                     <div className="flex justify-end pt-1">
                       <button
+                        id="btn-upload-pdf"
                         type="submit"
                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                       >
@@ -990,6 +1215,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                           <button
                             onClick={() => handleDeletePdf(pdf.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                            title="Remove PDF"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1010,8 +1236,9 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600">Image Title</label>
+                        <label className="text-[11px] font-bold text-slate-600">Image Title *</label>
                         <input
+                          id="input-image-title"
                           type="text"
                           required
                           value={newImageTitle}
@@ -1020,8 +1247,9 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600">Image Web URL</label>
+                        <label className="text-[11px] font-bold text-slate-600">Image Web URL *</label>
                         <input
+                          id="input-image-url"
                           type="text"
                           required
                           value={newImageUrl}
@@ -1033,6 +1261,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600">Diagnostic Annotation / Caption</label>
                       <input
+                        id="input-image-caption"
                         type="text"
                         value={newImageCaption}
                         onChange={(e) => setNewImageCaption(e.target.value)}
@@ -1042,6 +1271,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     </div>
                     <div className="flex justify-end pt-1">
                       <button
+                        id="btn-add-image"
                         type="submit"
                         className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                       >
@@ -1062,11 +1292,22 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                           key={img.id}
                           className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs space-y-2 group"
                         >
-                          <div className="h-32 bg-slate-100 overflow-hidden relative">
+                          <div 
+                            className="h-32 bg-slate-100 overflow-hidden relative cursor-pointer"
+                            onClick={() => setLightboxImage(img)}
+                          >
                             <img src={img.url} alt={img.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                            <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <ZoomIn className="w-6 h-6" />
+                            </div>
                             <button
-                              onClick={() => handleDeleteImage(img.id)}
-                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/70 hover:bg-rose-600 text-white cursor-pointer"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteImage(img.id);
+                              }}
+                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/70 hover:bg-rose-600 text-white cursor-pointer z-10"
+                              title="Delete image"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1092,6 +1333,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700">Lecture Title</label>
                     <input
+                      id="input-video-title"
                       type="text"
                       value={videoTitle}
                       onChange={(e) => setVideoTitle(e.target.value)}
@@ -1102,6 +1344,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-700">Video Embed URL (YouTube/Vimeo)</label>
                       <input
+                        id="input-video-url"
                         type="text"
                         value={videoUrl}
                         onChange={(e) => setVideoUrl(e.target.value)}
@@ -1112,6 +1355,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-700">Duration</label>
                         <input
+                          id="input-video-duration"
                           type="text"
                           value={videoDuration}
                           onChange={(e) => setVideoDuration(e.target.value)}
@@ -1121,6 +1365,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-700">Faculty</label>
                         <input
+                          id="input-video-instructor"
                           type="text"
                           value={videoInstructor}
                           onChange={(e) => setVideoInstructor(e.target.value)}
@@ -1131,6 +1376,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   </div>
                   <div className="flex justify-end pt-2">
                     <button
+                      id="btn-save-video"
                       type="submit"
                       className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
                     >
@@ -1151,6 +1397,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold text-slate-600">Question / Clinical Prompt *</label>
                       <input
+                        id="input-card-q"
                         type="text"
                         required
                         placeholder="e.g. Hallmark of AV dissociation on rhythm strip?"
@@ -1162,6 +1409,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold text-slate-600">Answer / Core Medical Pearl *</label>
                       <textarea
+                        id="input-card-a"
                         rows={2}
                         required
                         placeholder="e.g. Independent sinus P waves marching across wide QRS complexes with capture/fusion beats."
@@ -1172,6 +1420,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     </div>
                     <div className="flex justify-end pt-1">
                       <button
+                        id="btn-add-flashcard"
                         type="submit"
                         className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
                       >
@@ -1198,6 +1447,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                             <button
                               onClick={() => handleDeleteFlashcard(card.id)}
                               className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
+                              title="Delete Card"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1220,6 +1470,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     High-Yield Clinical Pearls Summary
                   </h4>
                   <textarea
+                    id="input-clinical-notes"
                     rows={6}
                     value={clinicalNotesText}
                     onChange={(e) => setClinicalNotesText(e.target.value)}
@@ -1228,6 +1479,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   />
                   <div className="flex justify-end pt-1">
                     <button
+                      id="btn-save-pearls"
                       onClick={handleSaveClinicalNotes}
                       className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
                     >
@@ -1242,6 +1494,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
             {/* Modal Footer */}
             <div className="pt-3 border-t border-slate-100 flex items-center justify-end shrink-0">
               <button
+                id="btn-close-content-modal"
                 onClick={() => setContentModalTopic(null)}
                 className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
               >
@@ -1249,6 +1502,39 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* LIGHTBOX MODAL: FULL CLINICAL IMAGE PREVIEW                               */}
+      {/* ========================================================================= */}
+      {lightboxImage && (
+        <div 
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs animate-in fade-in cursor-zoom-out"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="bg-white rounded-3xl max-w-2xl w-full p-5 shadow-2xl space-y-3 cursor-default"
+          >
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-slate-900">{lightboxImage.title}</h4>
+              <button
+                onClick={() => setLightboxImage(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="rounded-2xl overflow-hidden bg-slate-100 max-h-[60vh] flex items-center justify-center">
+              <img src={lightboxImage.url} alt={lightboxImage.title} className="w-full h-auto object-contain max-h-[60vh]" />
+            </div>
+            {lightboxImage.caption && (
+              <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <span className="font-bold text-slate-900">Clinical Finding:</span> {lightboxImage.caption}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -1279,6 +1565,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               </button>
               <button
                 type="button"
+                id="btn-confirm-delete-chapter"
                 onClick={handleDeleteChapter}
                 className="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
               >
@@ -1315,6 +1602,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               </button>
               <button
                 type="button"
+                id="btn-confirm-delete-topic"
                 onClick={handleDeleteTopic}
                 className="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
               >
