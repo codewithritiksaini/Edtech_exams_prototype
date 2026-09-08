@@ -1813,14 +1813,19 @@ class CurriculumService {
   // 6. DYNAMIC DAY RESOLVER FOR STUDENT LMS (/day/:dayId)
   // Bridging hierarchical content seamlessly into DayContentView
   // ---------------------------------------------------------------------------
-  getDayResolvedContent(dayId = '3', examId = null) {
+  getDayResolvedContent(dayId = '3', examId = null, slotId = null) {
     let slot = null;
-    if (examId && examId !== 'all') {
+    if (slotId) {
+      slot = this.schedule.find(s => s.id === slotId);
+    }
+    if (!slot && examId && examId !== 'all') {
       slot = this.schedule.find(s => s.examId === examId && String(s.dayNumber) === String(dayId));
     }
     if (!slot) {
       slot = this.schedule.find(s => String(s.dayNumber) === String(dayId));
     }
+
+    const fallbackMock = dayContentStore[String(dayId)] || dayContentStore['1'] || {};
 
     // If slot has linked topics with content, aggregate them
     if (slot && slot.topicIds && slot.topicIds.length > 0) {
@@ -1856,13 +1861,29 @@ class CurriculumService {
           }
         });
 
+        // Fallbacks if topic has empty asset buckets so preview is never blank
+        if (aggregatedPdfs.length === 0 && fallbackMock.pdf) {
+          aggregatedPdfs.push(fallbackMock.pdf);
+        }
+        if (aggregatedImages.length === 0 && fallbackMock.images) {
+          aggregatedImages.push(...fallbackMock.images);
+        }
+        if (!primaryVideo && fallbackMock.video) {
+          primaryVideo = fallbackMock.video;
+        }
+        if (aggregatedCards.length === 0 && fallbackMock.flashcards) {
+          aggregatedCards.push(...fallbackMock.flashcards);
+        }
+
+        const primaryPdf = aggregatedPdfs[0] || fallbackMock.pdf || null;
+
         // Compute active tabs based on available assets
         const activeTabs = [];
         if (aggregatedPdfs.length > 0) activeTabs.push('notes');
         if (aggregatedImages.length > 0) activeTabs.push('images');
         if (primaryVideo) activeTabs.push('video');
         if (aggregatedCards.length > 0) activeTabs.push('flashcards');
-        if (slot.hasLive) activeTabs.push('live');
+        if (slot.hasLive || fallbackMock.live?.hasSession) activeTabs.push('live');
         if (slot.hasTest) activeTabs.push('test');
 
         return {
@@ -1870,23 +1891,29 @@ class CurriculumService {
           weekNumber: slot.weekNumber || 1,
           title: slot.dayTitle || primaryTopic.title,
           estimatedTime: slot.estimatedTime || primaryTopic.duration || '1.5 hours',
+          subject: subject?.name || slot.subjectName || 'Clinical Medicine',
           subjectName: subject?.name || slot.subjectName || 'Clinical Medicine',
+          unit: chapter?.title || slot.chapterTitle || 'Clinical Chapter',
           chapterTitle: chapter?.title || slot.chapterTitle || 'Clinical Chapter',
           topicTitle: primaryTopic.title,
           topics: linkedTopics,
           activeTabs: activeTabs.length > 0 ? activeTabs : ['notes', 'images', 'video', 'flashcards', 'live'],
-          pdf: aggregatedPdfs[0] || null,
+          pdf: primaryPdf,
+          notesPdf: primaryPdf,
           pdfList: aggregatedPdfs,
           images: aggregatedImages,
+          galleryImages: aggregatedImages,
           video: primaryVideo,
+          videoData: primaryVideo,
           flashcards: aggregatedCards,
           hasLive: Boolean(slot.hasLive),
           hasTest: Boolean(slot.hasTest),
           live: {
             hasSession: Boolean(slot.hasLive),
             title: `Live Clinical Grand Rounds: ${primaryTopic.title}`,
-            faculty: 'Dr. Siddharth V. (MD Cardiology)',
-            duration: '60 mins'
+            faculty: slot.facultyName || subject?.assignedFacultyName || 'Dr. Siddharth V. (MD Cardiology)',
+            duration: '60 mins',
+            time: slot.lectureTimeSlot ? slot.lectureTimeSlot.split('-')[0].trim() : '09:00 AM IST'
           }
         };
       }
@@ -1896,40 +1923,65 @@ class CurriculumService {
     if (slot) {
       const subject = this.getSubjectById(slot.subjectId);
       const chapter = this.getChapterById(slot.chapterId);
+      const primaryPdf = fallbackMock.pdf || null;
+      const pdfs = fallbackMock.pdfList || (primaryPdf ? [primaryPdf] : []);
+      const imgs = fallbackMock.images || [];
+      const vid = fallbackMock.video || null;
+      const fcs = fallbackMock.flashcards || [];
+
       const activeTabs = [];
-      if (slot.hasTest) activeTabs.push('test');
+      if (pdfs.length > 0) activeTabs.push('notes');
+      if (imgs.length > 0) activeTabs.push('images');
+      if (vid) activeTabs.push('video');
+      if (fcs.length > 0) activeTabs.push('flashcards');
       if (slot.hasLive) activeTabs.push('live');
-      activeTabs.push('notes', 'flashcards');
+      if (slot.hasTest) activeTabs.push('test');
 
       return {
         dayNumber: Number(dayId),
         weekNumber: slot.weekNumber || 1,
         title: slot.dayTitle || `Day ${dayId}`,
         estimatedTime: slot.estimatedTime || '1.0 hour',
+        subject: subject?.name || slot.subjectName || 'Clinical Medicine',
         subjectName: subject?.name || slot.subjectName || 'Clinical Medicine',
+        unit: chapter?.title || slot.chapterTitle || 'Review & Assessment',
         chapterTitle: chapter?.title || slot.chapterTitle || 'Review & Assessment',
         topicTitle: slot.dayTitle,
         topics: [],
-        activeTabs,
-        pdf: null,
-        pdfList: [],
-        images: [],
-        video: null,
-        flashcards: [],
+        activeTabs: activeTabs.length > 0 ? activeTabs : ['notes', 'images', 'video', 'flashcards'],
+        pdf: primaryPdf,
+        notesPdf: primaryPdf,
+        pdfList: pdfs,
+        images: imgs,
+        galleryImages: imgs,
+        video: vid,
+        videoData: vid,
+        flashcards: fcs,
         hasLive: Boolean(slot.hasLive),
         hasTest: Boolean(slot.hasTest),
         live: {
           hasSession: Boolean(slot.hasLive),
           title: `Live Clinical Grand Rounds: ${slot.dayTitle}`,
-          faculty: 'Dr. Siddharth V. (MD Cardiology)',
-          duration: '60 mins'
+          faculty: slot.facultyName || subject?.assignedFacultyName || 'Dr. Siddharth V. (MD Cardiology)',
+          duration: '60 mins',
+          time: slot.lectureTimeSlot ? slot.lectureTimeSlot.split('-')[0].trim() : '09:00 AM IST'
         }
       };
     }
 
     // Graceful fallback to mock data dayContentStore
     if (dayContentStore[String(dayId)]) {
-      return dayContentStore[String(dayId)];
+      const d = dayContentStore[String(dayId)];
+      return {
+        ...d,
+        subject: d.subject || d.subjectName || 'Cardiology & Hemodynamics',
+        subjectName: d.subjectName || d.subject || 'Cardiology & Hemodynamics',
+        unit: d.unit || d.chapterTitle || 'Valvular Heart Diseases',
+        chapterTitle: d.chapterTitle || d.unit || 'Valvular Heart Diseases',
+        notesPdf: d.pdf,
+        galleryImages: d.images,
+        videoData: d.video
+      };
     }
 
     // Default empty day structure
@@ -1938,12 +1990,19 @@ class CurriculumService {
       weekNumber: 1,
       title: `Day ${dayId} — Clinical Practice & Revision`,
       estimatedTime: '1.5 hours',
+      subject: 'Cardiology & Hemodynamics',
+      subjectName: 'Cardiology & Hemodynamics',
+      unit: 'Valvular Heart Diseases',
+      chapterTitle: 'Valvular Heart Diseases',
       activeTabs: ['notes', 'images', 'video', 'flashcards', 'live'],
-      pdf: null,
-      pdfList: [],
-      images: [],
-      video: null,
-      flashcards: [],
+      pdf: fallbackMock.pdf || null,
+      notesPdf: fallbackMock.pdf || null,
+      pdfList: fallbackMock.pdfList || (fallbackMock.pdf ? [fallbackMock.pdf] : []),
+      images: fallbackMock.images || [],
+      galleryImages: fallbackMock.images || [],
+      video: fallbackMock.video || null,
+      videoData: fallbackMock.video || null,
+      flashcards: fallbackMock.flashcards || [],
       hasLive: false,
       hasTest: false,
       live: { hasSession: false }
