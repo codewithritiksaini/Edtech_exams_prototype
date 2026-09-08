@@ -36,7 +36,9 @@ import {
   FileCheck,
   GraduationCap,
   Layers,
-  Settings
+  Settings,
+  Filter,
+  FolderTree
 } from 'lucide-react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import DashboardSidebar from '../components/DashboardSidebar';
@@ -57,42 +59,50 @@ export default function DashboardPage() {
   const searchParams = new URLSearchParams(location.search);
 
   // Dynamic query params from Phase 2 or fallback to default mock
+  // Dynamic query params or active state
   const enrolledPlan = searchParams.get('plan') || dashboardUserData.packageTier;
   const examParam = searchParams.get('exam');
-  const currentExamId = examParam === 'usmle' 
-    ? 'usmle-step1' 
-    : examParam === 'plab' 
-      ? 'plab-ukmla' 
-      : examParam === 'europe' 
-        ? 'europe-licensing' 
-        : 'neet-pg';
+  
+  const [selectedExamTrack, setSelectedExamTrack] = useState(() => {
+    if (examParam === 'usmle' || examParam === 'usmle-step1') return 'usmle';
+    if (examParam === 'plab' || examParam === 'plab-ukmla') return 'plab';
+    if (examParam === 'europe' || examParam === 'europe-licensing') return 'europe';
+    return 'neet-pg';
+  });
 
-  const enrolledCourse = examParam === 'usmle' 
+  const enrolledCourse = selectedExamTrack === 'usmle' 
     ? 'USMLE Step 1 & Step 2 CK' 
-    : examParam === 'plab' 
+    : selectedExamTrack === 'plab' 
       ? 'PLAB 1 & 2 / UKMLA' 
-      : examParam === 'europe' 
+      : selectedExamTrack === 'europe' 
         ? 'Europe Medical Licensing' 
         : dashboardUserData.enrolledCourse;
 
   // Reactive Curriculum Data from curriculumService
-  const [curriculumSubjects, setCurriculumSubjects] = useState(() => curriculumService.getSubjects(currentExamId));
-  const [curriculumChapters, setCurriculumChapters] = useState(() => curriculumService.getChapters());
-  const [curriculumSchedule, setCurriculumSchedule] = useState(() => curriculumService.getSchedule(currentExamId));
+  const [curriculumSubjects, setCurriculumSubjects] = useState(() => curriculumService.getSubjects(selectedExamTrack));
+  const [curriculumChapters, setCurriculumChapters] = useState(() => curriculumService.getChapters(null, selectedExamTrack));
+  const [curriculumSchedule, setCurriculumSchedule] = useState(() => curriculumService.getSchedule(selectedExamTrack));
+  const [inspectingSubject, setInspectingSubject] = useState(null);
 
   useEffect(() => {
     const unsubC = curriculumService.subscribeCurriculum(() => {
-      setCurriculumSubjects(curriculumService.getSubjects(currentExamId));
-      setCurriculumChapters(curriculumService.getChapters());
+      setCurriculumSubjects(curriculumService.getSubjects(selectedExamTrack));
+      setCurriculumChapters(curriculumService.getChapters(null, selectedExamTrack));
     });
     const unsubS = curriculumService.subscribeSchedule(() => {
-      setCurriculumSchedule(curriculumService.getSchedule(currentExamId));
+      setCurriculumSchedule(curriculumService.getSchedule(selectedExamTrack));
     });
     return () => {
       unsubC();
       unsubS();
     };
-  }, [currentExamId]);
+  }, [selectedExamTrack]);
+
+  useEffect(() => {
+    setCurriculumSubjects(curriculumService.getSubjects(selectedExamTrack));
+    setCurriculumChapters(curriculumService.getChapters(null, selectedExamTrack));
+    setCurriculumSchedule(curriculumService.getSchedule(selectedExamTrack));
+  }, [selectedExamTrack]);
 
   // Reactive Tests Store for Phase 6
   const [testsList, setTestsList] = useState(() => testService.getTests());
@@ -162,13 +172,20 @@ export default function DashboardPage() {
 
       const days = slots.map((s) => {
         const isMarkedCompleted = completedDaysList.includes(s.dayNumber);
-        const status = s.status === 'Locked' 
-          ? 'locked' 
-          : isMarkedCompleted || s.dayNumber < 3 
-            ? 'completed' 
-            : s.dayNumber === 3 
-              ? 'in-progress' 
-              : 'locked';
+        let status = 'available';
+        if (s.status === 'Locked') {
+          status = 'locked';
+        } else if (isMarkedCompleted || (selectedExamTrack === 'neet-pg' && s.dayNumber < 3)) {
+          status = 'completed';
+        } else if (selectedExamTrack === 'neet-pg' && s.dayNumber === 3) {
+          status = 'in-progress';
+        } else if (s.status === 'Active') {
+          status = 'available';
+        } else if (s.status === 'Scheduled') {
+          status = 'scheduled';
+        } else {
+          status = 'available';
+        }
 
         const linkedTopics = (s.topicIds || []).map((tId) => {
           const top = allTopics.find((t) => t.id === tId);
@@ -576,6 +593,33 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* Course Track Switcher */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
+                  <Layers className="w-3.5 h-3.5" />
+                  Select Program Track:
+                </span>
+                {[
+                  { id: 'neet-pg', name: 'NEET PG & NExT', flag: '🇮🇳' },
+                  { id: 'usmle', name: 'USMLE Step 1/2', flag: '🇺🇸' },
+                  { id: 'plab', name: 'PLAB 1 & 2 / UKMLA', flag: '🇬🇧' },
+                  { id: 'europe', name: 'Europe Licensing (FSP)', flag: '🇪🇺' }
+                ].map(track => (
+                  <button
+                    key={track.id}
+                    onClick={() => setSelectedExamTrack(track.id)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                      selectedExamTrack === track.id
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    <span>{track.flag}</span>
+                    <span>{track.name}</span>
+                  </button>
+                ))}
+              </div>
+
               {/* Active Program Card */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-brand-200 shadow-sm relative overflow-hidden">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -677,6 +721,14 @@ export default function DashboardPage() {
                             />
                           </div>
                         </div>
+
+                        <button
+                          onClick={() => setInspectingSubject(sub)}
+                          className="w-full mt-2 py-2 px-3 rounded-xl bg-slate-50 hover:bg-brand-50 hover:text-brand-700 text-slate-700 border border-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <BookOpen className="w-3.5 h-3.5 text-brand-600" />
+                          <span>View Chapters & Topics ({subChapters.length})</span>
+                        </button>
                       </div>
                     );
                   })}
@@ -745,6 +797,33 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* Study Plan Program Track Switcher */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
+                  <Layers className="w-3.5 h-3.5" />
+                  Exam Track:
+                </span>
+                {[
+                  { id: 'neet-pg', name: 'NEET PG & NExT', flag: '🇮🇳' },
+                  { id: 'usmle', name: 'USMLE Step 1/2', flag: '🇺🇸' },
+                  { id: 'plab', name: 'PLAB 1 & 2 / UKMLA', flag: '🇬🇧' },
+                  { id: 'europe', name: 'Europe Licensing (FSP)', flag: '🇪🇺' }
+                ].map(track => (
+                  <button
+                    key={track.id}
+                    onClick={() => setSelectedExamTrack(track.id)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                      selectedExamTrack === track.id
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    <span>{track.flag}</span>
+                    <span>{track.name}</span>
+                  </button>
+                ))}
+              </div>
+
               {/* Expandable Week Cards */}
               <div className="space-y-4">
                 {resolvedStudyPlanWeeks.map((week) => {
@@ -811,7 +890,8 @@ export default function DashboardPage() {
                             const isMarkedCompleted = completedDaysList.includes(day.dayNumber);
                             const isCompleted = day.status === 'completed' || isMarkedCompleted;
                             const isInProgress = !isCompleted && day.status === 'in-progress';
-                            const isLocked = !isCompleted && day.status === 'locked';
+                            const isAvailable = !isCompleted && !isInProgress && (day.status === 'available' || day.status === 'scheduled');
+                            const isLocked = !isCompleted && !isInProgress && !isAvailable && day.status === 'locked';
 
                             return (
                               <div
@@ -839,6 +919,11 @@ export default function DashboardPage() {
                                         <Play className="w-4 h-4 fill-current ml-0.5" />
                                       </div>
                                     )}
+                                    {isAvailable && (
+                                      <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center border border-brand-200">
+                                        <BookOpen className="w-4 h-4" />
+                                      </div>
+                                    )}
                                     {isLocked && (
                                       <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center">
                                         <Lock className="w-4 h-4" />
@@ -847,7 +932,7 @@ export default function DashboardPage() {
                                   </div>
 
                                   <div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <span className="text-xs font-bold text-slate-400 uppercase">
                                         Day {day.dayNumber}
                                       </span>
@@ -859,6 +944,16 @@ export default function DashboardPage() {
                                       {isCompleted && day.score && (
                                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
                                           Drill Score: {day.score}
+                                        </span>
+                                      )}
+                                      {day.hasLive && (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">
+                                          🔴 Live Rounds
+                                        </span>
+                                      )}
+                                      {day.hasTest && (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">
+                                          📝 CBT Test
                                         </span>
                                       )}
                                     </div>
@@ -894,19 +989,20 @@ export default function DashboardPage() {
                                         e.stopPropagation();
                                         handleDayClick(day);
                                       }}
-                                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                                        isInProgress
-                                          ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-sm'
-                                          : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                                        isCompleted
+                                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                          : isInProgress
+                                            ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/20'
+                                            : 'bg-white hover:bg-brand-50 hover:text-brand-700 text-slate-700 border border-slate-200'
                                       }`}
                                     >
-                                      <span>{isInProgress ? 'Start / Resume' : 'Review Content'}</span>
+                                      <span>{isCompleted ? 'Review Day' : isInProgress ? 'Resume Day' : 'Start Study'}</span>
                                       <ChevronRight className="w-3.5 h-3.5" />
                                     </button>
                                   ) : (
-                                    <span className="text-xs font-semibold text-slate-400 flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-lg">
-                                      <Lock className="w-3.5 h-3.5" />
-                                      <span>Drip Locked</span>
+                                    <span className="text-xs text-slate-400 font-medium px-2 py-1 bg-slate-100 rounded-lg">
+                                      Locked
                                     </span>
                                   )}
                                 </div>
@@ -1441,6 +1537,155 @@ export default function DashboardPage() {
         onClose={() => setSelectedTest(null)}
         test={selectedTest}
       />
+
+      {/* Subject Chapters & Topics Inspector Modal */}
+      {inspectingSubject && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/50">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-md bg-brand-100 text-brand-800 text-xs font-black">
+                    {inspectingSubject.code}
+                  </span>
+                  <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                    {inspectingSubject.examId?.toUpperCase() || 'CORE'} Curriculum
+                  </span>
+                </div>
+                <h3 className="text-xl font-black text-slate-900">{inspectingSubject.name}</h3>
+                <p className="text-xs text-slate-600 max-w-xl">{inspectingSubject.description}</p>
+              </div>
+              <button 
+                onClick={() => setInspectingSubject(null)}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {(() => {
+                const subChapters = curriculumChapters.filter(c => c.subjectId === inspectingSubject.id);
+                if (subChapters.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-slate-400">
+                      <FolderTree className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+                      <p className="text-sm font-semibold">No chapters configured for this subject yet.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-xs text-slate-500 font-bold px-1">
+                      <span>{subChapters.length} CHAPTERS IN CURRICULUM</span>
+                      <span>DIFFICULTY & CLINICAL ASSETS</span>
+                    </div>
+
+                    {subChapters.map((ch, idx) => {
+                      const chTopics = curriculumService.getTopics(ch.id);
+                      return (
+                        <div key={ch.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-lg bg-brand-50 text-brand-700 text-xs font-black flex items-center justify-center border border-brand-100">
+                                  {idx + 1}
+                                </span>
+                                <h4 className="text-sm font-bold text-slate-900">{ch.name}</h4>
+                              </div>
+                              {ch.description && (
+                                <p className="text-xs text-slate-500 ml-8 mt-0.5">{ch.description}</p>
+                              )}
+                            </div>
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600 shrink-0">
+                              {chTopics.length} Topics
+                            </span>
+                          </div>
+
+                          {chTopics.length > 0 && (
+                            <div className="ml-8 space-y-1.5 pt-1">
+                              {chTopics.map((top, tIdx) => {
+                                const content = curriculumService.getTopicContent(top.id);
+                                const pdfCount = content?.pdfs?.length || 0;
+                                const imgCount = content?.images?.length || 0;
+                                const hasVid = Boolean(content?.video?.url || content?.video?.title);
+                                const flashCount = content?.flashcards?.length || 0;
+
+                                return (
+                                  <div 
+                                    key={top.id}
+                                    className="bg-white p-2.5 rounded-xl border border-slate-200 text-xs flex items-center justify-between gap-3"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-slate-400 font-mono text-[10px] shrink-0">{idx + 1}.{tIdx + 1}</span>
+                                      <span className="font-semibold text-slate-800 truncate">{top.title}</span>
+                                      <span className="text-[10px] text-slate-400 shrink-0">({top.durationMinutes || 20}m)</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0 text-[10px]">
+                                      {pdfCount > 0 && (
+                                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-bold border border-rose-100">
+                                          <FileText className="w-2.5 h-2.5" />
+                                          {pdfCount}
+                                        </span>
+                                      )}
+                                      {hasVid && (
+                                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-bold border border-sky-100">
+                                          <Video className="w-2.5 h-2.5" />
+                                          Vid
+                                        </span>
+                                      )}
+                                      {flashCount > 0 && (
+                                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold border border-amber-100">
+                                          <Brain className="w-2.5 h-2.5" />
+                                          {flashCount}
+                                        </span>
+                                      )}
+                                      {imgCount > 0 && (
+                                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-100">
+                                          IMG
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <span className="text-xs text-slate-500">
+                Topics are drip-fed according to the Master Study Plan.
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setInspectingSubject(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    setInspectingSubject(null);
+                    setActiveTab('plan');
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Open Study Plan</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

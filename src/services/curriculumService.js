@@ -1564,49 +1564,118 @@ class CurriculumService {
   // 6. DYNAMIC DAY RESOLVER FOR STUDENT LMS (/day/:dayId)
   // Bridging hierarchical content seamlessly into DayContentView
   // ---------------------------------------------------------------------------
-  getDayResolvedContent(dayId = '3', examId = 'neet-pg') {
-    const slot = this.schedule.find(
-      s => (s.examId === examId || !examId) && String(s.dayNumber) === String(dayId)
-    );
+  getDayResolvedContent(dayId = '3', examId = null) {
+    let slot = null;
+    if (examId && examId !== 'all') {
+      slot = this.schedule.find(s => s.examId === examId && String(s.dayNumber) === String(dayId));
+    }
+    if (!slot) {
+      slot = this.schedule.find(s => String(s.dayNumber) === String(dayId));
+    }
 
     // If slot has linked topics with content, aggregate them
     if (slot && slot.topicIds && slot.topicIds.length > 0) {
-      const primaryTopic = this.getTopicById(slot.topicIds[0]);
-      if (primaryTopic && primaryTopic.content) {
-        const content = primaryTopic.content;
+      const linkedTopics = slot.topicIds.map(tid => this.getTopicById(tid)).filter(Boolean);
+      const primaryTopic = linkedTopics[0];
+      
+      if (primaryTopic) {
         const subject = this.getSubjectById(slot.subjectId || primaryTopic.subjectId);
         const chapter = this.getChapterById(slot.chapterId || primaryTopic.chapterId);
 
+        // Aggregate assets across all linked topics
+        const aggregatedPdfs = [];
+        const aggregatedImages = [];
+        let primaryVideo = null;
+        const aggregatedCards = [];
+
+        linkedTopics.forEach(t => {
+          if (t.content) {
+            if (t.content.pdfList && t.content.pdfList.length > 0) {
+              aggregatedPdfs.push(...t.content.pdfList);
+            } else if (t.content.pdf) {
+              aggregatedPdfs.push(t.content.pdf);
+            }
+            if (t.content.images && t.content.images.length > 0) {
+              aggregatedImages.push(...t.content.images);
+            }
+            if (!primaryVideo && t.content.video) {
+              primaryVideo = t.content.video;
+            }
+            if (t.content.flashcards && t.content.flashcards.length > 0) {
+              aggregatedCards.push(...t.content.flashcards);
+            }
+          }
+        });
+
         // Compute active tabs based on available assets
         const activeTabs = [];
-        if (content.pdfList?.length > 0) activeTabs.push('notes');
-        if (content.images?.length > 0) activeTabs.push('images');
-        if (content.video) activeTabs.push('video');
-        if (content.flashcards?.length > 0) activeTabs.push('flashcards');
+        if (aggregatedPdfs.length > 0) activeTabs.push('notes');
+        if (aggregatedImages.length > 0) activeTabs.push('images');
+        if (primaryVideo) activeTabs.push('video');
+        if (aggregatedCards.length > 0) activeTabs.push('flashcards');
         if (slot.hasLive) activeTabs.push('live');
+        if (slot.hasTest) activeTabs.push('test');
 
         return {
           dayNumber: Number(dayId),
           weekNumber: slot.weekNumber || 1,
           title: slot.dayTitle || primaryTopic.title,
-          estimatedTime: slot.estimatedTime || primaryTopic.duration || '2 hours',
-          subjectName: subject?.name || 'Clinical System',
-          chapterTitle: chapter?.title || 'Core Chapter',
+          estimatedTime: slot.estimatedTime || primaryTopic.duration || '1.5 hours',
+          subjectName: subject?.name || slot.subjectName || 'Clinical Medicine',
+          chapterTitle: chapter?.title || slot.chapterTitle || 'Clinical Chapter',
           topicTitle: primaryTopic.title,
+          topics: linkedTopics,
           activeTabs: activeTabs.length > 0 ? activeTabs : ['notes', 'images', 'video', 'flashcards', 'live'],
-          pdf: content.pdfList?.[0] || null,
-          pdfList: content.pdfList || [],
-          images: content.images || [],
-          video: content.video || null,
-          flashcards: content.flashcards || [],
+          pdf: aggregatedPdfs[0] || null,
+          pdfList: aggregatedPdfs,
+          images: aggregatedImages,
+          video: primaryVideo,
+          flashcards: aggregatedCards,
+          hasLive: Boolean(slot.hasLive),
+          hasTest: Boolean(slot.hasTest),
           live: {
-            hasSession: slot.hasLive,
+            hasSession: Boolean(slot.hasLive),
             title: `Live Clinical Grand Rounds: ${primaryTopic.title}`,
             faculty: 'Dr. Siddharth V. (MD Cardiology)',
             duration: '60 mins'
           }
         };
       }
+    }
+
+    // If slot exists without topicIds (e.g. Grand Mock Test day 7)
+    if (slot) {
+      const subject = this.getSubjectById(slot.subjectId);
+      const chapter = this.getChapterById(slot.chapterId);
+      const activeTabs = [];
+      if (slot.hasTest) activeTabs.push('test');
+      if (slot.hasLive) activeTabs.push('live');
+      activeTabs.push('notes', 'flashcards');
+
+      return {
+        dayNumber: Number(dayId),
+        weekNumber: slot.weekNumber || 1,
+        title: slot.dayTitle || `Day ${dayId}`,
+        estimatedTime: slot.estimatedTime || '1.0 hour',
+        subjectName: subject?.name || slot.subjectName || 'Clinical Medicine',
+        chapterTitle: chapter?.title || slot.chapterTitle || 'Review & Assessment',
+        topicTitle: slot.dayTitle,
+        topics: [],
+        activeTabs,
+        pdf: null,
+        pdfList: [],
+        images: [],
+        video: null,
+        flashcards: [],
+        hasLive: Boolean(slot.hasLive),
+        hasTest: Boolean(slot.hasTest),
+        live: {
+          hasSession: Boolean(slot.hasLive),
+          title: `Live Clinical Grand Rounds: ${slot.dayTitle}`,
+          faculty: 'Dr. Siddharth V. (MD Cardiology)',
+          duration: '60 mins'
+        }
+      };
     }
 
     // Graceful fallback to mock data dayContentStore
@@ -1626,8 +1695,16 @@ class CurriculumService {
       images: [],
       video: null,
       flashcards: [],
+      hasLive: false,
+      hasTest: false,
       live: { hasSession: false }
     };
+  }
+
+  getAllScheduledDayNumbers(examId = null) {
+    const slots = examId ? this.getSchedule(examId) : this.schedule;
+    const nums = Array.from(new Set(slots.map(s => Number(s.dayNumber)))).sort((a, b) => a - b);
+    return nums.length > 0 ? nums : [1, 2, 3, 4, 5, 6, 7];
   }
 
   // ---------------------------------------------------------------------------
