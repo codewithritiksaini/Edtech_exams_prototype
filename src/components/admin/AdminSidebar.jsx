@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   BookOpen, 
+  Layers,
+  FolderTree,
+  Calendar,
   Package, 
   Users, 
   GraduationCap, 
@@ -219,6 +222,75 @@ export default function AdminSidebar({
                   {isExpanded && (
                     <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                       4 Live
+                    </span>
+                  )}
+                </button>
+
+                {/* Manage Subjects (NEW - Level 1 Academic Hierarchy) */}
+                <button
+                  onClick={() => handleTabClick('subjects')}
+                  title={!isExpanded ? 'Manage Subjects' : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
+                    activeTab === 'subjects'
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+                    <Layers className={`w-4 h-4 shrink-0 ${activeTab === 'subjects' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Subjects</span>}
+                  </div>
+                  {isExpanded && (
+                    <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
+                      Modules
+                    </span>
+                  )}
+                </button>
+
+                {/* Chapters & Topics (NEW - Level 2 & 3 Hierarchy & Content Hub) */}
+                <button
+                  onClick={() => handleTabClick('curriculum')}
+                  title={!isExpanded ? 'Chapters, Topics & Content' : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
+                    activeTab === 'curriculum'
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+                    <FolderTree className={`w-4 h-4 shrink-0 ${activeTab === 'curriculum' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Chapters & Topics</span>}
+                  </div>
+                  {isExpanded && (
+                    <span className="text-[10px] bg-sky-100 text-sky-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
+                      Content
+                    </span>
+                  )}
+                </button>
+
+                {/* Study Schedule / Planner (NEW - Drip Release Planner) */}
+                <button
+                  onClick={() => handleTabClick('schedule')}
+                  title={!isExpanded ? 'Study Schedule & Day Mapping' : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
+                    activeTab === 'schedule'
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+                    <Calendar className={`w-4 h-4 shrink-0 ${activeTab === 'schedule' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Study Schedule</span>}
+                  </div>
+                  {isExpanded && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
+                      Planner
                     </span>
                   )}
                 </button>

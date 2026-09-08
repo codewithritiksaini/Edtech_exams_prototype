@@ -34,13 +34,33 @@ import ImageLightboxModal from '../components/ImageLightboxModal';
 import AskDoubtModal from '../components/AskDoubtModal';
 import LiveSessionModal from '../components/LiveSessionModal';
 import { dayContentStore } from '../data/mockData';
+import { curriculumService } from '../services/curriculumService';
 
 export default function DayContentView() {
   const { dayId = '3' } = useParams();
   const navigate = useNavigate();
 
-  // Load day data from store or fallback to Day 3
-  const currentDayData = dayContentStore[dayId] || dayContentStore['3'];
+  // Load day data dynamically from curriculumService with mockData fallback
+  const [currentDayData, setCurrentDayData] = useState(() => {
+    return curriculumService.getDayResolvedContent(dayId) || dayContentStore[dayId] || dayContentStore['3'];
+  });
+
+  // Re-resolve when dayId or curriculum/schedule updates
+  useEffect(() => {
+    const loadDayData = () => {
+      const resolved = curriculumService.getDayResolvedContent(dayId) || dayContentStore[dayId] || dayContentStore['3'];
+      setCurrentDayData(resolved);
+    };
+
+    loadDayData();
+    const unsubCurriculum = curriculumService.subscribeCurriculum(loadDayData);
+    const unsubSchedule = curriculumService.subscribeSchedule(loadDayData);
+
+    return () => {
+      unsubCurriculum();
+      unsubSchedule();
+    };
+  }, [dayId]);
 
   // Tab state - default to first available active tab
   const [activeTab, setActiveTab] = useState(
@@ -156,7 +176,7 @@ export default function DayContentView() {
                   <span>Dashboard</span>
                 </Link>
                 <span>/</span>
-                <span className="text-slate-600">Week {currentDayData.weekNumber} (Cardiology)</span>
+                <span className="text-slate-600">Week {currentDayData.weekNumber} ({currentDayData.subjectName || 'Cardiology'})</span>
                 <span>/</span>
                 <span className="text-slate-900 font-bold">Day {currentDayData.dayNumber}</span>
               </div>
@@ -174,7 +194,7 @@ export default function DayContentView() {
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-xs font-extrabold text-brand-600 uppercase tracking-wider">
-                      Week {currentDayData.weekNumber} • Clinical Module
+                      Week {currentDayData.weekNumber} • {currentDayData.subjectName ? `${currentDayData.subjectName} — ${currentDayData.chapterTitle || 'Core Module'}` : 'Clinical Module'}
                     </span>
                     <span className="text-slate-300">•</span>
                     <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
@@ -186,6 +206,23 @@ export default function DayContentView() {
                   <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                     Day {currentDayData.dayNumber} — {currentDayData.title}
                   </h1>
+
+                  {/* Dynamic Linked Topics Badges */}
+                  {currentDayData.topics && currentDayData.topics.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+                        Syllabus Topics:
+                      </span>
+                      {currentDayData.topics.map((t) => (
+                        <span
+                          key={t.id}
+                          className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs"
+                        >
+                          • {t.title}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Header Action Controls: Day Prev/Next + Mark as Complete */}

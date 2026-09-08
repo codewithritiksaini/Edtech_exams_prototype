@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Stethoscope, 
@@ -49,6 +49,7 @@ import {
   dashboardTests,
   testService 
 } from '../data/mockData';
+import { curriculumService } from '../services/curriculumService';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -58,6 +59,14 @@ export default function DashboardPage() {
   // Dynamic query params from Phase 2 or fallback to default mock
   const enrolledPlan = searchParams.get('plan') || dashboardUserData.packageTier;
   const examParam = searchParams.get('exam');
+  const currentExamId = examParam === 'usmle' 
+    ? 'usmle-step1' 
+    : examParam === 'plab' 
+      ? 'plab-ukmla' 
+      : examParam === 'europe' 
+        ? 'europe-licensing' 
+        : 'neet-pg';
+
   const enrolledCourse = examParam === 'usmle' 
     ? 'USMLE Step 1 & Step 2 CK' 
     : examParam === 'plab' 
@@ -65,6 +74,25 @@ export default function DashboardPage() {
       : examParam === 'europe' 
         ? 'Europe Medical Licensing' 
         : dashboardUserData.enrolledCourse;
+
+  // Reactive Curriculum Data from curriculumService
+  const [curriculumSubjects, setCurriculumSubjects] = useState(() => curriculumService.getSubjects(currentExamId));
+  const [curriculumChapters, setCurriculumChapters] = useState(() => curriculumService.getChapters());
+  const [curriculumSchedule, setCurriculumSchedule] = useState(() => curriculumService.getSchedule(currentExamId));
+
+  useEffect(() => {
+    const unsubC = curriculumService.subscribeCurriculum(() => {
+      setCurriculumSubjects(curriculumService.getSubjects(currentExamId));
+      setCurriculumChapters(curriculumService.getChapters());
+    });
+    const unsubS = curriculumService.subscribeSchedule(() => {
+      setCurriculumSchedule(curriculumService.getSchedule(currentExamId));
+    });
+    return () => {
+      unsubC();
+      unsubS();
+    };
+  }, [currentExamId]);
 
   // Reactive Tests Store for Phase 6
   const [testsList, setTestsList] = useState(() => testService.getTests());
@@ -107,6 +135,72 @@ export default function DashboardPage() {
 
   // Study Plan Week Expansion state
   const [expandedWeeks, setExpandedWeeks] = useState({ 1: true, 2: false, 3: false, 4: false });
+
+  // Dynamically resolve study plan weeks from curriculumService
+  const resolvedStudyPlanWeeks = useMemo(() => {
+    if (!curriculumSchedule || curriculumSchedule.length === 0) {
+      return studyPlanWeeks;
+    }
+
+    const weekMap = {};
+    curriculumSchedule.forEach((slot) => {
+      const wk = slot.weekNumber || 1;
+      if (!weekMap[wk]) {
+        weekMap[wk] = [];
+      }
+      weekMap[wk].push(slot);
+    });
+
+    const sortedWeeks = Object.keys(weekMap).map(Number).sort((a, b) => a - b);
+    const allTopics = curriculumService.getTopics();
+
+    return sortedWeeks.map((wkNum) => {
+      const slots = weekMap[wkNum].sort((a, b) => a.dayNumber - b.dayNumber);
+      const firstSlot = slots[0];
+      const subject = curriculumSubjects.find((s) => s.id === firstSlot?.subjectId);
+      const chapter = curriculumChapters.find((c) => c.id === firstSlot?.chapterId);
+
+      const days = slots.map((s) => {
+        const isMarkedCompleted = completedDaysList.includes(s.dayNumber);
+        const status = s.status === 'Locked' 
+          ? 'locked' 
+          : isMarkedCompleted || s.dayNumber < 3 
+            ? 'completed' 
+            : s.dayNumber === 3 
+              ? 'in-progress' 
+              : 'locked';
+
+        const linkedTopics = (s.topicIds || []).map((tId) => {
+          const top = allTopics.find((t) => t.id === tId);
+          return top?.title;
+        }).filter(Boolean);
+
+        return {
+          dayNumber: s.dayNumber,
+          title: s.dayTitle,
+          duration: s.estimatedTime || '1.5 hours',
+          status,
+          score: s.dayNumber === 1 ? '18/20 (90%)' : s.dayNumber === 2 ? '17/20 (85%)' : undefined,
+          topics: linkedTopics.length > 0 ? linkedTopics : undefined,
+          hasLive: s.hasLive,
+          hasTest: s.hasTest
+        };
+      });
+
+      const completedCount = days.filter((d) => d.status === 'completed').length;
+      const completionRate = `${Math.round((completedCount / (days.length || 1)) * 100)}%`;
+
+      return {
+        weekNumber: wkNum,
+        title: subject ? subject.name : `Week ${wkNum} Core Curriculum`,
+        description: chapter ? chapter.title : 'High-Yield Clinical Module',
+        badge: wkNum === 1 ? 'Active Track' : 'Upcoming Track',
+        status: wkNum === 1 ? 'current' : 'upcoming',
+        completionRate,
+        days
+      };
+    });
+  }, [curriculumSchedule, curriculumSubjects, curriculumChapters, completedDaysList]);
 
   const toggleWeek = (weekNum) => {
     setExpandedWeeks((prev) => ({
@@ -534,42 +628,58 @@ export default function DashboardPage() {
 
               {/* Subject Module Breakdown */}
               <div className="space-y-4">
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-brand-600" />
-                  <span>Subject Modules & Progress Tracker</span>
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-brand-600" />
+                    <span>Subject Modules & Progress Tracker</span>
+                  </h3>
+                  <span className="text-xs text-slate-400 font-medium">
+                    {curriculumSubjects.length} Accredited Disciplines
+                  </span>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[
-                    { name: 'Cardiology & Hemodynamics', days: '12 / 14 Days', pct: 85, color: 'emerald', status: 'Active (Week 1)' },
-                    { name: 'Neurology & Neuroanatomy', days: '6 / 15 Days', pct: 40, color: 'brand', status: 'Upcoming (Week 2)' },
-                    { name: 'Clinical Pharmacology & Toxicology', days: '2 / 12 Days', pct: 15, color: 'amber', status: 'Upcoming (Week 3)' },
-                    { name: 'General & Systemic Pathology', days: '9 / 15 Days', pct: 60, color: 'emerald', status: 'In Review' },
-                    { name: 'Internal Medicine & Critical Care', days: '4 / 16 Days', pct: 25, color: 'brand', status: 'Queued' },
-                    { name: 'Pediatrics & Neonatal Resuscitation', days: '0 / 10 Days', pct: 0, color: 'slate', status: 'Locked' },
-                  ].map((sub, i) => (
-                    <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                          {sub.status}
-                        </span>
-                        <span className="text-xs font-black text-slate-900">{sub.pct}%</span>
-                      </div>
-                      <h4 className="text-sm font-bold text-slate-900">{sub.name}</h4>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] text-slate-500 font-medium">
-                          <span>Progress</span>
-                          <span>{sub.days}</span>
+                  {curriculumSubjects.map((sub, i) => {
+                    const subChapters = curriculumChapters.filter(c => c.subjectId === sub.id);
+                    const allTopics = curriculumService.getTopics();
+                    const subTopics = allTopics.filter(t => subChapters.some(c => c.id === t.chapterId));
+                    const pct = i === 0 ? 85 : i === 1 ? 40 : i === 2 ? 15 : 0;
+                    const statusText = i === 0 ? 'Active Module' : i === 1 ? 'Next Up' : sub.status;
+
+                    return (
+                      <div key={sub.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3 hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                            i === 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {sub.code} • {statusText}
+                          </span>
+                          <span className="text-xs font-black text-slate-900">{pct}%</span>
                         </div>
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-brand-600 rounded-full" 
-                            style={{ width: `${sub.pct}%` }} 
-                          />
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900 line-clamp-1">{sub.name}</h4>
+                          <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{sub.description}</p>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-slate-500 pt-0.5">
+                          <span className="font-semibold text-slate-700">{subChapters.length} Chapters</span>
+                          <span>•</span>
+                          <span>{subTopics.length} Topics</span>
+                        </div>
+                        <div className="space-y-1 pt-1">
+                          <div className="flex justify-between text-[11px] text-slate-500 font-medium">
+                            <span>Clinical Mastery</span>
+                            <span>{pct}%</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-brand-600 rounded-full transition-all" 
+                              style={{ width: `${pct}%` }} 
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -637,7 +747,7 @@ export default function DashboardPage() {
 
               {/* Expandable Week Cards */}
               <div className="space-y-4">
-                {studyPlanWeeks.map((week) => {
+                {resolvedStudyPlanWeeks.map((week) => {
                   const isExpanded = expandedWeeks[week.weekNumber];
                   const isCurrentWeek = week.status === 'current';
 
