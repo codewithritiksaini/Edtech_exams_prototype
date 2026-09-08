@@ -765,7 +765,12 @@ export default function AdminDashboardPage() {
           {/* TAB 2.3: STUDY SCHEDULE & DRIP PLANNER (ADMIN & FACULTY)             */}
           {/* ===================================================================== */}
           {activeTab === 'schedule' && (
-            <ManageScheduleTab />
+            <ManageScheduleTab 
+              isAdmin={isAdmin}
+              currentUser={currentUser}
+              initialExamId={navigatedExamId}
+              initialSubjectId={navigatedSubjectId}
+            />
           )}
 
           {/* ===================================================================== */}

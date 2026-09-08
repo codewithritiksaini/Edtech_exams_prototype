@@ -35,15 +35,49 @@ import {
 } from 'lucide-react';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
+import { authService, USER_ROLES } from '../../services/authService';
 
-export default function ManageScheduleTab() {
-  const [exams, setExams] = useState(() => catalogService.getExams());
-  const [selectedExamId, setSelectedExamId] = useState('neet-pg');
+const SUBJECT_COLOR_MAP = {
+  rose: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', tag: 'bg-rose-600', badge: 'bg-rose-100 text-rose-800' },
+  purple: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', tag: 'bg-purple-600', badge: 'bg-purple-100 text-purple-800' },
+  sky: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', tag: 'bg-sky-600', badge: 'bg-sky-100 text-sky-800' },
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', tag: 'bg-emerald-600', badge: 'bg-emerald-100 text-emerald-800' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', tag: 'bg-amber-600', badge: 'bg-amber-100 text-amber-800' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', tag: 'bg-indigo-600', badge: 'bg-indigo-100 text-indigo-800' },
+  cyan: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', tag: 'bg-cyan-600', badge: 'bg-cyan-100 text-cyan-800' },
+  blue: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', tag: 'bg-blue-600', badge: 'bg-blue-100 text-blue-800' },
+};
+
+export default function ManageScheduleTab({
+  isAdmin: propIsAdmin,
+  currentUser: propCurrentUser,
+  initialExamId,
+  initialSubjectId
+}) {
+  const [currentUser] = useState(() => propCurrentUser || authService.getCurrentUser());
+  const isAdmin = propIsAdmin !== undefined ? propIsAdmin : (currentUser?.role === USER_ROLES.ADMIN);
+  const isFaculty = currentUser?.role === USER_ROLES.FACULTY;
+  const facultyAllowedExams = ['neet-pg', 'usmle'];
+
+  const allCatalogExams = useMemo(() => catalogService.getExams(), []);
+  const availableExams = useMemo(() => {
+    if (isAdmin) return allCatalogExams;
+    return allCatalogExams.filter(e => facultyAllowedExams.includes(e.id));
+  }, [isAdmin, allCatalogExams]);
+
+  const [selectedExamId, setSelectedExamId] = useState(() => {
+    if (initialExamId && availableExams.some(e => e.id === initialExamId)) return initialExamId;
+    return availableExams[0]?.id || 'neet-pg';
+  });
 
   const [subjects, setSubjects] = useState(() => curriculumService.getSubjects());
   const [chapters, setChapters] = useState(() => curriculumService.getChapters());
   const [topics, setTopics] = useState(() => curriculumService.getTopics());
-  const [schedule, setSchedule] = useState(() => curriculumService.getSchedule('neet-pg'));
+  const [schedule, setSchedule] = useState(() => curriculumService.getSchedule(selectedExamId));
+
+  // Hierarchical Breakdown States
+  const [selectedSubjectId, setSelectedSubjectId] = useState(() => initialSubjectId || 'all');
+  const [selectedChapterId, setSelectedChapterId] = useState('all');
 
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' (7-day matrix) | 'list' (tabular)
@@ -63,6 +97,7 @@ export default function ManageScheduleTab() {
   const [formSelectedTopicIds, setFormSelectedTopicIds] = useState([]);
   const [formDate, setFormDate] = useState('2026-09-08');
   const [formDuration, setFormDuration] = useState('1.5 hours');
+  const [formLectureTimeSlot, setFormLectureTimeSlot] = useState('09:00 AM - 10:30 AM IST');
   const [formHasLive, setFormHasLive] = useState(false);
   const [formHasTest, setFormHasTest] = useState(false);
   const [formStatus, setFormStatus] = useState('Active');
@@ -95,6 +130,8 @@ export default function ManageScheduleTab() {
   // Update schedule when exam selector changes
   useEffect(() => {
     setSchedule(curriculumService.getSchedule(selectedExamId));
+    setSelectedSubjectId('all');
+    setSelectedChapterId('all');
     setSelectedWeek(1);
   }, [selectedExamId]);
 
@@ -104,47 +141,93 @@ export default function ManageScheduleTab() {
   };
 
   const selectedExam = useMemo(() => {
-    return exams.find(e => e.id === selectedExamId) || exams[0];
-  }, [exams, selectedExamId]);
+    return availableExams.find(e => e.id === selectedExamId) || availableExams[0] || allCatalogExams[0];
+  }, [availableExams, selectedExamId, allCatalogExams]);
 
   // Available weeks for this exam (e.g. 1 to 4 or max from exam)
   const availableWeeks = useMemo(() => {
-    const maxWeeks = Math.min(selectedExam.weeks || 4, 12);
+    const maxWeeks = Math.min(selectedExam?.weeks || 4, 12);
     return Array.from({ length: maxWeeks }, (_, i) => i + 1);
   }, [selectedExam]);
+
+  // Available subjects for the active exam (Scoped for Faculty vs Admin)
+  const examSubjects = useMemo(() => {
+    const subs = subjects.filter(s => s.examId === selectedExamId);
+    if (isAdmin) return subs;
+    // For Faculty: only show assigned subjects
+    return subs.filter(s => {
+      if (s.facultyEmail === currentUser?.email) return true;
+      if (s.id === 'sub-neet-cardio' || s.id === 'sub-neet-pharma' || s.id === 'sub-usmle-cvs') return true;
+      return false;
+    });
+  }, [subjects, selectedExamId, isAdmin, currentUser]);
+
+  // Active Subject Object
+  const activeSubject = useMemo(() => {
+    if (selectedSubjectId === 'all') return null;
+    return examSubjects.find(s => s.id === selectedSubjectId) || null;
+  }, [examSubjects, selectedSubjectId]);
+
+  // Available chapters for the active selection
+  const availableChapters = useMemo(() => {
+    if (selectedSubjectId === 'all') {
+      const allowedSubIds = new Set(examSubjects.map(s => s.id));
+      return chapters.filter(c => c.examId === selectedExamId && allowedSubIds.has(c.subjectId));
+    }
+    return chapters.filter(c => c.subjectId === selectedSubjectId);
+  }, [chapters, selectedExamId, selectedSubjectId, examSubjects]);
+
+  // Active Chapter Object
+  const activeChapter = useMemo(() => {
+    if (selectedChapterId === 'all') return null;
+    return availableChapters.find(c => c.id === selectedChapterId) || null;
+  }, [availableChapters, selectedChapterId]);
+
+  // Available chapters based on formSubjectId (inside Modal)
+  const subjectChapters = useMemo(() => {
+    if (!formSubjectId) return [];
+    return chapters.filter(c => c.subjectId === formSubjectId);
+  }, [chapters, formSubjectId]);
+
+  // Available topics based on formChapterId (inside Modal)
+  const chapterTopics = useMemo(() => {
+    if (!formChapterId) return [];
+    return topics.filter(t => t.chapterId === formChapterId);
+  }, [topics, formChapterId]);
 
   // All slots for the active exam
   const examSchedule = useMemo(() => {
     return schedule.filter(s => s.examId === selectedExamId);
   }, [schedule, selectedExamId]);
 
+  // Subject-filtered slots
+  const subjectSchedule = useMemo(() => {
+    if (selectedSubjectId === 'all') {
+      if (!isAdmin) {
+        const allowedSubIds = new Set(examSubjects.map(s => s.id));
+        return examSchedule.filter(s => allowedSubIds.has(s.subjectId));
+      }
+      return examSchedule;
+    }
+    return examSchedule.filter(s => s.subjectId === selectedSubjectId);
+  }, [examSchedule, selectedSubjectId, isAdmin, examSubjects]);
+
+  // Chapter-filtered slots
+  const chapterSchedule = useMemo(() => {
+    if (selectedChapterId === 'all') return subjectSchedule;
+    return subjectSchedule.filter(s => s.chapterId === selectedChapterId);
+  }, [subjectSchedule, selectedChapterId]);
+
   // Slots for the currently selected week
   const weekSlots = useMemo(() => {
-    return examSchedule.filter(s => s.weekNumber === selectedWeek);
-  }, [examSchedule, selectedWeek]);
+    return chapterSchedule.filter(s => s.weekNumber === selectedWeek);
+  }, [chapterSchedule, selectedWeek]);
 
   // 7 Days of the currently selected week (Day 1..7 for Week 1, Day 8..14 for Week 2, etc.)
   const weekDayNumbers = useMemo(() => {
     const startDay = (selectedWeek - 1) * 7 + 1;
     return Array.from({ length: 7 }, (_, i) => startDay + i);
   }, [selectedWeek]);
-
-  // Available subjects for the active exam
-  const examSubjects = useMemo(() => {
-    return subjects.filter(s => s.examId === selectedExamId);
-  }, [subjects, selectedExamId]);
-
-  // Available chapters based on formSubjectId
-  const subjectChapters = useMemo(() => {
-    if (!formSubjectId) return [];
-    return chapters.filter(c => c.subjectId === formSubjectId);
-  }, [chapters, formSubjectId]);
-
-  // Available topics based on formChapterId
-  const chapterTopics = useMemo(() => {
-    if (!formChapterId) return [];
-    return topics.filter(t => t.chapterId === formChapterId);
-  }, [topics, formChapterId]);
 
   // Metrics computation for KPI Banner
   const metrics = useMemo(() => {
@@ -177,7 +260,7 @@ export default function ManageScheduleTab() {
 
     return {
       scheduledDays: totalDays,
-      targetDays: selectedExam.weeks ? selectedExam.weeks * 7 : 28,
+      targetDays: selectedExam?.weeks ? selectedExam.weeks * 7 : 28,
       activeTopics: allLinkedTopicIds.size,
       studyHours: (totalMinutes / 60).toFixed(1),
       totalPdfs,
@@ -187,7 +270,7 @@ export default function ManageScheduleTab() {
   }, [examSchedule, selectedExam, topics]);
 
   // Open Modal for Schedule Day
-  const handleOpenModal = (slot = null, targetDay = null) => {
+  const handleOpenModal = (slot = null, targetDay = null, targetSubjectId = null) => {
     if (slot) {
       setEditingSlot(slot);
       setFormWeekNumber(slot.weekNumber);
@@ -198,6 +281,7 @@ export default function ManageScheduleTab() {
       setFormSelectedTopicIds(slot.topicIds || []);
       setFormDate(slot.scheduledDate || new Date().toISOString().split('T')[0]);
       setFormDuration(slot.estimatedTime || '1.5 hours');
+      setFormLectureTimeSlot(slot.lectureTimeSlot || '09:00 AM - 10:30 AM IST');
       setFormHasLive(Boolean(slot.hasLive));
       setFormHasTest(Boolean(slot.hasTest));
       setFormStatus(slot.status || 'Active');
@@ -207,10 +291,16 @@ export default function ManageScheduleTab() {
       setFormWeekNumber(selectedWeek);
       setFormDayNumber(dayNum);
       
-      const defaultSub = examSubjects[0]?.id || '';
-      setFormSubjectId(defaultSub);
-      const defaultChaps = chapters.filter(c => c.subjectId === defaultSub);
-      const defaultChap = defaultChaps[0] || null;
+      // Pick subject: either targetSubjectId, currently filtered subject, or first assigned
+      const defaultSubId = targetSubjectId || (selectedSubjectId !== 'all' ? selectedSubjectId : (examSubjects[0]?.id || ''));
+      const defaultSubObj = examSubjects.find(s => s.id === defaultSubId) || examSubjects[0];
+      setFormSubjectId(defaultSubId);
+
+      // Default lecture time slot from chosen subject!
+      setFormLectureTimeSlot(defaultSubObj?.defaultTimeSlot || '09:00 AM - 10:30 AM IST');
+
+      const defaultChaps = chapters.filter(c => c.subjectId === defaultSubId);
+      const defaultChap = (selectedChapterId !== 'all' && defaultChaps.find(c => c.id === selectedChapterId)) || defaultChaps[0] || null;
       setFormChapterId(defaultChap?.id || '');
 
       const defaultTopics = defaultChap ? topics.filter(t => t.chapterId === defaultChap.id) : [];
@@ -219,7 +309,7 @@ export default function ManageScheduleTab() {
       setFormDayTitle(
         defaultChap 
           ? `Day ${dayNum} — ${defaultChap.title}` 
-          : `Day ${dayNum} — Clinical Diagnostic Study`
+          : `Day ${dayNum} — ${defaultSubObj?.name || 'Clinical Study'}`
       );
 
       // Default date computed by day offset
@@ -264,6 +354,9 @@ export default function ManageScheduleTab() {
       return;
     }
 
+    const subObj = examSubjects.find(s => s.id === formSubjectId);
+    const chapObj = chapters.find(c => c.id === formChapterId);
+
     const saved = curriculumService.saveScheduleSlot({
       ...(editingSlot ? { id: editingSlot.id } : {}),
       examId: selectedExamId,
@@ -272,10 +365,16 @@ export default function ManageScheduleTab() {
       dayNumber: Number(formDayNumber),
       dayTitle: formDayTitle.trim() || `Day ${formDayNumber}`,
       subjectId: formSubjectId,
+      subjectName: subObj?.name || 'Medical Subject',
+      subjectCode: subObj?.code || '',
+      subjectColor: subObj?.color || 'rose',
       chapterId: formChapterId,
+      chapterTitle: chapObj?.title || 'Clinical Chapter',
       topicIds: formSelectedTopicIds,
       scheduledDate: formDate,
       estimatedTime: formDuration,
+      lectureTimeSlot: formLectureTimeSlot,
+      facultyName: subObj?.assignedFacultyName || currentUser?.name || 'Lead Specialist',
       hasLive: formHasLive,
       hasTest: formHasTest,
       status: formStatus
@@ -283,7 +382,10 @@ export default function ManageScheduleTab() {
 
     setSchedule(curriculumService.getSchedule(selectedExamId));
     setIsModalOpen(false);
-    showToast(editingSlot ? `Day ${formDayNumber} schedule updated!` : `Day ${formDayNumber} scheduled with ${formSelectedTopicIds.length} topics!`);
+    showToast(editingSlot 
+      ? `Day ${formDayNumber} [${subObj?.name || 'Subject'}] schedule updated!` 
+      : `Day ${formDayNumber} scheduled for ${subObj?.name || 'Subject'} at ${formLectureTimeSlot}!`
+    );
   };
 
   const handleDeleteSlot = () => {
@@ -310,7 +412,7 @@ export default function ManageScheduleTab() {
 
   // List View Filtered Slots
   const filteredListSlots = useMemo(() => {
-    return examSchedule.filter(slot => {
+    return chapterSchedule.filter(slot => {
       const q = searchQuery.toLowerCase().trim();
       if (!q) return true;
       const sub = subjects.find(s => s.id === slot.subjectId);
@@ -318,19 +420,21 @@ export default function ManageScheduleTab() {
       return (
         slot.dayTitle.toLowerCase().includes(q) ||
         String(slot.dayNumber).includes(q) ||
+        (slot.lectureTimeSlot || '').toLowerCase().includes(q) ||
+        (slot.facultyName || '').toLowerCase().includes(q) ||
         (sub?.name || '').toLowerCase().includes(q) ||
         (chap?.title || '').toLowerCase().includes(q)
       );
     });
-  }, [examSchedule, searchQuery, subjects, chapters]);
+  }, [chapterSchedule, searchQuery, subjects, chapters]);
 
   return (
     <div className="space-y-6 animate-in fade-in pb-12">
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-3 animate-in slide-in-from-top-4">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+        <div className="fixed top-20 right-6 z-50 bg-white text-slate-900 px-5 py-3 rounded-2xl shadow-xl border border-emerald-300 flex items-center gap-3 animate-in slide-in-from-top-4">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           <span className="text-xs sm:text-sm font-semibold">{toastMessage}</span>
         </div>
       )}
@@ -444,33 +548,40 @@ export default function ManageScheduleTab() {
 
       </div>
 
-      {/* Control Navigation Toolbar: Exam Pills + Week Pills + View Mode */}
-      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+      {/* Control Navigation Toolbar: Full Multi-Tier Hierarchy */}
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-5">
         
-        {/* Row 1: Exam Track Selector */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+        {/* Tier 1: Exam Track Selector + View Switch */}
+        <div className="flex items-center justify-between gap-4 flex-wrap pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
-              <Filter className="w-3 h-3" />
-              Exam Track:
+              <Filter className="w-3.5 h-3.5 text-indigo-500" />
+              1. Exam Track:
             </span>
-            {exams.map(exam => (
+            {availableExams.map(exam => (
               <button
                 key={exam.id}
                 onClick={() => setSelectedExamId(exam.id)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
                   selectedExamId === exam.id
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    ? 'bg-indigo-50/90 border-2 border-indigo-600 text-indigo-950 shadow-xs ring-2 ring-indigo-500/15'
+                    : 'bg-white hover:bg-slate-50 border border-slate-200 text-slate-700'
                 }`}
               >
                 <span>{exam.flag}</span>
                 <span>{exam.name}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  selectedExamId === exam.id ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-600'
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                  selectedExamId === exam.id ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-600'
                 }`}>
-                  {exam.enrolledStudents || 0} students
+                  {exam.enrolledStudents || 0} enrolled
                 </span>
+                {!isAdmin && (
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
+                    selectedExamId === exam.id ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-emerald-50 text-emerald-700'
+                  }`}>
+                    Assigned
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -497,20 +608,250 @@ export default function ManageScheduleTab() {
               }`}
             >
               <List className="w-3.5 h-3.5" />
-              <span>Slots List ({examSchedule.length})</span>
+              <span>Slots List ({chapterSchedule.length})</span>
             </button>
           </div>
         </div>
 
-        {/* Row 2: Week Selector Pills */}
+        {/* Tier 2: Assigned Subjects Breakdown Cards & Switcher */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-rose-500" />
+              <span>2. Breakdown by Assigned Subject:</span>
+              <span className="text-slate-400 font-normal">
+                {isAdmin ? `(${examSubjects.length} subjects available)` : `(${examSubjects.length} assigned to your faculty scope)`}
+              </span>
+            </span>
+
+            {selectedSubjectId !== 'all' && (
+              <button
+                onClick={() => {
+                  setSelectedSubjectId('all');
+                  setSelectedChapterId('all');
+                }}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Show All Subjects Master Grid</span>
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Master "All Subjects" Card (For Admin or combined view) */}
+            <button
+              onClick={() => {
+                setSelectedSubjectId('all');
+                setSelectedChapterId('all');
+              }}
+              className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                selectedSubjectId === 'all'
+                  ? 'bg-white border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/15 text-slate-900'
+                  : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
+                    selectedSubjectId === 'all' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  }`}>
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-extrabold text-slate-900 truncate">All Subjects Master View</div>
+                    <div className="text-[10px] text-slate-500">
+                      Combined Timetable
+                    </div>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                  selectedSubjectId === 'all' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {examSchedule.length} slots
+                </span>
+              </div>
+              <div className="mt-2.5 pt-2 border-t border-slate-100 text-[10px] flex items-center justify-between text-slate-500">
+                <span className="font-semibold text-slate-600">{examSubjects.length} Subjects Active</span>
+                <span className="font-medium text-indigo-600">Master Overview</span>
+              </div>
+            </button>
+
+            {/* Individual Subject Cards */}
+            {examSubjects.map(sub => {
+              const colorInfo = SUBJECT_COLOR_MAP[sub.color] || SUBJECT_COLOR_MAP.rose;
+              const isSelected = selectedSubjectId === sub.id;
+              const subSlots = examSchedule.filter(s => s.subjectId === sub.id);
+              const subChaps = chapters.filter(c => c.subjectId === sub.id);
+
+              return (
+                <button
+                  key={sub.id}
+                  onClick={() => {
+                    setSelectedSubjectId(sub.id);
+                    setSelectedChapterId('all');
+                  }}
+                  className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                    isSelected
+                      ? 'bg-white border-indigo-600 shadow-md ring-2 ring-indigo-500/20'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${colorInfo.bg} ${colorInfo.text} border ${colorInfo.border}`}>
+                        <BookOpen className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-black text-slate-900 truncate">
+                          {sub.name}
+                        </div>
+                        <span className="text-[10px] font-extrabold text-slate-400">
+                          {sub.code}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ${colorInfo.badge}`}>
+                      {subSlots.length} days
+                    </span>
+                  </div>
+
+                  {/* Lecture Timing Slot & Faculty Specialty */}
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-[10px]">
+                    <div className="flex items-center justify-between text-indigo-700 font-bold bg-indigo-50/60 px-2 py-1 rounded-lg">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-indigo-500 shrink-0" />
+                        <span>Slot:</span>
+                      </span>
+                      <span className="font-extrabold truncate">{sub.defaultTimeSlot || '09:00 AM - 10:30 AM IST'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-slate-500 font-medium px-1">
+                      <span className="truncate">Mentor: {sub.assignedFacultyName || 'Assigned Lead'}</span>
+                      <span className="text-slate-400 font-bold shrink-0">{subChaps.length} Chaps</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tier 3: Chapter / Module Breakdown Pills (Level 3) */}
+        {availableChapters.length > 0 && (
+          <div className="pt-3 border-t border-slate-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <FolderTree className="w-3.5 h-3.5 text-sky-500" />
+                <span>3. Filter by Chapter / Topic Module:</span>
+              </span>
+
+              {selectedChapterId !== 'all' && (
+                <button
+                  onClick={() => setSelectedChapterId('all')}
+                  className="text-xs font-bold text-sky-600 hover:text-sky-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Show All Chapters</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => setSelectedChapterId('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
+                  selectedChapterId === 'all'
+                    ? 'bg-sky-600 text-white shadow-2xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                }`}
+              >
+                <span>All Chapters ({availableChapters.length})</span>
+              </button>
+
+              {availableChapters.map(chap => {
+                const chapSlots = subjectSchedule.filter(s => s.chapterId === chap.id);
+                const isSelected = selectedChapterId === chap.id;
+
+                return (
+                  <button
+                    key={chap.id}
+                    onClick={() => setSelectedChapterId(chap.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 cursor-pointer transition-all ${
+                      isSelected
+                        ? 'bg-sky-600 text-white shadow-2xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <span className="truncate max-w-[200px]">Ch {chap.chapterNumber}: {chap.title}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      isSelected ? 'bg-sky-700 text-sky-100' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {chapSlots.length} d
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Tier 4: Active Hierarchy Context Breadcrumb Banner */}
+        <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-700 flex-wrap">
+            <span className="text-slate-400 font-medium">Active Hierarchy:</span>
+            <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-900 font-black text-[11px] shadow-2xs">
+              {selectedExam.flag} {selectedExam.name}
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className={`px-2.5 py-1 rounded-lg font-bold text-[11px] ${
+              activeSubject ? 'bg-indigo-50 text-indigo-800 border border-indigo-200' : 'bg-white border border-slate-200 text-slate-700'
+            }`}>
+              {activeSubject ? `${activeSubject.name} (${activeSubject.code})` : 'All Subjects (Master View)'}
+            </span>
+            {activeSubject && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 text-[11px] flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  <span>{activeSubject.defaultTimeSlot}</span>
+                </span>
+              </>
+            )}
+            {activeChapter && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[11px]">
+                  Ch {activeChapter.chapterNumber}: {activeChapter.title}
+                </span>
+              </>
+            )}
+          </div>
+
+          {(selectedSubjectId !== 'all' || selectedChapterId !== 'all') && (
+            <button
+              onClick={() => {
+                setSelectedSubjectId('all');
+                setSelectedChapterId('all');
+              }}
+              className="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset Hierarchy Filters</span>
+            </button>
+          )}
+        </div>
+
+        {/* Tier 5: Week Selector Pills */}
         <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
-              <Calendar className="w-3 h-3" />
-              Select Week:
+              <Calendar className="w-3 h-3 text-emerald-500" />
+              4. Select Week:
             </span>
             {availableWeeks.map(wk => {
-              const count = examSchedule.filter(s => s.weekNumber === wk).length;
+              const count = chapterSchedule.filter(s => s.weekNumber === wk).length;
               return (
                 <button
                   key={wk}
@@ -527,7 +868,7 @@ export default function ManageScheduleTab() {
                       ? 'bg-emerald-700 text-emerald-100' 
                       : count > 0 ? 'bg-slate-200 text-slate-700' : 'bg-slate-200/60 text-slate-400'
                   }`}>
-                    {count}/7 Days
+                    {count} Sessions
                   </span>
                 </button>
               );
@@ -569,205 +910,199 @@ export default function ManageScheduleTab() {
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <span>Week {selectedWeek} Schedule Board</span>
                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  {weekSlots.length} of 7 Days Scheduled
+                  {weekSlots.length} Study Sessions in Week {selectedWeek}
                 </span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Days {weekDayNumbers[0]} to {weekDayNumbers[6]} • Click any empty day to assign chapters & clinical topics
+                Days {weekDayNumbers[0]} to {weekDayNumbers[6]} • Click any slot to edit or preview, or add multi-subject sessions per day
               </p>
             </div>
 
             <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span className="hidden sm:inline italic">Tip: Click "Preview Student View" to inspect the day's study room</span>
+              <span className="hidden sm:inline italic">Tip: Multi-subject faculty can schedule distinct lecture slots per day</span>
             </div>
           </div>
 
           {/* 7-Day Calendar Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {weekDayNumbers.map((dayNum, index) => {
-              const slot = weekSlots.find(s => Number(s.dayNumber) === Number(dayNum));
+              const daySlots = weekSlots.filter(s => Number(s.dayNumber) === Number(dayNum));
               const dayOfWeekNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
               const weekday = dayOfWeekNames[index % 7];
 
-              // If slot exists, render the rich Scheduled Day Card
-              if (slot) {
-                const subject = subjects.find(s => s.id === slot.subjectId);
-                const chapter = chapters.find(c => c.id === slot.chapterId);
-                const linkedTopics = topics.filter(t => (slot.topicIds || []).includes(t.id));
-
-                // Compute total content assets
-                let totalPdfs = 0;
-                let totalImgs = 0;
-                let hasVideo = false;
-                let totalCards = 0;
-
-                linkedTopics.forEach(t => {
-                  if (t.content) {
-                    totalPdfs += (t.content.pdfList?.length || (t.content.pdf ? 1 : 0));
-                    totalImgs += (t.content.images?.length || 0);
-                    if (t.content.video) hasVideo = true;
-                    totalCards += (t.content.flashcards?.length || 0);
-                  }
-                });
-
+              // If 1 or more slots exist for this day:
+              if (daySlots.length > 0) {
                 return (
                   <div
-                    key={slot.id || dayNum}
+                    key={dayNum}
                     className="bg-white rounded-3xl border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group hover:border-emerald-300"
                   >
                     <div className="p-5 space-y-3.5">
                       
-                      {/* Top Header: Day Pill + Weekday + Status */}
-                      <div className="flex items-center justify-between gap-2">
+                      {/* Top Header: Day Pill + Weekday + Session count */}
+                      <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-slate-900 text-white shadow-2xs">
-                            Day {slot.dayNumber}
+                          <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 shadow-2xs">
+                            Day {dayNum}
                           </span>
                           <span className="text-[11px] font-bold text-slate-500">
                             {weekday}
                           </span>
                         </div>
 
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          slot.status === 'Active' 
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                            : slot.status === 'Scheduled'
-                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                              : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {slot.status}
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {daySlots.length} {daySlots.length === 1 ? 'Session' : 'Sessions'}
                         </span>
                       </div>
 
-                      {/* Day Title & Duration */}
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-900 line-clamp-2 leading-snug">
-                          {slot.dayTitle}
-                        </h4>
-                        <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1 mt-1">
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          <span>{slot.estimatedTime || '1.5 hours'}</span>
-                          <span>•</span>
-                          <span>{slot.scheduledDate}</span>
-                        </span>
-                      </div>
+                      {/* Sessions List on this Day */}
+                      <div className="space-y-3">
+                        {daySlots.map(slot => {
+                          const subject = subjects.find(s => s.id === slot.subjectId);
+                          const chapter = chapters.find(c => c.id === slot.chapterId);
+                          const linkedTopics = topics.filter(t => (slot.topicIds || []).includes(t.id));
+                          const colorInfo = SUBJECT_COLOR_MAP[slot.subjectColor || subject?.color] || SUBJECT_COLOR_MAP.rose;
 
-                      {/* Hierarchy Badge: Subject -> Chapter */}
-                      <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 flex items-center gap-1 truncate">
-                          <Layers className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{subject?.name || slot.subjectName || 'Unassigned Subject'}</span>
-                        </div>
-                        <div className="text-xs font-bold text-slate-700 flex items-center gap-1 truncate">
-                          <FolderTree className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span className="truncate">{chapter?.title || slot.chapterTitle || 'Unassigned Chapter'}</span>
-                        </div>
-                      </div>
+                          // Compute assets count
+                          let totalPdfs = 0;
+                          let totalImgs = 0;
+                          let hasVideo = false;
+                          let totalCards = 0;
 
-                      {/* Linked Topics Snippet */}
-                      <div className="space-y-1">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                          <span>Topics Linked ({linkedTopics.length})</span>
-                        </div>
+                          linkedTopics.forEach(t => {
+                            if (t.content) {
+                              totalPdfs += (t.content.pdfList?.length || (t.content.pdf ? 1 : 0));
+                              totalImgs += (t.content.images?.length || 0);
+                              if (t.content.video) hasVideo = true;
+                              totalCards += (t.content.flashcards?.length || 0);
+                            }
+                          });
 
-                        {linkedTopics.length === 0 ? (
-                          <p className="text-[11px] text-amber-600 italic flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3 shrink-0" />
-                            No topics linked to this day.
-                          </p>
-                        ) : (
-                          <div className="space-y-1">
-                            {linkedTopics.slice(0, 2).map(t => (
-                              <div key={t.id} className="text-[11px] font-semibold text-slate-800 bg-white border border-slate-200 px-2 py-1 rounded-lg truncate">
-                                • {t.title}
+                          return (
+                            <div 
+                              key={slot.id} 
+                              className={`p-3.5 rounded-2xl border transition-all space-y-2.5 ${colorInfo.bg} ${colorInfo.border} hover:shadow-xs`}
+                            >
+                              {/* Subject Badge & Lecture Time Slot */}
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md text-white ${colorInfo.tag}`}>
+                                  {slot.subjectCode || subject?.code || 'SUB'}: {slot.subjectName || subject?.name}
+                                </span>
+
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 flex items-center gap-1 shadow-2xs">
+                                  <Clock className="w-2.5 h-2.5 text-indigo-500" />
+                                  <span>{slot.lectureTimeSlot || '09:00 AM - 10:30 AM IST'}</span>
+                                </span>
                               </div>
-                            ))}
-                            {linkedTopics.length > 2 && (
-                              <div className="text-[10px] text-slate-400 font-bold pl-1">
-                                + {linkedTopics.length - 2} more topic(s)
+
+                              {/* Chapter & Day Title */}
+                              <div>
+                                <div className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 truncate">
+                                  <FolderTree className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span className="truncate">{chapter?.title || slot.chapterTitle || 'Clinical Chapter'}</span>
+                                </div>
+                                <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug mt-0.5">
+                                  {slot.dayTitle}
+                                </h4>
                               </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
 
-                      {/* Content Assets Summary Pills */}
-                      <div className="flex items-center gap-1 flex-wrap pt-1">
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center gap-1">
-                          <FileText className="w-2.5 h-2.5" />
-                          {totalPdfs} PDF
-                        </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100">
-                          {totalImgs} Img
-                        </span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
-                          hasVideo ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-slate-100 text-slate-400'
-                        }`}>
-                          <Video className="w-2.5 h-2.5" />
-                          {hasVideo ? 'Video' : 'No Vid'}
-                        </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1">
-                          <Brain className="w-2.5 h-2.5" />
-                          {totalCards} Cards
-                        </span>
+                              {/* Mentor & Duration */}
+                              <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
+                                <span className="truncate">👨‍⚕️ {slot.facultyName || subject?.assignedFacultyName || 'Faculty Lead'}</span>
+                                <span className="text-slate-400 font-bold shrink-0">{slot.estimatedTime || '1.5 hrs'}</span>
+                              </div>
 
-                        {slot.hasLive && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">
-                            🔴 Live
-                          </span>
-                        )}
-                        {slot.hasTest && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100">
-                            📝 CBT
-                          </span>
-                        )}
+                              {/* Assets summary pills */}
+                              <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-700 flex items-center gap-0.5">
+                                  <FileText className="w-2.5 h-2.5 text-indigo-500" />
+                                  {totalPdfs} PDF
+                                </span>
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-700">
+                                  {totalImgs} Img
+                                </span>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
+                                  hasVideo ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-white border border-slate-200 text-slate-400'
+                                }`}>
+                                  <Video className="w-2.5 h-2.5" />
+                                  {hasVideo ? 'Video' : 'No Vid'}
+                                </span>
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-700 flex items-center gap-0.5">
+                                  <Brain className="w-2.5 h-2.5 text-purple-500" />
+                                  {totalCards} Cards
+                                </span>
+                                {slot.hasLive && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                                    🔴 Live
+                                  </span>
+                                )}
+                                {slot.hasTest && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                    📝 CBT
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Action Buttons for this session */}
+                              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-1">
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleOpenModal(slot)}
+                                    title="Edit This Session"
+                                    className="p-1 rounded-md text-slate-500 hover:text-emerald-600 hover:bg-white transition-all cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenPreview(slot)}
+                                    title="Quick Preview Student View"
+                                    className="p-1 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-white transition-all cursor-pointer"
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingSlot(slot)}
+                                    title="Remove This Session"
+                                    className="p-1 rounded-md text-slate-500 hover:text-rose-600 hover:bg-white transition-all cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+
+                                <a
+                                  href={`/day/${slot.dayNumber}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-800 cursor-pointer"
+                                >
+                                  <span>Student View</span>
+                                  <ExternalLink className="w-2.5 h-2.5" />
+                                </a>
+                              </div>
+
+                            </div>
+                          );
+                        })}
                       </div>
 
                     </div>
 
-                    {/* Card Actions Footer */}
-                    <div className="px-4 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleOpenModal(slot)}
-                          title="Edit Day Schedule"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all cursor-pointer"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenPreview(slot)}
-                          title="Quick Preview Student View"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingSlot(slot)}
-                          title="Remove Day Schedule"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      {/* Direct Student View External Link */}
-                      <a
-                        href={`/day/${slot.dayNumber}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-800 transition-colors cursor-pointer"
-                        title="Open full learning room in new tab"
+                    {/* Bottom of Day Card: Add Another Session Button */}
+                    <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
+                      <button
+                        onClick={() => handleOpenModal(null, dayNum)}
+                        className="w-full py-1.5 px-2.5 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 border border-slate-200 text-slate-700 text-[11px] font-bold rounded-xl shadow-2xs transition-all cursor-pointer inline-flex items-center justify-center gap-1"
                       >
-                        <span>Student View</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
+                        <Plus className="w-3 h-3" />
+                        <span>+ Add Subject Session</span>
+                      </button>
                     </div>
+
                   </div>
                 );
               }
 
-              // If slot DOES NOT exist, render the Clean Dashed "Unscheduled Day" Card
+              // Unscheduled Rest Day Slot
               return (
                 <div
                   key={dayNum}
@@ -848,8 +1183,10 @@ export default function ManageScheduleTab() {
                 <tr className="border-b border-slate-100 bg-slate-50/60 text-[11px] font-black uppercase tracking-wider text-slate-400">
                   <th className="py-3 px-4">Day</th>
                   <th className="py-3 px-4">Week</th>
+                  <th className="py-3 px-4">Lecture Time Slot</th>
                   <th className="py-3 px-4">Day Title</th>
-                  <th className="py-3 px-4">Subject & Chapter</th>
+                  <th className="py-3 px-4">Subject & Mentor</th>
+                  <th className="py-3 px-4">Chapter</th>
                   <th className="py-3 px-4">Topics</th>
                   <th className="py-3 px-4">Duration</th>
                   <th className="py-3 px-4">Status</th>
@@ -859,7 +1196,7 @@ export default function ManageScheduleTab() {
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredListSlots.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="py-8 text-center text-slate-400">
+                    <td colSpan="10" className="py-8 text-center text-slate-400">
                       No schedule slots match your search query.
                     </td>
                   </tr>
@@ -868,11 +1205,12 @@ export default function ManageScheduleTab() {
                     const subject = subjects.find(s => s.id === slot.subjectId);
                     const chapter = chapters.find(c => c.id === slot.chapterId);
                     const topicCount = (slot.topicIds || []).length;
+                    const colorInfo = SUBJECT_COLOR_MAP[slot.subjectColor || subject?.color] || SUBJECT_COLOR_MAP.rose;
 
                     return (
                       <tr key={slot.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-4 font-black text-slate-900">
-                          <span className="px-2 py-1 rounded-lg bg-slate-900 text-white text-[11px]">
+                          <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 text-[11px] font-bold">
                             Day {slot.dayNumber}
                           </span>
                         </td>
@@ -880,19 +1218,35 @@ export default function ManageScheduleTab() {
                           Week {slot.weekNumber}
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-bold text-slate-900 max-w-xs truncate">
-                            {slot.dayTitle}
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-[11px] shadow-2xs">
+                            <Clock className="w-3 h-3 text-indigo-500 shrink-0" />
+                            <span>{slot.lectureTimeSlot || '09:00 AM - 10:30 AM IST'}</span>
                           </div>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[10px] text-slate-400 mt-0.5">
                             {slot.scheduledDate}
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="text-indigo-600 font-bold truncate max-w-xs">
-                            {subject?.name || slot.subjectName || 'Unassigned'}
+                          <div className="font-bold text-slate-900 max-w-xs truncate">
+                            {slot.dayTitle}
                           </div>
-                          <div className="text-[11px] text-slate-500 font-medium truncate max-w-xs">
-                            {chapter?.title || slot.chapterTitle || 'Unassigned'}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-[10px] font-black px-1.5 py-0.2 rounded text-white ${colorInfo.tag}`}>
+                              {slot.subjectCode || subject?.code || 'SUB'}
+                            </span>
+                            <span className="text-slate-900 font-bold truncate max-w-xs">
+                              {subject?.name || slot.subjectName || 'Unassigned'}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">
+                            👨‍⚕️ {slot.facultyName || subject?.assignedFacultyName || 'Lead Mentor'}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="text-[11px] text-slate-600 font-bold truncate max-w-xs">
+                            {chapter?.title || slot.chapterTitle || 'Unassigned Chapter'}
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -1067,6 +1421,10 @@ export default function ManageScheduleTab() {
                     onChange={(e) => {
                       const newSubId = e.target.value;
                       setFormSubjectId(newSubId);
+                      const subObj = examSubjects.find(s => s.id === newSubId);
+                      if (subObj?.defaultTimeSlot) {
+                        setFormLectureTimeSlot(subObj.defaultTimeSlot);
+                      }
                       const chaps = chapters.filter(c => c.subjectId === newSubId);
                       const firstChapId = chaps[0]?.id || '';
                       setFormChapterId(firstChapId);
@@ -1193,7 +1551,61 @@ export default function ManageScheduleTab() {
                 )}
               </div>
 
-              {/* Step 5: Duration & Add-ons */}
+              {/* Step 5: Lecture Time Slot & Batch Timing */}
+              <div className="space-y-2 p-3.5 bg-indigo-50/60 rounded-2xl border border-indigo-100/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                    Lecture Time Slot & Batch Timing *
+                  </label>
+                  {(() => {
+                    const selSub = examSubjects.find(s => s.id === formSubjectId);
+                    return selSub?.assignedFacultyName ? (
+                      <span className="text-[11px] font-semibold text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-200">
+                        Faculty: {selSub.assignedFacultyName}
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
+                
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: 'Morning (09:00 - 10:30 AM)', val: '09:00 AM - 10:30 AM IST' },
+                    { label: 'Midday (11:30 AM - 01:00 PM)', val: '11:30 AM - 01:00 PM IST' },
+                    { label: 'Evening (04:00 - 05:30 PM)', val: '04:00 PM - 05:30 PM IST' },
+                    { label: 'Night (07:30 - 09:00 PM)', val: '07:30 PM - 09:00 PM IST' }
+                  ].map((preset) => (
+                    <button
+                      key={preset.val}
+                      type="button"
+                      onClick={() => setFormLectureTimeSlot(preset.val)}
+                      className={`text-[11px] px-2.5 py-1 rounded-lg font-medium border transition-all cursor-pointer ${
+                        formLectureTimeSlot === preset.val
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 09:00 AM - 10:30 AM IST"
+                    value={formLectureTimeSlot}
+                    onChange={(e) => setFormLectureTimeSlot(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Multiple subjects can be scheduled on the same day by assigning distinct time slots (e.g. Cardiology Morning + Pharmacology Evening).
+                </p>
+              </div>
+
+              {/* Step 6: Duration & Add-ons */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -1289,7 +1701,7 @@ export default function ManageScheduleTab() {
             {/* Modal Top Bar */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1.5 rounded-xl bg-slate-900 text-white font-black text-xs">
+                <span className="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 font-black text-xs">
                   Day {previewSlot.dayNumber}
                 </span>
                 <div>
@@ -1322,14 +1734,14 @@ export default function ManageScheduleTab() {
             </div>
 
             {/* Day Title Banner */}
-            <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-1">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-50/70 via-white to-emerald-50/50 border border-slate-200 text-slate-900 space-y-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
                 Daily Study Session
               </div>
-              <h4 className="text-lg font-black text-white">
+              <h4 className="text-lg font-black text-slate-900">
                 {resolvedPreviewContent.title}
               </h4>
-              <div className="flex items-center gap-3 text-xs text-slate-300 pt-1">
+              <div className="flex items-center gap-3 text-xs text-slate-500 pt-1">
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                   {resolvedPreviewContent.estimatedTime}
@@ -1514,7 +1926,7 @@ export default function ManageScheduleTab() {
               </span>
               <button
                 onClick={() => setPreviewSlot(null)}
-                className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl cursor-pointer"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs"
               >
                 Close Preview
               </button>

@@ -26,7 +26,10 @@ export const INITIAL_SUBJECTS = [
     color: 'rose',
     description: 'Coronary artery diseases, valvular pathologies, arrhythmias, ECG interpretation, and heart failure pharmacotherapy.',
     order: 1,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '09:00 AM - 10:30 AM IST',
+    assignedFacultyName: 'Dr. Siddharth V. (AIIMS)',
+    facultyEmail: 'faculty@demo.com'
   },
   {
     id: 'sub-neet-pulmo',
@@ -37,7 +40,10 @@ export const INITIAL_SUBJECTS = [
     color: 'sky',
     description: 'Obstructive & restrictive lung diseases, mechanical ventilation, ARDS, pulmonary embolism, and thoracic oncology.',
     order: 2,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '11:00 AM - 12:30 PM IST',
+    assignedFacultyName: 'Dr. Marcus Vance (MRCP)',
+    facultyEmail: 'marcus.vance@demo.com'
   },
   {
     id: 'sub-neet-nephro',
@@ -48,7 +54,10 @@ export const INITIAL_SUBJECTS = [
     color: 'amber',
     description: 'Glomerulonephritis, acute kidney injury (KDIGO), Davenport acid-base diagrams, and renal replacement therapy.',
     order: 3,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '02:00 PM - 03:30 PM IST',
+    assignedFacultyName: 'Dr. Elena Rossi (Charité)',
+    facultyEmail: 'elena.rossi@demo.com'
   },
   {
     id: 'sub-neet-gastro',
@@ -59,7 +68,10 @@ export const INITIAL_SUBJECTS = [
     color: 'emerald',
     description: 'Cirrhosis, portal hypertension, inflammatory bowel diseases, acute pancreatitis, and viral hepatitis serology.',
     order: 4,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '05:00 PM - 06:30 PM IST',
+    assignedFacultyName: 'Dr. Priya Sharma (KEM)',
+    facultyEmail: 'priya.surgery@demo.com'
   },
   {
     id: 'sub-neet-neuro',
@@ -70,7 +82,10 @@ export const INITIAL_SUBJECTS = [
     color: 'indigo',
     description: 'Cerebrovascular accidents, epilepsy syndromes, demyelinating diseases, cranial nerves, and peripheral neuropathies.',
     order: 5,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '06:30 PM - 08:00 PM IST',
+    assignedFacultyName: 'Dr. Ananya Sen (PGI)',
+    facultyEmail: 'ananya.pharma@demo.com'
   },
   {
     id: 'sub-neet-pharma',
@@ -81,7 +96,10 @@ export const INITIAL_SUBJECTS = [
     color: 'purple',
     description: 'Receptor dynamics, pharmacokinetics, antimicrobial stewardship, emergency antidotes, and chemotherapy protocols.',
     order: 6,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '04:00 PM - 05:30 PM IST',
+    assignedFacultyName: 'Dr. Siddharth V. (AIIMS)',
+    facultyEmail: 'faculty@demo.com'
   },
   {
     id: 'sub-neet-patho',
@@ -92,7 +110,10 @@ export const INITIAL_SUBJECTS = [
     color: 'cyan',
     description: 'Cell injury, inflammation, neoplasia, immunohistochemistry markers, and clinical hematopathology.',
     order: 7,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '07:30 PM - 09:00 PM IST',
+    assignedFacultyName: 'Dr. Priya Sharma (KEM)',
+    facultyEmail: 'priya.surgery@demo.com'
   },
 
   // USMLE Subjects
@@ -105,7 +126,10 @@ export const INITIAL_SUBJECTS = [
     color: 'rose',
     description: 'Pressure-volume loops, cardiac hemodynamics, congenital malformations, and pharmacology.',
     order: 1,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '10:00 AM - 11:30 AM EST',
+    assignedFacultyName: 'Dr. Siddharth V. (AIIMS)',
+    facultyEmail: 'faculty@demo.com'
   },
   {
     id: 'sub-usmle-neuro',
@@ -116,7 +140,10 @@ export const INITIAL_SUBJECTS = [
     color: 'indigo',
     description: 'Adrenergic & cholinergic receptors, neurotoxins, and CNS drug mechanisms.',
     order: 2,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '03:00 PM - 04:30 PM EST',
+    assignedFacultyName: 'Dr. Ananya Sen (PGI)',
+    facultyEmail: 'ananya.pharma@demo.com'
   },
 
   // PLAB Subjects
@@ -129,7 +156,10 @@ export const INITIAL_SUBJECTS = [
     color: 'emerald',
     description: 'Chest pain triage, Sepsis 6 protocol, NICE guidelines, and emergency hospital management.',
     order: 1,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '02:00 PM - 03:30 PM GMT',
+    assignedFacultyName: 'Dr. Marcus Vance (NHS Lead)',
+    facultyEmail: 'marcus.vance@demo.com'
   },
 
   // Europe Licensing
@@ -142,7 +172,10 @@ export const INITIAL_SUBJECTS = [
     color: 'blue',
     description: 'Anamnesegespräch, clinical doctor-to-doctor handover, and German medical terminology.',
     order: 1,
-    status: 'Active'
+    status: 'Active',
+    defaultTimeSlot: '05:00 PM - 06:30 PM CET',
+    assignedFacultyName: 'Dr. Elena Rossi (Charité)',
+    facultyEmail: 'elena.rossi@demo.com'
   }
 ];
 
@@ -231,6 +264,26 @@ export const INITIAL_CHAPTERS = [
     title: 'Clinical Acid-Base Disorders & Electrolytes',
     chapterNumber: 2,
     description: 'Anion gap calculations, Winter formula, delta ratio, and renal tubular acidosis.',
+    status: 'Active'
+  },
+
+  // Under NEET Clinical Pharmacology
+  {
+    id: 'chap-neet-pharm-receptors',
+    examId: 'neet-pg',
+    subjectId: 'sub-neet-pharma',
+    title: 'Autonomic Receptors & Sympathomimetic Agents',
+    chapterNumber: 1,
+    description: 'Alpha/Beta adrenergic agonists, pressor selection in septic shock, and chronotropic effects.',
+    status: 'Active'
+  },
+  {
+    id: 'chap-neet-pharm-antiarrhythmics',
+    examId: 'neet-pg',
+    subjectId: 'sub-neet-pharma',
+    title: 'Antiarrhythmics & Vaughan-Williams Pharmacology',
+    chapterNumber: 2,
+    description: 'Sodium channel kinetics, beta-blocker trials, amiodarone toxicity pearls, and adenosine dosing.',
     status: 'Active'
   },
 
@@ -776,6 +829,8 @@ export const INITIAL_SCHEDULE = [
     scheduledDate: '2026-09-08',
     status: 'Active',
     estimatedTime: '1.5 hours',
+    lectureTimeSlot: '09:00 AM - 10:30 AM IST',
+    facultyName: 'Dr. Siddharth V.',
     hasLive: true,
     hasTest: false
   },
@@ -794,6 +849,8 @@ export const INITIAL_SCHEDULE = [
     scheduledDate: '2026-09-09',
     status: 'Active',
     estimatedTime: '2.0 hours',
+    lectureTimeSlot: '09:00 AM - 11:00 AM IST',
+    facultyName: 'Dr. Siddharth V.',
     hasLive: false,
     hasTest: false
   },
@@ -803,7 +860,7 @@ export const INITIAL_SCHEDULE = [
     weekNumber: 1,
     weekTitle: 'Week 1 — Cardiology & ECG Foundations',
     dayNumber: 3,
-    dayTitle: 'Day 3 — Cardiac Arrhythmias & ECG Interpretation',
+    dayTitle: 'Day 3 (Morn) — Cardiac Arrhythmias & ECG Interpretation',
     subjectId: 'sub-neet-cardio',
     subjectName: 'Cardiology & Hemodynamics',
     chapterId: 'chap-neet-arrhythmias',
@@ -812,7 +869,29 @@ export const INITIAL_SCHEDULE = [
     scheduledDate: '2026-09-10',
     status: 'Active',
     estimatedTime: '2.0 hours',
+    lectureTimeSlot: '09:00 AM - 11:00 AM IST',
+    facultyName: 'Dr. Siddharth V.',
     hasLive: true,
+    hasTest: false
+  },
+  {
+    id: 'sched-neet-w1-d3-pharma',
+    examId: 'neet-pg',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Clinical Pharmacology Foundations',
+    dayNumber: 3,
+    dayTitle: 'Day 3 (Eve) — Antiarrhythmic Drug Protocols & Pharmacotherapy',
+    subjectId: 'sub-neet-pharma',
+    subjectName: 'Clinical Pharmacology & Toxicology',
+    chapterId: 'chap-neet-pharm-antiarrhythmics',
+    chapterTitle: 'Antiarrhythmics & Vaughan-Williams Pharmacology',
+    topicIds: [],
+    scheduledDate: '2026-09-10',
+    status: 'Active',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '04:00 PM - 05:30 PM IST',
+    facultyName: 'Dr. Siddharth V.',
+    hasLive: false,
     hasTest: false
   },
   {
@@ -830,6 +909,8 @@ export const INITIAL_SCHEDULE = [
     scheduledDate: '2026-09-11',
     status: 'Scheduled',
     estimatedTime: '1.5 hours',
+    lectureTimeSlot: '09:00 AM - 10:30 AM IST',
+    facultyName: 'Dr. Siddharth V.',
     hasLive: false,
     hasTest: false
   },
@@ -837,7 +918,7 @@ export const INITIAL_SCHEDULE = [
     id: 'sched-neet-w1-d5',
     examId: 'neet-pg',
     weekNumber: 1,
-    weekTitle: 'Week 1 — Cardiology & Respiratory Foundations',
+    weekTitle: 'Week 1 — Respiratory Medicine Foundations',
     dayNumber: 5,
     dayTitle: 'Day 5 — Pulmonary Function Tests & Spirometry Loops',
     subjectId: 'sub-neet-pulmo',
@@ -848,6 +929,8 @@ export const INITIAL_SCHEDULE = [
     scheduledDate: '2026-09-12',
     status: 'Scheduled',
     estimatedTime: '1.5 hours',
+    lectureTimeSlot: '11:00 AM - 12:30 PM IST',
+    facultyName: 'Dr. Marcus Vance',
     hasLive: false,
     hasTest: false
   },
@@ -866,6 +949,8 @@ export const INITIAL_SCHEDULE = [
     scheduledDate: '2026-09-13',
     status: 'Scheduled',
     estimatedTime: '1.0 hour',
+    lectureTimeSlot: '09:00 AM - 10:00 AM IST',
+    facultyName: 'Dr. Siddharth V.',
     hasLive: true,
     hasTest: false
   },
@@ -884,6 +969,8 @@ export const INITIAL_SCHEDULE = [
     scheduledDate: '2026-09-14',
     status: 'Scheduled',
     estimatedTime: '1.0 hour',
+    lectureTimeSlot: '10:00 AM - 11:30 AM IST',
+    facultyName: 'Dr. Siddharth V.',
     hasLive: false,
     hasTest: true
   },
@@ -1006,11 +1093,23 @@ class CurriculumService {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_SUBJECTS);
       if (stored) {
-        const parsed = JSON.parse(stored);
+        let parsed = JSON.parse(stored);
         const existingIds = new Set(parsed.map(s => s.id));
         const missing = INITIAL_SUBJECTS.filter(s => !existingIds.has(s.id));
-        if (missing.length > 0) {
-          const merged = [...parsed, ...missing];
+        let updated = false;
+
+        // Backfill defaultTimeSlot and faculty assignments if missing
+        parsed = parsed.map(s => {
+          const init = INITIAL_SUBJECTS.find(i => i.id === s.id);
+          if (init && (!s.defaultTimeSlot || !s.assignedFacultyName)) {
+            updated = true;
+            return { ...init, ...s, defaultTimeSlot: s.defaultTimeSlot || init.defaultTimeSlot, assignedFacultyName: s.assignedFacultyName || init.assignedFacultyName, facultyEmail: s.facultyEmail || init.facultyEmail };
+          }
+          return s;
+        });
+
+        if (missing.length > 0 || updated) {
+          const merged = missing.length > 0 ? [...parsed, ...missing] : parsed;
           localStorage.setItem(STORAGE_KEY_SUBJECTS, JSON.stringify(merged));
           return merged;
         }
@@ -1139,11 +1238,22 @@ class CurriculumService {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_SCHEDULE);
       if (stored) {
-        const parsed = JSON.parse(stored);
+        let parsed = JSON.parse(stored);
         const existingIds = new Set(parsed.map(s => s.id));
         const missing = INITIAL_SCHEDULE.filter(s => !existingIds.has(s.id));
-        if (missing.length > 0) {
-          const merged = [...parsed, ...missing];
+        let updated = false;
+
+        parsed = parsed.map(slot => {
+          const init = INITIAL_SCHEDULE.find(i => i.id === slot.id);
+          if (init && !slot.lectureTimeSlot) {
+            updated = true;
+            return { ...init, ...slot, lectureTimeSlot: init.lectureTimeSlot, facultyName: init.facultyName || slot.facultyName };
+          }
+          return slot;
+        });
+
+        if (missing.length > 0 || updated) {
+          const merged = missing.length > 0 ? [...parsed, ...missing] : parsed;
           localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(merged));
           return merged;
         }
@@ -1600,27 +1710,32 @@ class CurriculumService {
 
   saveScheduleSlot(slotData) {
     const existingIndex = this.schedule.findIndex(
-      s => s.examId === slotData.examId && Number(s.dayNumber) === Number(slotData.dayNumber)
+      s => (slotData.id && s.id === slotData.id) ||
+           (s.examId === slotData.examId && Number(s.dayNumber) === Number(slotData.dayNumber) && s.subjectId === slotData.subjectId)
     );
 
     const subject = this.getSubjectById(slotData.subjectId);
     const chapter = this.getChapterById(slotData.chapterId);
 
     const payload = {
-      id: slotData.id || `sched-${slotData.examId}-d${slotData.dayNumber}-${Date.now()}`,
+      id: slotData.id || `sched-${slotData.examId}-d${slotData.dayNumber}-${slotData.subjectId || 'slot'}-${Date.now()}`,
       examId: slotData.examId,
       weekNumber: Number(slotData.weekNumber),
       weekTitle: slotData.weekTitle || `Week ${slotData.weekNumber}`,
       dayNumber: Number(slotData.dayNumber),
       dayTitle: slotData.dayTitle || `Day ${slotData.dayNumber}`,
       subjectId: slotData.subjectId || null,
-      subjectName: subject?.name || 'Medical Subject',
+      subjectName: subject?.name || slotData.subjectName || 'Medical Subject',
+      subjectCode: subject?.code || '',
+      subjectColor: subject?.color || 'rose',
       chapterId: slotData.chapterId || null,
-      chapterTitle: chapter?.title || 'Clinical Chapter',
+      chapterTitle: chapter?.title || slotData.chapterTitle || 'Clinical Chapter',
       topicIds: slotData.topicIds || [],
       scheduledDate: slotData.scheduledDate || new Date().toISOString().split('T')[0],
       status: slotData.status || 'Active',
       estimatedTime: slotData.estimatedTime || '1.5 hours',
+      lectureTimeSlot: slotData.lectureTimeSlot || subject?.defaultTimeSlot || '09:00 AM - 10:30 AM IST',
+      facultyName: slotData.facultyName || subject?.assignedFacultyName || 'Specialist Lead',
       hasLive: Boolean(slotData.hasLive),
       hasTest: Boolean(slotData.hasTest),
       notes: slotData.notes || ''
@@ -1634,6 +1749,22 @@ class CurriculumService {
 
     this.saveSchedule();
     return payload;
+  }
+
+  getScheduleBySubject(examId = 'neet-pg', subjectId = 'all') {
+    const list = this.getSchedule(examId);
+    if (!subjectId || subjectId === 'all') return list;
+    return list.filter(s => s.subjectId === subjectId);
+  }
+
+  getFacultyAssignedSubjects(userEmail, examId = 'all') {
+    const allSubs = this.getSubjects(examId);
+    if (!userEmail) return allSubs;
+    return allSubs.filter(s => {
+      if (s.facultyEmail === userEmail) return true;
+      if (userEmail === 'faculty@demo.com' && (s.id === 'sub-neet-cardio' || s.id === 'sub-neet-pharma' || s.id === 'sub-usmle-cvs')) return true;
+      return false;
+    });
   }
 
   deleteScheduleSlot(id) {

@@ -229,6 +229,34 @@ export default function AdminNavbar({ onToggleSidebar }) {
                     </Link>
                   </div>
 
+                  <div className="py-1 border-t border-slate-100">
+                    {isAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          authService.login('faculty@demo.com');
+                          setProfileDropdownOpen(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-xs text-purple-700 hover:bg-purple-50 font-bold flex items-center gap-2 cursor-pointer"
+                      >
+                        <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Switch to Faculty Mode (Dr. Siddharth)</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          authService.login('admin@demo.com');
+                          setProfileDropdownOpen(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-xs text-emerald-700 hover:bg-emerald-50 font-bold flex items-center gap-2 cursor-pointer"
+                      >
+                        <Crown className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Switch to Super Admin Mode</span>
+                      </button>
+                    )}
+                  </div>
+
                   <div className="pt-1 border-t border-slate-100">
                     <button
                       onClick={handleLogout}
