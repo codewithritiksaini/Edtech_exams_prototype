@@ -741,6 +741,44 @@ class CurriculumService {
     return this.subjects;
   }
 
+  toggleSubjectStatus(id) {
+    const sub = this.subjects.find(s => s.id === id);
+    if (!sub) return null;
+    sub.status = sub.status === 'Active' ? 'Draft' : 'Active';
+    this.saveSubjects();
+    return sub;
+  }
+
+  moveSubjectOrder(id, direction) {
+    const sub = this.subjects.find(s => s.id === id);
+    if (!sub) return this.subjects;
+    
+    const examSubs = this.subjects
+      .filter(s => s.examId === sub.examId)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    const currentIndex = examSubs.findIndex(s => s.id === id);
+    if (currentIndex === -1) return this.subjects;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= examSubs.length) return this.subjects;
+
+    const neighbor = examSubs[targetIndex];
+    const prevOrder = sub.order ?? (currentIndex + 1);
+    const neighborOrder = neighbor.order ?? (targetIndex + 1);
+    
+    if (prevOrder === neighborOrder) {
+      sub.order = targetIndex + 1;
+      neighbor.order = currentIndex + 1;
+    } else {
+      sub.order = neighborOrder;
+      neighbor.order = prevOrder;
+    }
+
+    this.saveSubjects();
+    return this.subjects;
+  }
+
   // ---------------------------------------------------------------------------
   // 2. CHAPTERS CRUD
   // ---------------------------------------------------------------------------

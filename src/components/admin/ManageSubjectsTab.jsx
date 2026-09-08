@@ -21,7 +21,17 @@ import {
   Shield,
   HelpCircle,
   Clock,
-  Filter
+  Filter,
+  LayoutGrid,
+  Table as TableIcon,
+  ChevronDown,
+  ChevronUp,
+  ArrowUp,
+  ArrowDown,
+  Eye,
+  Check,
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
@@ -57,8 +67,12 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
   const [chapters, setChapters] = useState(() => curriculumService.getChapters());
   const [topics, setTopics] = useState(() => curriculumService.getTopics());
 
+  // View & Filter State
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'Active' | 'Draft'
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
+  const [expandedSubjectId, setExpandedSubjectId] = useState(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -101,10 +115,14 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
     return exams.find(e => e.id === selectedExamId) || exams[0];
   }, [exams, selectedExamId]);
 
-  // Filter subjects for the selected exam & query
+  // Filter subjects for the selected exam, status & search query
   const filteredSubjects = useMemo(() => {
     return subjects
       .filter(s => s.examId === selectedExamId)
+      .filter(s => {
+        if (statusFilter === 'all') return true;
+        return s.status === statusFilter;
+      })
       .filter(s => {
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase();
@@ -113,15 +131,20 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                (s.description && s.description.toLowerCase().includes(q));
       })
       .sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [subjects, selectedExamId, searchQuery]);
+  }, [subjects, selectedExamId, statusFilter, searchQuery]);
 
   // Counts for KPI
   const stats = useMemo(() => {
     const examSubs = subjects.filter(s => s.examId === selectedExamId);
     const examChaps = chapters.filter(c => c.examId === selectedExamId);
     const examTops = topics.filter(t => t.examId === selectedExamId);
+    const activeSubs = examSubs.filter(s => s.status === 'Active');
+    const draftSubs = examSubs.filter(s => s.status === 'Draft');
+
     return {
       subjectsCount: examSubs.length,
+      activeCount: activeSubs.length,
+      draftCount: draftSubs.length,
       chaptersCount: examChaps.length,
       topicsCount: examTops.length
     };
@@ -183,6 +206,20 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
     showToast(`Subject "${deletingSubject.name}" and associated chapters removed.`);
   };
 
+  const handleToggleStatus = (sub, e) => {
+    if (e) e.stopPropagation();
+    const updated = curriculumService.toggleSubjectStatus(sub.id);
+    setSubjects(curriculumService.getSubjects());
+    showToast(`Subject "${sub.name}" is now ${updated.status}.`);
+  };
+
+  const handleMoveOrder = (sub, direction, e) => {
+    if (e) e.stopPropagation();
+    curriculumService.moveSubjectOrder(sub.id, direction);
+    setSubjects(curriculumService.getSubjects());
+    showToast(`Reordered "${sub.name}" ${direction}.`);
+  };
+
   const renderSubjectIcon = (iconName, colorId) => {
     const iconObj = AVAILABLE_ICONS.find(i => i.name === iconName) || AVAILABLE_ICONS[0];
     const colorObj = AVAILABLE_COLORS.find(c => c.id === colorId) || AVAILABLE_COLORS[0];
@@ -216,7 +253,7 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
             Subjects & Discipline Setup
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
-            Manage academic medical subjects for each examination program. Each subject contains structured chapters, topics, and rich educational resources.
+            Manage academic medical subjects for each examination track: <span className="font-semibold text-slate-800">Exams → Subjects → Chapters → Topics → Content</span>. Configure curriculum modules, inspect assigned chapters, and adjust publishing status.
           </p>
         </div>
 
@@ -230,182 +267,530 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
         </button>
       </div>
 
-      {/* Exam Selector Tabs & KPIs Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* Exam Selector Tabs & Top Control Toolbar */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-4">
         
-        {/* Exam Pills Selector */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
-          <span className="text-xs font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
-            <Filter className="w-3.5 h-3.5" />
-            Exam Track:
-          </span>
-          {exams.map(exam => (
+        {/* Row 1: Exam Track Selector */}
+        <div className="flex items-center justify-between gap-4 flex-wrap border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
+              <Filter className="w-3.5 h-3.5" />
+              Exam Track:
+            </span>
+            {exams.map(exam => {
+              const examSubCount = subjects.filter(s => s.examId === exam.id).length;
+              return (
+                <button
+                  key={exam.id}
+                  id={`exam-tab-${exam.id}`}
+                  onClick={() => {
+                    setSelectedExamId(exam.id);
+                    setExpandedSubjectId(null);
+                  }}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+                    selectedExamId === exam.id
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <span>{exam.flag}</span>
+                  <span>{exam.name}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                    selectedExamId === exam.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {examSubCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* View Toggle: Grid vs Table */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
             <button
-              key={exam.id}
-              onClick={() => setSelectedExamId(exam.id)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
-                selectedExamId === exam.id
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              id="view-mode-grid"
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'grid' 
+                  ? 'bg-white text-indigo-700 shadow-2xs' 
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
+              title="Card Grid View"
             >
-              <span>{exam.flag}</span>
-              <span>{exam.name}</span>
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Grid</span>
             </button>
-          ))}
+            <button
+              id="view-mode-table"
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'table' 
+                  ? 'bg-white text-indigo-700 shadow-2xs' 
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="Roster Table View"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Table</span>
+            </button>
+          </div>
         </div>
 
-        {/* Search Input */}
-        <div className="relative min-w-[240px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search subjects or code..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-          />
+        {/* Row 2: Status Filters + Search */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          
+          {/* Status Filter Pills */}
+          <div className="flex items-center gap-2 self-start sm:self-auto overflow-x-auto">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                statusFilter === 'all'
+                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              All ({stats.subjectsCount})
+            </button>
+            <button
+              onClick={() => setStatusFilter('Active')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                statusFilter === 'Active'
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              Active ({stats.activeCount})
+            </button>
+            <button
+              onClick={() => setStatusFilter('Draft')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                statusFilter === 'Draft'
+                  ? 'bg-slate-200 text-slate-800 border border-slate-300'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-slate-400" />
+              Draft ({stats.draftCount})
+            </button>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              id="search-subjects-input"
+              type="text"
+              placeholder="Search subject, code, or keyword..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            />
+          </div>
         </div>
+
       </div>
 
       {/* KPI Stats Quick Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Configured Subjects</div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">{stats.subjectsCount}</div>
+            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Active Subjects</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.activeCount} <span className="text-xs font-semibold text-slate-400">/ {stats.subjectsCount}</span></div>
           </div>
-          <div className="w-11 h-11 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-            <Layers className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+            <Layers className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Chapters</div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">{stats.chaptersCount}</div>
+            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Assigned Chapters</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.chaptersCount}</div>
           </div>
-          <div className="w-11 h-11 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600">
-            <FolderTree className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600 shrink-0">
+            <FolderTree className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Active Topics</div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">{stats.topicsCount}</div>
+            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Active Topics</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.topicsCount}</div>
           </div>
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-            <Sparkles className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Draft / Pending</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.draftCount}</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 shrink-0">
+            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
       </div>
 
-      {/* Subjects Grid */}
-      {filteredSubjects.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-xs space-y-4">
-          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
-            <BookOpen className="w-7 h-7" />
-          </div>
-          <h3 className="text-base font-bold text-slate-800">No subjects found</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            No subjects configured for {selectedExam.name} matching your search. Click below to add the first subject.
-          </p>
-          <button
-            onClick={handleOpenCreateModal}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Subject</span>
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredSubjects.map(sub => {
-            const subChapters = chapters.filter(c => c.subjectId === sub.id);
-            const subTopics = topics.filter(t => t.subjectId === sub.id);
-
-            return (
-              <div
-                key={sub.id}
-                className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
-              >
-                <div className="p-5 space-y-4">
-                  {/* Top row: Icon + Code + Status */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {renderSubjectIcon(sub.icon, sub.color)}
-                      <div className="min-w-0">
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                          {sub.code}
-                        </span>
-                        <h3 className="text-base font-bold text-slate-900 mt-1 truncate">
-                          {sub.name}
-                        </h3>
-                      </div>
-                    </div>
-
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                      sub.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {sub.status}
-                    </span>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                    {sub.description || 'Core clinical curriculum module covering diagnostic criteria and licensing vignettes.'}
-                  </p>
-
-                  {/* Badges: Chapters & Topics counts */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold">
-                      <FolderTree className="w-3.5 h-3.5" />
-                      <span>{subChapters.length} Chapters</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{subTopics.length} Topics</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Actions Footer */}
-                <div className="px-5 py-3.5 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleOpenEditModal(sub)}
-                      title="Edit Subject"
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all cursor-pointer"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeletingSubject(sub)}
-                      title="Delete Subject"
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Primary Link: Jump to Chapters & Topics */}
-                  <button
-                    onClick={() => {
-                      if (onNavigateToChapters) {
-                        onNavigateToChapters(selectedExamId, sub.id);
-                      }
-                    }}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer group-hover:translate-x-0.5 transition-transform"
-                  >
-                    <span>View Chapters</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+      {/* ===================================================================== */}
+      {/* VIEW MODE 1: GRID CARDS                                               */}
+      {/* ===================================================================== */}
+      {viewMode === 'grid' && (
+        <>
+          {filteredSubjects.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-xs space-y-4">
+              <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
+                <BookOpen className="w-7 h-7" />
               </div>
-            );
-          })}
+              <h3 className="text-base font-bold text-slate-800">No subjects found</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                No subjects found for {selectedExam.name} matching your search or filter. Click below to add a new subject.
+              </p>
+              <button
+                onClick={handleOpenCreateModal}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Subject</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredSubjects.map((sub, idx) => {
+                const subChapters = chapters.filter(c => c.subjectId === sub.id);
+                const subTopics = topics.filter(t => t.subjectId === sub.id);
+                const isExpanded = expandedSubjectId === sub.id;
+
+                return (
+                  <div
+                    key={sub.id}
+                    className={`bg-white rounded-2xl border transition-all flex flex-col justify-between overflow-hidden group ${
+                      isExpanded 
+                        ? 'border-indigo-300 ring-2 ring-indigo-500/10 shadow-md' 
+                        : 'border-slate-200 shadow-xs hover:shadow-md'
+                    }`}
+                  >
+                    <div className="p-5 space-y-4">
+                      {/* Top row: Icon + Code + Reorder + Inline Toggle */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {renderSubjectIcon(sub.icon, sub.color)}
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                              {sub.code}
+                            </span>
+                            <h3 className="text-base font-bold text-slate-900 mt-1 truncate" title={sub.name}>
+                              {sub.name}
+                            </h3>
+                          </div>
+                        </div>
+
+                        {/* Inline Status Toggle Switch */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleStatus(sub, e)}
+                            title={`Click to switch to ${sub.status === 'Active' ? 'Draft' : 'Active'}`}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+                              sub.status === 'Active'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${sub.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                            <span>{sub.status}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {sub.description || 'Core clinical curriculum module covering diagnostic criteria and licensing vignettes.'}
+                      </p>
+
+                      {/* Badges: Chapters & Topics counts */}
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold">
+                            <FolderTree className="w-3.5 h-3.5" />
+                            <span>{subChapters.length} Chapters</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>{subTopics.length} Topics</span>
+                          </div>
+                        </div>
+
+                        {/* Sequence reorder buttons */}
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={(e) => handleMoveOrder(sub, 'up', e)}
+                            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                            title="Move subject up in syllabus order"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === filteredSubjects.length - 1}
+                            onClick={(e) => handleMoveOrder(sub, 'down', e)}
+                            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                            title="Move subject down in syllabus order"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Quick Chapter Preview Accordion */}
+                      {subChapters.length > 0 && (
+                        <div className="pt-2 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedSubjectId(isExpanded ? null : sub.id)}
+                            className="w-full flex items-center justify-between text-[11px] font-bold text-slate-600 hover:text-indigo-600 py-1 transition-colors cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Eye className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{isExpanded ? 'Hide Chapter List' : `Preview ${subChapters.length} Chapters`}</span>
+                            </span>
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+
+                          {isExpanded && (
+                            <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                              {subChapters.map(chap => {
+                                const chapTopics = topics.filter(t => t.chapterId === chap.id);
+                                return (
+                                  <div 
+                                    key={chap.id}
+                                    className="p-2 rounded-xl bg-slate-50 border border-slate-200/70 text-xs flex items-center justify-between gap-2"
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-slate-800 truncate">
+                                        Ch {chap.chapterNumber || '•'}: {chap.title}
+                                      </div>
+                                      <div className="text-[10px] text-slate-400">
+                                        {chapTopics.length} topic{chapTopics.length !== 1 ? 's' : ''} inside
+                                      </div>
+                                    </div>
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-white text-indigo-700 font-bold border border-slate-200 shrink-0">
+                                      Level 2
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card Actions Footer */}
+                    <div className="px-5 py-3.5 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenEditModal(sub)}
+                          title="Edit Subject"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all cursor-pointer"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingSubject(sub)}
+                          title="Delete Subject"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Primary Link: Jump to Chapters & Topics */}
+                      <button
+                        onClick={() => {
+                          if (onNavigateToChapters) {
+                            onNavigateToChapters(selectedExamId, sub.id);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer group-hover:translate-x-0.5 transition-transform"
+                      >
+                        <span>Manage Chapters</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ===================================================================== */}
+      {/* VIEW MODE 2: TABLE ROSTER                                             */}
+      {/* ===================================================================== */}
+      {viewMode === 'table' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          {filteredSubjects.length === 0 ? (
+            <div className="p-12 text-center space-y-3">
+              <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
+              <p className="text-xs text-slate-500">No subjects matching your filter in {selectedExam.name}.</p>
+              <button
+                onClick={handleOpenCreateModal}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold cursor-pointer"
+              >
+                + Add Subject
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                    <th className="py-3 px-4 w-12 text-center">#</th>
+                    <th className="py-3 px-4">Subject & Discipline</th>
+                    <th className="py-3 px-4">Subject Code</th>
+                    <th className="py-3 px-4 text-center">Chapters</th>
+                    <th className="py-3 px-4 text-center">Topics</th>
+                    <th className="py-3 px-4 text-center">Publish Status</th>
+                    <th className="py-3 px-4 text-center">Sequence</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {filteredSubjects.map((sub, idx) => {
+                    const subChapters = chapters.filter(c => c.subjectId === sub.id);
+                    const subTopics = topics.filter(t => t.subjectId === sub.id);
+
+                    return (
+                      <tr key={sub.id} className="hover:bg-slate-50/80 transition-colors group">
+                        
+                        {/* Sequence index */}
+                        <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-400">
+                          {idx + 1}
+                        </td>
+
+                        {/* Subject info */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            {renderSubjectIcon(sub.icon, sub.color)}
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-900 text-sm">{sub.name}</div>
+                              <div className="text-slate-400 text-[11px] truncate max-w-xs">
+                                {sub.description || 'Clinical modules & vignette questions'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Code */}
+                        <td className="py-3.5 px-4 font-mono font-semibold text-slate-700">
+                          <span className="px-2 py-0.5 bg-slate-100 rounded text-[11px]">
+                            {sub.code}
+                          </span>
+                        </td>
+
+                        {/* Chapters Count */}
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-100">
+                            <FolderTree className="w-3 h-3" />
+                            <span>{subChapters.length}</span>
+                          </span>
+                        </td>
+
+                        {/* Topics Count */}
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs">
+                            <Sparkles className="w-3 h-3" />
+                            <span>{subTopics.length}</span>
+                          </span>
+                        </td>
+
+                        {/* Status with 1-click Toggle */}
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleStatus(sub, e)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                              sub.status === 'Active'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                            }`}
+                            title="Click to toggle status"
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${sub.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                            <span>{sub.status}</span>
+                          </button>
+                        </td>
+
+                        {/* Sequence Reorder */}
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={(e) => handleMoveOrder(sub, 'up', e)}
+                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 disabled:opacity-20 cursor-pointer"
+                              title="Move up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === filteredSubjects.length - 1}
+                              onClick={(e) => handleMoveOrder(sub, 'down', e)}
+                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 disabled:opacity-20 cursor-pointer"
+                              title="Move down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleOpenEditModal(sub)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                              title="Edit Subject"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingSubject(sub)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Delete Subject"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (onNavigateToChapters) {
+                                  onNavigateToChapters(selectedExamId, sub.id);
+                                }
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                              title="View and manage chapters"
+                            >
+                              <span>Chapters</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -463,6 +848,7 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                     Subject Name *
                   </label>
                   <input
+                    id="input-subject-name"
                     type="text"
                     required
                     placeholder="e.g. Cardiology & Hemodynamics"
@@ -477,6 +863,7 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                     Subject Code
                   </label>
                   <input
+                    id="input-subject-code"
                     type="text"
                     placeholder="CARD-101"
                     value={formCode}
@@ -548,8 +935,9 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                   Description & Syllabus Scope
                 </label>
                 <textarea
+                  id="input-subject-description"
                   rows={3}
-                  placeholder="Overview of high-yield areas covered in this subject..."
+                  placeholder="Overview of high-yield clinical areas covered in this subject..."
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -587,6 +975,7 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                   Cancel
                 </button>
                 <button
+                  id="btn-submit-subject"
                   type="submit"
                   className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                 >
@@ -612,7 +1001,7 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
               <h3 className="text-base font-bold text-slate-900">Delete Subject?</h3>
               <p className="text-xs text-slate-500">
                 Are you sure you want to delete <span className="font-bold text-slate-800">"{deletingSubject.name}"</span>?
-                This will also cascade delete all its assigned chapters and topics!
+                This will cascade delete all its assigned chapters and topics!
               </p>
             </div>
             <div className="flex items-center gap-3 pt-2">
@@ -625,6 +1014,7 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
               </button>
               <button
                 type="button"
+                id="btn-confirm-delete-subject"
                 onClick={handleDeleteSubject}
                 className="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
               >
