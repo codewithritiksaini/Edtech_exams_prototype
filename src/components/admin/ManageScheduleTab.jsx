@@ -14,6 +14,8 @@ import {
   X, 
   Eye, 
   ArrowRight, 
+  ArrowLeft,
+  Download,
   Filter, 
   Video, 
   Brain, 
@@ -104,11 +106,13 @@ export default function ManageScheduleTab({
   const [formHasTest, setFormHasTest] = useState(false);
   const [formStatus, setFormStatus] = useState('Active');
 
-  // Preview Modal State (In-page Student LMS Experience)
+  // Preview In-Page Student LMS Experience States
   const [previewSlot, setPreviewSlot] = useState(null);
   const [previewActiveTab, setPreviewActiveTab] = useState('notes');
   const [previewCardFlipped, setPreviewCardFlipped] = useState(false);
   const [previewCardIdx, setPreviewCardIdx] = useState(0);
+  const [previewPdfIdx, setPreviewPdfIdx] = useState(0);
+  const [previewChapterIdx, setPreviewChapterIdx] = useState(0);
 
   // Delete Confirmation State
   const [deletingSlot, setDeletingSlot] = useState(null);
@@ -398,11 +402,13 @@ export default function ManageScheduleTab({
     showToast('Schedule slot removed.');
   };
 
-  // Open In-Page Student Learning Room Preview
+  // Open In-Page Student Learning Room Preview (Direct Dedicated Page)
   const handleOpenPreview = (slot) => {
     setPreviewSlot(slot);
     setPreviewCardFlipped(false);
     setPreviewCardIdx(0);
+    setPreviewPdfIdx(0);
+    setPreviewChapterIdx(0);
     const resolved = curriculumService.getDayResolvedContent(slot.dayNumber, selectedExamId, slot.id);
     if (resolved?.activeTabs && resolved.activeTabs.length > 0) {
       setPreviewActiveTab(resolved.activeTabs[0]);
@@ -446,7 +452,814 @@ export default function ManageScheduleTab({
         </div>
       )}
 
-      {/* Header Banner */}
+      {/* ========================================================================= */}
+      {/* CONDITIONAL MAIN VIEW: DEDICATED IN-PAGE STUDENT LMS VIEW vs PLANNER      */}
+      {/* ========================================================================= */}
+      {previewSlot && resolvedPreviewContent ? (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Top Bar / Navigation Header */}
+          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                id="btn-back-to-planner"
+                onClick={() => setPreviewSlot(null)}
+                className="px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-bold rounded-2xl flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4 text-indigo-600" />
+                <span>Back to Schedule Planner</span>
+              </button>
+
+              <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-medium">
+                <span>/</span>
+                <span className="text-slate-600 font-bold">{selectedExam.name}</span>
+                <span>/</span>
+                <span className="text-slate-600 font-bold">Week {previewSlot.weekNumber || 1}</span>
+                <span>/</span>
+                <span className="text-indigo-600 font-black">
+                  Day {previewSlot.dayNumber} Preview
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => handleOpenModal(previewSlot)}
+                className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-2xl flex items-center gap-2 transition-all cursor-pointer shadow-2xs"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Edit This Slot</span>
+              </button>
+
+              <a
+                href={`/day/${previewSlot.dayNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-2xl flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+              >
+                <span>Open Live Student LMS</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+
+          {(() => {
+            const previewPdfs = (resolvedPreviewContent.pdfList && resolvedPreviewContent.pdfList.length > 0)
+              ? resolvedPreviewContent.pdfList
+              : (resolvedPreviewContent.pdf || resolvedPreviewContent.notesPdf ? [resolvedPreviewContent.pdf || resolvedPreviewContent.notesPdf] : []);
+            
+            const previewImages = (resolvedPreviewContent.images && resolvedPreviewContent.images.length > 0)
+              ? resolvedPreviewContent.images
+              : (resolvedPreviewContent.galleryImages || []);
+
+            const previewVideo = resolvedPreviewContent.video || resolvedPreviewContent.videoData || null;
+            const previewFlashcards = resolvedPreviewContent.flashcards || [];
+            const previewLive = resolvedPreviewContent.live || (resolvedPreviewContent.hasLive ? { hasSession: true, title: resolvedPreviewContent.title } : null);
+            const previewHasTest = Boolean(resolvedPreviewContent.hasTest || previewSlot.hasTest);
+            
+            const activePdf = previewPdfs[previewPdfIdx] || previewPdfs[0] || {
+              title: 'High-Yield Clinical Notes',
+              fileName: 'clinical-notes.pdf',
+              pages: 18,
+              size: '3.4 MB',
+              author: 'Faculty Lead'
+            };
+
+            const subObj = subjects.find(s => s.id === previewSlot.subjectId) || null;
+            const subColor = SUBJECT_COLOR_MAP[subObj?.color || 'indigo'] || SUBJECT_COLOR_MAP.indigo;
+
+            return (
+              <div className="space-y-6">
+                {/* Hero Session Overview Card */}
+                <div className="bg-gradient-to-r from-indigo-50/70 via-white to-emerald-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3.5 py-1 bg-indigo-600 text-white text-xs font-black rounded-xl shadow-2xs">
+                      Day {previewSlot.dayNumber}
+                    </span>
+                    <span className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-200">
+                      Week {previewSlot.weekNumber || 1}
+                    </span>
+                    <span className={`px-3 py-1 text-xs font-black rounded-xl border ${subColor.badge} ${subColor.border}`}>
+                      {resolvedPreviewContent.subjectName || previewSlot.subjectName || 'Clinical Subject'}
+                    </span>
+                    <span className="px-3 py-1 bg-white text-slate-700 text-xs font-bold rounded-xl border border-slate-200 shadow-2xs">
+                      {resolvedPreviewContent.chapterTitle || previewSlot.chapterTitle || 'Clinical Chapter'}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span>Status: {previewSlot.status || 'Active'}</span>
+                    </span>
+                  </div>
+
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                      {resolvedPreviewContent.title}
+                    </h1>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-3xl leading-relaxed">
+                      High-yield daily study module configured for students. Includes verified faculty study notes, diagnostic figures atlas, masterclass video lecture, and clinical flashcards.
+                    </p>
+                  </div>
+
+                  {/* Metadata Chips Bar */}
+                  <div className="flex items-center gap-3 sm:gap-6 text-xs text-slate-600 pt-3 flex-wrap border-t border-slate-200/80">
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <Clock className="w-4 h-4 text-indigo-500" />
+                      <span>Slot: {previewSlot.lectureTimeSlot || '09:00 AM - 10:30 AM IST'}</span>
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <Activity className="w-4 h-4 text-emerald-500" />
+                      <span>Duration: {resolvedPreviewContent.estimatedTime || '1.5 hours'}</span>
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <Sparkles className="w-4 h-4 text-purple-500" />
+                      <span>Faculty: {previewSlot.facultyName || 'Dr. Siddharth V. (Clinical Faculty Lead)'}</span>
+                    </span>
+                  </div>
+
+                  {/* Linked Topics Badges */}
+                  {previewSlot.topicIds && previewSlot.topicIds.length > 0 && (
+                    <div className="pt-2">
+                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                        Linked Clinical Topics ({previewSlot.topicIds.length}):
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {previewSlot.topicIds.map(tid => {
+                          const topicObj = topics.find(t => t.id === tid);
+                          return (
+                            <span
+                              key={tid}
+                              className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 shadow-2xs flex items-center gap-1.5"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>{topicObj?.title || tid}</span>
+                              {topicObj?.code && (
+                                <span className="text-[10px] text-slate-400 font-mono">({topicObj.code})</span>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Direct In-Page Tabs Bar */}
+                <div className="bg-white rounded-2xl p-2 border border-slate-200 shadow-xs flex items-center gap-2 overflow-x-auto scrollbar-none sticky top-2 z-20">
+                  {previewPdfs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewActiveTab('notes')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shrink-0 ${
+                        previewActiveTab === 'notes'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Study Notes & Handouts ({previewPdfs.length})</span>
+                    </button>
+                  )}
+
+                  {previewImages.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewActiveTab('images')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shrink-0 ${
+                        previewActiveTab === 'images'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
+                      }`}
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Diagnostic Figures ({previewImages.length})</span>
+                    </button>
+                  )}
+
+                  {previewVideo && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewActiveTab('video')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shrink-0 ${
+                        previewActiveTab === 'video'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
+                      }`}
+                    >
+                      <Video className="w-4 h-4" />
+                      <span>Video Masterclass</span>
+                    </button>
+                  )}
+
+                  {previewFlashcards.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewActiveTab('flashcards')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shrink-0 ${
+                        previewActiveTab === 'flashcards'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
+                      }`}
+                    >
+                      <Brain className="w-4 h-4" />
+                      <span>Clinical Flashcards ({previewFlashcards.length})</span>
+                    </button>
+                  )}
+
+                  {previewLive && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewActiveTab('live')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shrink-0 ${
+                        previewActiveTab === 'live'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60'
+                      }`}
+                    >
+                      <Tv className="w-4 h-4" />
+                      <span>Live Grand Rounds</span>
+                    </button>
+                  )}
+
+                  {previewHasTest && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewActiveTab('test')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shrink-0 ${
+                        previewActiveTab === 'test'
+                          ? 'bg-purple-600 text-white shadow-xs'
+                          : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/60'
+                      }`}
+                    >
+                      <Award className="w-4 h-4" />
+                      <span>CBT Assessment</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Direct In-Page Tab Content Panels */}
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs min-h-[450px]">
+                  
+                  {/* TAB 1: STUDY NOTES & HANDOUTS */}
+                  {previewActiveTab === 'notes' && (
+                    <div className="space-y-6">
+                      {previewPdfs.length > 1 && (
+                        <div className="flex items-center gap-2 pb-4 border-b border-slate-100 overflow-x-auto scrollbar-none">
+                          <span className="text-xs font-bold text-slate-400 shrink-0">Available Documents:</span>
+                          {previewPdfs.map((pdf, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setPreviewPdfIdx(idx)}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                                previewPdfIdx === idx
+                                  ? 'bg-indigo-50 border border-indigo-200 text-indigo-700 shadow-2xs'
+                                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent'
+                              }`}
+                            >
+                              {pdf.title || pdf.fileName || `Notes #${idx + 1}`}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Document Overview Banner */}
+                      <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100 shadow-2xs">
+                            <FileText className="w-7 h-7" />
+                          </div>
+                          <div>
+                            <div className="text-sm sm:text-base font-bold text-slate-900">
+                              {activePdf.title || activePdf.fileName}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {activePdf.fileName} • {activePdf.pages || 18} Pages • {activePdf.size || '3.4 MB'} • Verified PDF Handout
+                            </div>
+                            {activePdf.author && (
+                              <div className="text-xs text-indigo-600 font-semibold mt-1">
+                                Author: {activePdf.author}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => showToast(`Downloaded "${activePdf.fileName}"`)}
+                            className="px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-2 shadow-2xs cursor-pointer transition-all"
+                          >
+                            <Download className="w-4 h-4 text-indigo-600" />
+                            <span>Download Notes PDF</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Interactive Document Reader Canvas */}
+                      <div className="rounded-2xl border border-slate-200 overflow-hidden bg-slate-50 shadow-xs">
+                        {/* Reader Bar */}
+                        <div className="bg-white px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap text-xs">
+                          <div className="flex items-center gap-2 font-bold text-slate-700">
+                            <FileCheck className="w-4 h-4 text-emerald-600" />
+                            <span>Document Reader Preview</span>
+                            <span className="text-slate-300">|</span>
+                            <span className="text-slate-500 font-normal">Page 1 of {activePdf.pages || 18}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-slate-500">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 font-mono text-[11px]">100% Zoom</span>
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[11px]">
+                              High-Yield NEET-PG / USMLE
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Document Sheet */}
+                        <div className="p-6 sm:p-8 bg-white max-w-4xl mx-auto my-4 rounded-xl border border-slate-200 shadow-sm space-y-6">
+                          <div className="border-b border-slate-100 pb-4">
+                            <div className="text-[11px] font-black uppercase tracking-wider text-indigo-600">
+                              Clinical Module Study Handout
+                            </div>
+                            <h2 className="text-xl font-black text-slate-900 mt-1">
+                              {resolvedPreviewContent.title}
+                            </h2>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Subject: {resolvedPreviewContent.subjectName} • Chapter: {resolvedPreviewContent.chapterTitle}
+                            </p>
+                          </div>
+
+                          {/* Section 1: Diagnostic Algorithms */}
+                          <div className="space-y-2">
+                            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                              <span>1. High-Yield Diagnostic Algorithm & Clinical Criteria</span>
+                            </h3>
+                            <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 text-xs text-slate-700 space-y-2">
+                              <p className="font-semibold text-indigo-950">
+                                Pathognomonic Clinical Manifestations & Diagnostic Workup:
+                              </p>
+                              <ul className="list-disc list-inside space-y-1 text-slate-600 leading-relaxed">
+                                <li><strong>Initial Evaluation:</strong> Baseline 12-lead ECG within 10 minutes of presentation + bedside echocardiography for wall motion abnormalities.</li>
+                                <li><strong>Biomarker Kinetics:</strong> High-sensitivity cardiac Troponin I rises at 3-4 hours, peaks at 12-24 hours, and persists for 7-10 days. CK-MB is optimal for detecting re-infarction due to rapid 48-hour normalization.</li>
+                                <li><strong>Hemodynamic Stratification:</strong> Killip classification to guide inotropic vs diuretic therapy in cardiogenic decompensation.</li>
+                              </ul>
+                            </div>
+                          </div>
+
+                          {/* Section 2: Clinical Decision Table */}
+                          <div className="space-y-2">
+                            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                              <Activity className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>2. Stepwise Pharmacotherapy & Interventional Protocols</span>
+                            </h3>
+                            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                              <table className="w-full text-xs text-left">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
+                                  <tr>
+                                    <th className="px-3.5 py-2.5">Clinical Scenario</th>
+                                    <th className="px-3.5 py-2.5">First-Line Diagnostic</th>
+                                    <th className="px-3.5 py-2.5">Definitive Pharmacotherapy</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-slate-600">
+                                  <tr>
+                                    <td className="px-3.5 py-2 font-medium text-slate-900">Acute STEMI &lt;12h</td>
+                                    <td className="px-3.5 py-2">Immediate Coronary Angio</td>
+                                    <td className="px-3.5 py-2">Primary PCI + Dual Antiplatelet + Heparin</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="px-3.5 py-2 font-medium text-slate-900">Stanford Type A Dissection</td>
+                                    <td className="px-3.5 py-2">Contrast CT Aortogram</td>
+                                    <td className="px-3.5 py-2">IV Beta-Blocker (Esmolol) + Emergent Surgery</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="px-3.5 py-2 font-medium text-slate-900">Acute Pulmonary Embolism</td>
+                                    <td className="px-3.5 py-2">CT Pulmonary Angiogram</td>
+                                    <td className="px-3.5 py-2">LMWH / UFH; Thrombolysis if Hemodynamically Unstable</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Section 3: High-Yield Pearl */}
+                          <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 space-y-1">
+                            <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                              <AlertCircle className="w-4 h-4" />
+                              <span>High-Yield Board Pearl:</span>
+                            </div>
+                            <p className="leading-relaxed text-amber-800">
+                              In acute inferior wall MI (ST elevation in II, III, aVF), always obtain right-sided leads (V4R). If right ventricular infarction is present, nitrates and diuretics are strictly contraindicated as they drastically drop preload.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: DIAGNOSTIC FIGURES & CLINICAL ATLAS */}
+                  {previewActiveTab === 'images' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <div>
+                          <h3 className="text-base font-bold text-slate-900">
+                            Diagnostic Figures & Clinical Atlas
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            High-resolution radiological plates, 12-lead ECGs, and histopathology slides linked to this day.
+                          </p>
+                        </div>
+                        <span className="px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold">
+                          {previewImages.length} Diagnostic Plates
+                        </span>
+                      </div>
+
+                      {/* 3 cards per row on large screens */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {previewImages.map((img, i) => (
+                          <div
+                            key={i}
+                            className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-2xs hover:shadow-md transition-all group flex flex-col justify-between"
+                          >
+                            <div>
+                              <div className="relative overflow-hidden bg-slate-100 aspect-video">
+                                <img
+                                  src={img.url}
+                                  alt={img.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                                <div className="absolute top-2 right-2">
+                                  <span className="px-2 py-1 bg-white/90 backdrop-blur-xs text-slate-800 text-[10px] font-bold rounded-lg shadow-2xs">
+                                    Fig #{i + 1}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="p-4 space-y-2">
+                                <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                                  {img.title}
+                                </h4>
+                                <p className="text-xs text-slate-600 leading-relaxed">
+                                  {img.caption}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="p-4 pt-0">
+                              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-500 font-medium">
+                                💡 <strong>Board Question Clue:</strong> Look for classic diagnostic criteria and compare reciprocal changes.
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: VIDEO MASTERCLASS */}
+                  {previewActiveTab === 'video' && previewVideo && (
+                    <div className="space-y-6 max-w-4xl mx-auto">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-base font-bold text-slate-900">{previewVideo.title}</h3>
+                          <p className="text-xs text-slate-500">
+                            Instructor: {previewVideo.instructor || 'Dr. Siddharth V. (Clinical Faculty Lead)'} • High-Definition Masterclass
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-3 py-1 rounded-full">
+                          {previewVideo.duration || '45:00 mins'}
+                        </span>
+                      </div>
+
+                      {/* Video Player Canvas */}
+                      <div className="relative rounded-3xl overflow-hidden bg-slate-900 aspect-video shadow-xl border border-slate-200">
+                        <img
+                          src={previewVideo.thumbnail || 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1200&auto=format&fit=crop&q=80'}
+                          alt="video poster"
+                          className="w-full h-full object-cover opacity-85"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/40 flex flex-col justify-between p-6">
+                          <div className="flex items-center justify-between text-white text-xs font-semibold">
+                            <span className="px-3 py-1 bg-red-600 text-white rounded-full font-bold">
+                              4K Ultra-HD Lecture
+                            </span>
+                            <span className="bg-black/40 px-3 py-1 rounded-full backdrop-blur-xs">
+                              {previewVideo.duration || '45:00'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => showToast('Playing clinical masterclass lecture...')}
+                              className="w-18 h-18 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-2xl cursor-pointer transition-all hover:scale-110 active:scale-95"
+                            >
+                              <Play className="w-8 h-8 fill-white translate-x-1" />
+                            </button>
+                          </div>
+
+                          {/* Scrubber controls */}
+                          <div className="space-y-2">
+                            <div className="w-full bg-white/30 h-1.5 rounded-full overflow-hidden cursor-pointer">
+                              <div className="w-1/3 bg-red-500 h-full rounded-full"></div>
+                            </div>
+                            <div className="flex items-center justify-between text-white/90 text-xs">
+                              <span>15:00 / {previewVideo.duration || '45:00'}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="px-2 py-0.5 rounded bg-white/20 text-[10px] font-bold">1.0x Speed</span>
+                                <span className="px-2 py-0.5 rounded bg-white/20 text-[10px] font-bold">Subtitles: EN</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Video Timeline Chapters */}
+                      {previewVideo.chapters && previewVideo.chapters.length > 0 && (
+                        <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                          <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <Layers className="w-4 h-4 text-indigo-600" />
+                            <span>Lecture Timeline Chapters & Milestones:</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {previewVideo.chapters.map((ch, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setPreviewChapterIdx(idx);
+                                  showToast(`Jumped to chapter: ${ch.label}`);
+                                }}
+                                className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs font-medium text-left transition-all cursor-pointer ${
+                                  previewChapterIdx === idx
+                                    ? 'bg-indigo-50 border-indigo-300 text-indigo-900 shadow-2xs font-bold'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100/80'
+                                }`}
+                              >
+                                <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-800 shrink-0">
+                                  {ch.time}
+                                </span>
+                                <span className="truncate">{ch.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 4: HIGH-YIELD FLASHCARDS */}
+                  {previewActiveTab === 'flashcards' && previewFlashcards.length > 0 && (
+                    <div className="space-y-6 max-w-2xl mx-auto">
+                      {/* Card tracker and tips */}
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-500 pb-2 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <Brain className="w-4 h-4 text-indigo-600" />
+                          <span>Card {previewCardIdx + 1} of {previewFlashcards.length}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewCardFlipped(!previewCardFlipped)}
+                          className="text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer flex items-center gap-1.5"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Click card or button to flip</span>
+                        </button>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-indigo-600 h-full rounded-full transition-all duration-300"
+                          style={{ width: `${Math.round(((previewCardIdx + 1) / previewFlashcards.length) * 100)}%` }}
+                        />
+                      </div>
+
+                      {/* Interactive 3D Flip Card (Clean Light Aesthetic) */}
+                      <div
+                        onClick={() => setPreviewCardFlipped(!previewCardFlipped)}
+                        className="p-8 rounded-3xl bg-gradient-to-br from-indigo-50/70 via-white to-emerald-50/40 border-2 border-indigo-200 text-slate-900 min-h-[260px] flex flex-col justify-between cursor-pointer shadow-sm hover:border-indigo-400 hover:shadow-md transition-all select-none"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-lg border ${
+                            previewCardFlipped 
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                              : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                          }`}>
+                            {previewCardFlipped ? 'Verified High-Yield Answer & Management' : 'Clinical Vignette / Patient Presentation'}
+                          </span>
+                          <span className="text-xs font-bold text-slate-400">
+                            {previewCardFlipped ? 'Answer View' : 'Question View'}
+                          </span>
+                        </div>
+
+                        <div className="my-6">
+                          <p className="text-base sm:text-lg font-bold text-slate-900 leading-relaxed">
+                            {previewCardFlipped 
+                              ? (previewFlashcards[previewCardIdx]?.answer || previewFlashcards[previewCardIdx]?.back)
+                              : (previewFlashcards[previewCardIdx]?.question || previewFlashcards[previewCardIdx]?.front)
+                            }
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-slate-500 font-medium pt-3 border-t border-slate-200/60">
+                          <span>{previewCardFlipped ? '✓ Click to view vignette question again' : '⚡ Tap anywhere to reveal verified clinical answer'}</span>
+                          <span className="text-indigo-600 font-bold">Flip Card ➔</span>
+                        </div>
+                      </div>
+
+                      {/* Flashcard Navigation Controls */}
+                      <div className="flex items-center justify-between pt-2">
+                        <button
+                          type="button"
+                          disabled={previewCardIdx <= 0}
+                          onClick={() => {
+                            setPreviewCardIdx(prev => prev - 1);
+                            setPreviewCardFlipped(false);
+                          }}
+                          className="px-5 py-2.5 rounded-2xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 cursor-pointer shadow-2xs transition-all"
+                        >
+                          ← Previous Card
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setPreviewCardFlipped(!previewCardFlipped)}
+                          className="px-5 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Flip</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={previewCardIdx >= previewFlashcards.length - 1}
+                          onClick={() => {
+                            setPreviewCardIdx(prev => prev + 1);
+                            setPreviewCardFlipped(false);
+                          }}
+                          className="px-6 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-40 cursor-pointer shadow-xs transition-all"
+                        >
+                          Next Card →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 5: LIVE GRAND ROUNDS */}
+                  {previewActiveTab === 'live' && previewLive && (
+                    <div className="p-6 sm:p-8 bg-emerald-50/60 border border-emerald-200 rounded-3xl space-y-5 max-w-3xl mx-auto">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>Live Grand Rounds Scheduled</span>
+                        </span>
+                        <span className="text-xs font-bold text-slate-600">
+                          Slot: {previewSlot.lectureTimeSlot || '09:00 AM - 10:30 AM IST'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <h4 className="text-xl font-black text-slate-900">
+                          {previewLive.title || `Live Case Discussions: ${resolvedPreviewContent.title}`}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                          Interactive live grand rounds broadcast featuring differential diagnostic reasoning, real-time student MCQ polling, and faculty clinical pearls.
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-white border border-emerald-100 flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Session Host & Faculty Lead
+                          </div>
+                          <div className="text-sm font-bold text-slate-900 mt-0.5">
+                            {previewLive.faculty || previewSlot.facultyName || 'Dr. Siddharth V. (Clinical Lead)'}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Enrolled Candidates
+                          </div>
+                          <div className="text-sm font-black text-emerald-700 mt-0.5">
+                            👥 {previewLive.attendeesCount || 340}+ Doctors
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between flex-wrap gap-3">
+                        <span className="text-xs text-slate-500 font-medium">
+                          Interactive Q&A and doubt resolution enabled for enrolled students.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => showToast('Connecting to live grand rounds stream...')}
+                          className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl shadow-xs cursor-pointer inline-flex items-center gap-2 transition-all"
+                        >
+                          <Tv className="w-4 h-4" />
+                          <span>Launch Live Classroom</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 6: CBT ASSESSMENT */}
+                  {previewActiveTab === 'test' && (
+                    <div className="p-6 sm:p-8 bg-purple-50/60 border border-purple-200 rounded-3xl space-y-5 max-w-3xl mx-auto">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-xs font-bold flex items-center gap-1.5">
+                          <Award className="w-3.5 h-3.5 text-purple-700" />
+                          <span>CBT Benchmark Examination</span>
+                        </span>
+                        <span className="text-xs font-bold text-slate-600">
+                          Duration: 45 Mins • 30 Vignette MCQs
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <h4 className="text-xl font-black text-slate-900">
+                          Day {previewSlot.dayNumber} Clinical Benchmark Assessment
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                          Rigorous clinical vignette assessment testing the specific concepts covered in {resolvedPreviewContent.title}. Full proctored timer, negative marking (-0.25), and percentile diagnostics.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="p-3.5 bg-white rounded-xl border border-purple-100 text-center">
+                          <div className="text-[10px] uppercase font-bold text-slate-400">Total Questions</div>
+                          <div className="text-base font-black text-slate-900 mt-0.5">30 MCQs</div>
+                        </div>
+                        <div className="p-3.5 bg-white rounded-xl border border-purple-100 text-center">
+                          <div className="text-[10px] uppercase font-bold text-slate-400">Passing Benchmark</div>
+                          <div className="text-base font-black text-emerald-600 mt-0.5">75% Score</div>
+                        </div>
+                        <div className="p-3.5 bg-white rounded-xl border border-purple-100 text-center">
+                          <div className="text-[10px] uppercase font-bold text-slate-400">Marking Scheme</div>
+                          <div className="text-base font-black text-purple-700 mt-0.5">+4 / -1 Mark</div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between flex-wrap gap-3">
+                        <span className="text-xs text-slate-500 font-medium">
+                          Automated AI analytics report generated immediately upon test submission.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => showToast('Starting CBT exam simulation engine...')}
+                          className="px-5 py-3 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-2xl shadow-xs cursor-pointer inline-flex items-center gap-2 transition-all"
+                        >
+                          <Award className="w-4 h-4" />
+                          <span>Start CBT Benchmark Test</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Bottom Navigation / Action Footer */}
+                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex items-center justify-between gap-4 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewSlot(null)}
+                    className="px-5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-2xl flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4 text-indigo-600" />
+                    <span>Return to Schedule Planner</span>
+                  </button>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenModal(previewSlot)}
+                      className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-2xl flex items-center gap-2 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Edit Day {previewSlot.dayNumber} Slot</span>
+                    </button>
+
+                    <a
+                      href={`/day/${previewSlot.dayNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-2xl flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                    >
+                      <span>Open in Student LMS</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+
+              </div>
+            );
+          })()}
+        </div>
+      ) : (
+        <>
+          {/* Header Banner */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold">
@@ -1314,6 +2127,8 @@ export default function ManageScheduleTab({
           </div>
         </div>
       )}
+      </>
+    )}
 
       {/* ========================================================================= */}
       {/* MODAL 1: SCHEDULE DAY / LINK CHAPTER & TOPICS                             */}
@@ -1698,417 +2513,7 @@ export default function ManageScheduleTab({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL 2: IN-PAGE STUDENT VIEW QUICK PREVIEW                               */}
-      {/* ========================================================================= */}
-      {previewSlot && resolvedPreviewContent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 max-h-[90vh] overflow-y-auto">
-            
-            {/* Modal Top Bar */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <span className="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 font-black text-xs">
-                  Day {previewSlot.dayNumber}
-                </span>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Student LMS Experience Preview
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    {resolvedPreviewContent.subjectName || resolvedPreviewContent.subject || previewSlot.subjectName || 'Clinical Subject'} • {resolvedPreviewContent.chapterTitle || resolvedPreviewContent.unit || previewSlot.chapterTitle || 'Clinical Chapter'}
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <a
-                  href={`/day/${previewSlot.dayNumber}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1 hover:bg-emerald-100"
-                >
-                  <span>Open Full Screen</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-                <button
-                  onClick={() => setPreviewSlot(null)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Day Title Banner */}
-            <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-50/70 via-white to-emerald-50/50 border border-slate-200 text-slate-900 space-y-1">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-                Daily Study Session
-              </div>
-              <h4 className="text-lg font-black text-slate-900">
-                {resolvedPreviewContent.title}
-              </h4>
-              <div className="flex items-center gap-3 text-xs text-slate-500 pt-1 flex-wrap">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{resolvedPreviewContent.estimatedTime || '1.5 hours'}</span>
-                </span>
-                <span>•</span>
-                <span>Slot: {previewSlot.lectureTimeSlot || '09:00 AM - 10:30 AM IST'}</span>
-                <span>•</span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 text-[10px]">
-                  Status: {previewSlot.status}
-                </span>
-              </div>
-            </div>
-
-            {/* In-Preview Tabs */}
-            {(() => {
-              const previewPdfs = (resolvedPreviewContent.pdfList && resolvedPreviewContent.pdfList.length > 0)
-                ? resolvedPreviewContent.pdfList
-                : (resolvedPreviewContent.pdf || resolvedPreviewContent.notesPdf ? [resolvedPreviewContent.pdf || resolvedPreviewContent.notesPdf] : []);
-              
-              const previewImages = (resolvedPreviewContent.images && resolvedPreviewContent.images.length > 0)
-                ? resolvedPreviewContent.images
-                : (resolvedPreviewContent.galleryImages || []);
-
-              const previewVideo = resolvedPreviewContent.video || resolvedPreviewContent.videoData || null;
-              const previewFlashcards = resolvedPreviewContent.flashcards || [];
-              const previewLive = resolvedPreviewContent.live || (resolvedPreviewContent.hasLive ? { hasSession: true, title: resolvedPreviewContent.title } : null);
-              const previewHasTest = Boolean(resolvedPreviewContent.hasTest || previewSlot.hasTest);
-
-              return (
-                <>
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2 overflow-x-auto scrollbar-none">
-                    {previewPdfs.length > 0 && (
-                      <button
-                        onClick={() => setPreviewActiveTab('notes')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                          previewActiveTab === 'notes' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Study Notes ({previewPdfs.length})</span>
-                      </button>
-                    )}
-
-                    {previewImages.length > 0 && (
-                      <button
-                        onClick={() => setPreviewActiveTab('images')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                          previewActiveTab === 'images' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Diagnostic Figures ({previewImages.length})</span>
-                      </button>
-                    )}
-
-                    {previewVideo && (
-                      <button
-                        onClick={() => setPreviewActiveTab('video')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                          previewActiveTab === 'video' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        <Video className="w-3.5 h-3.5" />
-                        <span>Video Lecture</span>
-                      </button>
-                    )}
-
-                    {previewFlashcards.length > 0 && (
-                      <button
-                        onClick={() => setPreviewActiveTab('flashcards')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                          previewActiveTab === 'flashcards' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        <Brain className="w-3.5 h-3.5" />
-                        <span>Flashcards ({previewFlashcards.length})</span>
-                      </button>
-                    )}
-
-                    {previewLive && (
-                      <button
-                        onClick={() => setPreviewActiveTab('live')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                          previewActiveTab === 'live' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                        }`}
-                      >
-                        <Tv className="w-3.5 h-3.5" />
-                        <span>Live Grand Rounds</span>
-                      </button>
-                    )}
-
-                    {previewHasTest && (
-                      <button
-                        onClick={() => setPreviewActiveTab('test')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                          previewActiveTab === 'test' ? 'bg-purple-600 text-white shadow-2xs' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
-                        }`}
-                      >
-                        <Award className="w-3.5 h-3.5" />
-                        <span>CBT Assessment</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Tab Contents */}
-                  <div className="min-h-[220px]">
-                    {/* Tab 1: Notes (All PDFs) */}
-                    {previewActiveTab === 'notes' && (
-                      <div className="space-y-3">
-                        {previewPdfs.map((pdfItem, idx) => (
-                          <div
-                            key={idx}
-                            className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-4 hover:bg-slate-100/70 transition-all"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
-                                <FileText className="w-6 h-6" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-xs font-bold text-slate-900 truncate">
-                                  {pdfItem.title || pdfItem.fileName}
-                                </div>
-                                <div className="text-[11px] text-slate-500 mt-0.5">
-                                  {pdfItem.fileName} • {pdfItem.pages || 18} Pages • {pdfItem.size || '3.5 MB'}
-                                </div>
-                                {pdfItem.author && (
-                                  <div className="text-[10px] text-indigo-600 font-medium">
-                                    Author: {pdfItem.author}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <span className="text-[11px] font-bold px-3 py-1.5 bg-white text-indigo-700 border border-indigo-200 rounded-xl shrink-0 shadow-2xs">
-                              PDF Attached
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Tab 2: Clinical Diagrams */}
-                    {previewActiveTab === 'images' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {previewImages.map((img, i) => (
-                          <div key={i} className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-2xs">
-                            <img src={img.url} alt={img.title} className="w-full h-36 object-cover" />
-                            <div className="p-3 bg-white space-y-1">
-                              <div className="text-xs font-bold text-slate-900 truncate">{img.title}</div>
-                              <div className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{img.caption}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Tab 3: Video Lecture */}
-                    {previewActiveTab === 'video' && previewVideo && (
-                      <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-xs font-bold text-slate-900">{previewVideo.title}</div>
-                            <div className="text-[11px] text-slate-500">
-                              Instructor: {previewVideo.instructor || 'Dr. Siddharth V. (Clinical Faculty Lead)'}
-                            </div>
-                          </div>
-                          <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
-                            {previewVideo.duration || '45:00 mins'}
-                          </span>
-                        </div>
-
-                        <div className="relative rounded-2xl overflow-hidden bg-slate-100 h-44 flex items-center justify-center border border-slate-200">
-                          <img
-                            src={previewVideo.thumbnail || 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&auto=format&fit=crop&q=80'}
-                            alt="video thumb"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-slate-900/25 flex items-center justify-center">
-                            <div className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-xl cursor-pointer transition-transform hover:scale-105">
-                              <Play className="w-6 h-6 fill-white translate-x-0.5" />
-                            </div>
-                          </div>
-                        </div>
-
-                        {previewVideo.chapters && previewVideo.chapters.length > 0 && (
-                          <div className="pt-1">
-                            <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                              Video Timeline Chapters:
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                              {previewVideo.chapters.map((ch, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200 text-xs">
-                                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">
-                                    {ch.time}
-                                  </span>
-                                  <span className="text-slate-700 font-medium truncate">{ch.label}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Tab 4: Interactive Flashcards (Light Theme!) */}
-                    {previewActiveTab === 'flashcards' && previewFlashcards.length > 0 && (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                          <span>Card {previewCardIdx + 1} of {previewFlashcards.length}</span>
-                          <button
-                            onClick={() => setPreviewCardFlipped(!previewCardFlipped)}
-                            className="text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
-                          >
-                            Click card to flip
-                          </button>
-                        </div>
-
-                        <div
-                          onClick={() => setPreviewCardFlipped(!previewCardFlipped)}
-                          className="p-6 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-white to-emerald-50/50 border-2 border-indigo-200 text-slate-900 min-h-[170px] flex flex-col justify-between cursor-pointer shadow-sm hover:border-indigo-400 transition-all"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
-                              {previewCardFlipped ? 'Verified High-Yield Answer' : 'Clinical Question / Vignette'}
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              {previewCardFlipped ? 'Front ➔ Back' : 'Tap to Flip'}
-                            </span>
-                          </div>
-                          
-                          <div className="text-sm font-semibold text-slate-900 leading-relaxed my-3">
-                            {previewCardFlipped 
-                              ? (previewFlashcards[previewCardIdx]?.answer || previewFlashcards[previewCardIdx]?.back)
-                              : (previewFlashcards[previewCardIdx]?.question || previewFlashcards[previewCardIdx]?.front)
-                            }
-                          </div>
-
-                          <div className="text-[10px] text-slate-500 font-medium">
-                            {previewCardFlipped ? '✓ Tap to view vignette question again' : '⚡ Tap anywhere to reveal clinical answer'}
-                          </div>
-                        </div>
-
-                        {previewFlashcards.length > 1 && (
-                          <div className="flex items-center justify-between pt-1">
-                            <button
-                              disabled={previewCardIdx <= 0}
-                              onClick={() => {
-                                setPreviewCardIdx(prev => prev - 1);
-                                setPreviewCardFlipped(false);
-                              }}
-                              className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 cursor-pointer shadow-2xs"
-                            >
-                              Previous Card
-                            </button>
-                            <button
-                              disabled={previewCardIdx >= previewFlashcards.length - 1}
-                              onClick={() => {
-                                setPreviewCardIdx(prev => prev + 1);
-                                setPreviewCardFlipped(false);
-                              }}
-                              className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-40 cursor-pointer shadow-xs"
-                            >
-                              Next Card
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Tab 5: Live Grand Rounds */}
-                    {previewActiveTab === 'live' && previewLive && (
-                      <div className="p-5 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span>Live Grand Rounds</span>
-                          </span>
-                          <span className="text-xs font-bold text-slate-600">
-                            Slot: {previewSlot.lectureTimeSlot || '09:00 AM - 10:30 AM IST'}
-                          </span>
-                        </div>
-                        <div>
-                          <h5 className="text-sm font-black text-slate-900">
-                            {previewLive.title || `Live Case Discussions: ${resolvedPreviewContent.title}`}
-                          </h5>
-                          <p className="text-xs text-slate-600 mt-1">
-                            Faculty: <strong>{previewLive.faculty || previewSlot.facultyName || 'Dr. Siddharth V. (Clinical Faculty Lead)'}</strong>
-                          </p>
-                        </div>
-                        <div className="pt-2 flex items-center justify-between">
-                          <span className="text-xs text-slate-500 font-medium">
-                            👥 {previewLive.attendeesCount || 340} Registered Candidates
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => alert('Starting live stream conference room...')}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
-                          >
-                            <Tv className="w-3.5 h-3.5" />
-                            <span>Launch Live Classroom</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Tab 6: CBT Mock Test */}
-                    {previewActiveTab === 'test' && (
-                      <div className="p-5 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 text-[10px] font-bold">
-                            CBT Proctored Assessment
-                          </span>
-                          <span className="text-xs font-bold text-slate-600">
-                            Duration: 45 mins • 30 Vignette MCQs
-                          </span>
-                        </div>
-                        <div>
-                          <h5 className="text-sm font-black text-slate-900">
-                            Day {previewSlot.dayNumber} Clinical Benchmark Examination
-                          </h5>
-                          <p className="text-xs text-slate-600 mt-1">
-                            High-yield clinical vignette examination with timed negative marking and AI diagnostic analytics.
-                          </p>
-                        </div>
-                        <div className="pt-2 flex items-center justify-between">
-                          <span className="text-xs text-slate-500 font-medium">
-                            Passing Benchmark: 75% Score
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => alert('Opening CBT test simulation engine...')}
-                            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
-                          >
-                            <Award className="w-3.5 h-3.5" />
-                            <span>Start Practice Test</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                </>
-              );
-            })()}
-
-            {/* Modal Actions */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-400">
-                Changes saved in the planner take effect immediately.
-              </span>
-              <button
-                onClick={() => setPreviewSlot(null)}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs"
-              >
-                Close Preview
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* MODAL 3: DELETE CONFIRMATION                                              */}
