@@ -23,7 +23,7 @@ import {
   UploadCloud, 
   Check, 
   Filter, 
-  ArrowLeft,
+  ArrowLeft, 
   ArrowRight, 
   ArrowUp, 
   ArrowDown, 
@@ -31,8 +31,14 @@ import {
   Play, 
   RotateCw, 
   ZoomIn, 
-  Calendar,
-  Maximize2
+  Calendar, 
+  Maximize2,
+  Radio,
+  Tv,
+  Users,
+  Copy,
+  GraduationCap,
+  PlayCircle
 } from 'lucide-react';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
@@ -50,8 +56,12 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   const [chapters, setChapters] = useState(() => curriculumService.getChapters());
   const [topics, setTopics] = useState(() => curriculumService.getTopics());
 
-  // Dedicated Chapter Profile Drill-down View State
+  // Dedicated Chapter Profile Drill-down View State (Level 2)
   const [activeChapterProfile, setActiveChapterProfile] = useState(null);
+
+  // Dedicated Topic Content Studio Page State (Level 3 - In-page full view)
+  const [activeTopicProfile, setActiveTopicProfile] = useState(null);
+  const [contentActiveTab, setContentActiveTab] = useState('live'); // 'live' | 'pdf' | 'images' | 'video' | 'flashcards' | 'notes'
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,51 +90,98 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   const [topicDuration, setTopicDuration] = useState('45 mins');
   const [topicDifficulty, setTopicDifficulty] = useState('High-Yield');
 
-  // Topic Content Manager Modal State
-  const [contentModalTopic, setContentModalTopic] = useState(null);
-  const [contentActiveTab, setContentActiveTab] = useState('pdf'); // 'pdf' | 'images' | 'video' | 'flashcards' | 'notes'
-
   // Image Lightbox Modal State
   const [lightboxImage, setLightboxImage] = useState(null);
 
-  // Sub-forms inside Content Manager
-  // 1. PDF Form
+  // Sub-forms inside Content Studio
+  // 1. Live Classes Form
+  const [newLiveTitle, setNewLiveTitle] = useState('');
+  const [newLiveInstructor, setNewLiveInstructor] = useState('Dr. Rajiv Mehta (MD, DM Cardiology)');
+  const [newLiveDate, setNewLiveDate] = useState('Tomorrow');
+  const [newLiveTime, setNewLiveTime] = useState('07:00 PM - 08:15 PM IST');
+  const [newLiveDuration, setNewLiveDuration] = useState('75 mins');
+  const [newLivePlatform, setNewLivePlatform] = useState('Zoom Live Interactive');
+  const [newLiveJoinUrl, setNewLiveJoinUrl] = useState('https://zoom.us/j/9876543210');
+  const [newLiveMeetingId, setNewLiveMeetingId] = useState('987 654 3210');
+  const [newLivePasscode, setNewLivePasscode] = useState('CARDIO2026');
+  const [newLiveStatus, setNewLiveStatus] = useState('Scheduled'); // 'Scheduled' | 'Live Now' | 'Completed'
+  const [newLiveRecordingUrl, setNewLiveRecordingUrl] = useState('');
+  const [showAddLiveForm, setShowAddLiveForm] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+
+  // 2. PDF Form
   const [newPdfTitle, setNewPdfTitle] = useState('');
   const [newPdfFile, setNewPdfFile] = useState('Clinical_Study_Notes.pdf');
   const [newPdfPages, setNewPdfPages] = useState(20);
   const [newPdfAuthor, setNewPdfAuthor] = useState('Dr. Siddharth V.');
 
-  // 2. Image Form
+  // 3. Image Form
   const [newImageTitle, setNewImageTitle] = useState('');
   const [newImageUrl, setNewImageUrl] = useState('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80');
   const [newImageCaption, setNewImageCaption] = useState('');
 
-  // 3. Video Form
+  // 4. Video Form
   const [videoTitle, setVideoTitle] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [videoDuration, setVideoDuration] = useState('35:00');
   const [videoInstructor, setVideoInstructor] = useState('Dr. Siddharth V.');
 
-  // 4. Flashcard Form
+  // 5. Flashcard Form
   const [newCardQ, setNewCardQ] = useState('');
   const [newCardA, setNewCardA] = useState('');
 
-  // 5. Clinical Notes
+  // 6. Clinical Notes
   const [clinicalNotesText, setClinicalNotesText] = useState('');
 
   // Delete Confirmations
   const [deletingChapter, setDeletingChapter] = useState(null);
   const [deletingTopic, setDeletingTopic] = useState(null);
+  const [deletingLiveClass, setDeletingLiveClass] = useState(null);
 
   // Sync with service
   useEffect(() => {
     const unsubCurriculum = curriculumService.subscribeCurriculum(() => {
       setSubjects(curriculumService.getSubjects());
       setChapters(curriculumService.getChapters());
-      setTopics(curriculumService.getTopics());
+      const newTopics = curriculumService.getTopics();
+      setTopics(newTopics);
+      if (activeTopicProfile) {
+        const found = newTopics.find(t => t.id === activeTopicProfile.id);
+        if (found) setActiveTopicProfile(found);
+      }
     });
-    return unsubCurriculum;
-  }, []);
+    return () => unsubCurriculum();
+  }, [activeTopicProfile]);
+
+  // Dedicated Chapter Profile Drill-down View Selectors (must be before Topic Studio selectors)
+  const profileSubject = useMemo(() => {
+    if (!activeChapterProfile) return null;
+    return subjects.find(s => s.id === activeChapterProfile.subjectId) || null;
+  }, [subjects, activeChapterProfile]);
+
+  // Topic Studio Navigation Selectors
+  const activeTopicChapter = useMemo(() => {
+    if (!activeTopicProfile) return activeChapterProfile;
+    return chapters.find(c => c.id === activeTopicProfile.chapterId) || activeChapterProfile;
+  }, [activeTopicProfile, chapters, activeChapterProfile]);
+
+  const activeTopicSubject = useMemo(() => {
+    if (!activeTopicChapter) return profileSubject;
+    return subjects.find(s => s.id === activeTopicChapter.subjectId) || profileSubject;
+  }, [activeTopicChapter, subjects, profileSubject]);
+
+  const chapterTopics = useMemo(() => {
+    if (!activeTopicChapter) return [];
+    return topics.filter(t => t.chapterId === activeTopicChapter.id).sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
+  }, [topics, activeTopicChapter]);
+
+  const currentTopicIndex = useMemo(() => {
+    if (!activeTopicProfile || !chapterTopics.length) return -1;
+    return chapterTopics.findIndex(t => t.id === activeTopicProfile.id);
+  }, [activeTopicProfile, chapterTopics]);
+
+  const prevTopic = currentTopicIndex > 0 ? chapterTopics[currentTopicIndex - 1] : null;
+  const nextTopic = currentTopicIndex >= 0 && currentTopicIndex < chapterTopics.length - 1 ? chapterTopics[currentTopicIndex + 1] : null;
 
   // Sync selectedSubjectId if initialSubjectId prop changes
   useEffect(() => {
@@ -175,10 +232,6 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   }, [chapters, subjects, selectedExamId, selectedSubjectId, searchQuery]);
 
   // Dedicated Chapter Profile Drill-down View Selectors
-  const profileSubject = useMemo(() => {
-    if (!activeChapterProfile) return null;
-    return subjects.find(s => s.id === activeChapterProfile.subjectId) || null;
-  }, [subjects, activeChapterProfile]);
 
   const profileTopics = useMemo(() => {
     if (!activeChapterProfile) return [];
@@ -346,12 +399,26 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     showToast('Topic deleted.');
   };
 
-  // Open Topic Content Modal
-  const handleOpenContentModal = (topic) => {
-    setContentModalTopic(topic);
-    setContentActiveTab('pdf');
+  // Open Topic Content Studio (Dedicated Full Page View)
+  const handleOpenTopicStudio = (topic) => {
+    setActiveTopicProfile(topic);
+    setContentActiveTab('live');
     const content = topic.content || {};
     
+    // Reset Live Classes Form
+    setNewLiveTitle(`Live Clinical Drill: ${topic.title}`);
+    setNewLiveInstructor('Dr. Rajiv Mehta (MD, DM Cardiology)');
+    setNewLiveDate('Tomorrow');
+    setNewLiveTime('07:00 PM - 08:15 PM IST');
+    setNewLiveDuration('75 mins');
+    setNewLivePlatform('Zoom Live Interactive');
+    setNewLiveJoinUrl('https://zoom.us/j/9876543210');
+    setNewLiveMeetingId('987 654 3210');
+    setNewLivePasscode('CARDIO2026');
+    setNewLiveStatus('Scheduled');
+    setNewLiveRecordingUrl('');
+    setShowAddLiveForm(false);
+
     // Reset forms
     setNewPdfTitle(`${topic.title} Clinical Summary`);
     setNewPdfFile(`${topic.title.replace(/[^a-zA-Z0-9]/g, '_')}_Notes.pdf`);
@@ -372,93 +439,142 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     setClinicalNotesText(content.clinicalNotes || '');
   };
 
+  const handleCopyText = (text, id) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+      showToast('Copied to clipboard!');
+    }
+  };
+
+  // Live Classes Actions
+  const handleAddLiveClass = (e) => {
+    e.preventDefault();
+    if (!newLiveTitle || !activeTopicProfile) return;
+    curriculumService.addTopicLiveClass(activeTopicProfile.id, {
+      title: newLiveTitle,
+      instructor: newLiveInstructor,
+      date: newLiveDate,
+      time: newLiveTime,
+      duration: newLiveDuration,
+      platform: newLivePlatform,
+      joinUrl: newLiveJoinUrl,
+      meetingId: newLiveMeetingId,
+      passcode: newLivePasscode,
+      status: newLiveStatus,
+      recordingUrl: newLiveRecordingUrl
+    });
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
+    setShowAddLiveForm(false);
+    showToast('Live Class scheduled & attached to topic!');
+  };
+
+  const handleToggleLiveStatus = (liveId, newStatus) => {
+    if (!activeTopicProfile) return;
+    curriculumService.updateTopicLiveClass(activeTopicProfile.id, liveId, { status: newStatus });
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
+    showToast(`Live Class status updated to "${newStatus}"!`);
+  };
+
+  const handleDeleteLiveClass = (liveId) => {
+    if (!activeTopicProfile) return;
+    curriculumService.deleteTopicLiveClass(activeTopicProfile.id, liveId);
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
+    setDeletingLiveClass(null);
+    showToast('Live Class session removed.');
+  };
+
   // Content Sub-actions
   const handleAddPdf = (e) => {
     e.preventDefault();
-    if (!newPdfTitle || !contentModalTopic) return;
-    curriculumService.addTopicPdf(contentModalTopic.id, {
+    if (!newPdfTitle || !activeTopicProfile) return;
+    curriculumService.addTopicPdf(activeTopicProfile.id, {
       title: newPdfTitle,
       fileName: newPdfFile,
       pages: Number(newPdfPages),
       author: newPdfAuthor
     });
-    const updated = curriculumService.getTopicById(contentModalTopic.id);
-    setContentModalTopic(updated);
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
     showToast('PDF Notes uploaded to topic!');
   };
 
   const handleDeletePdf = (pdfId) => {
-    if (!contentModalTopic) return;
-    curriculumService.deleteTopicPdf(contentModalTopic.id, pdfId);
-    const updated = curriculumService.getTopicById(contentModalTopic.id);
-    setContentModalTopic(updated);
+    if (!activeTopicProfile) return;
+    curriculumService.deleteTopicPdf(activeTopicProfile.id, pdfId);
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
     showToast('PDF removed.');
   };
 
   const handleAddImage = (e) => {
     e.preventDefault();
-    if (!newImageTitle || !contentModalTopic) return;
-    curriculumService.addTopicImage(contentModalTopic.id, {
+    if (!newImageTitle || !activeTopicProfile) return;
+    curriculumService.addTopicImage(activeTopicProfile.id, {
       title: newImageTitle,
       url: newImageUrl,
       caption: newImageCaption
     });
-    const updated = curriculumService.getTopicById(contentModalTopic.id);
-    setContentModalTopic(updated);
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
     showToast('Clinical Diagram / Image added to topic!');
   };
 
   const handleDeleteImage = (imgId) => {
-    if (!contentModalTopic) return;
-    curriculumService.deleteTopicImage(contentModalTopic.id, imgId);
-    const updated = curriculumService.getTopicById(contentModalTopic.id);
-    setContentModalTopic(updated);
+    if (!activeTopicProfile) return;
+    curriculumService.deleteTopicImage(activeTopicProfile.id, imgId);
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
     showToast('Image removed.');
   };
 
   const handleSaveVideo = (e) => {
     e.preventDefault();
-    if (!contentModalTopic) return;
-    curriculumService.saveTopicVideo(contentModalTopic.id, {
+    if (!activeTopicProfile) return;
+    curriculumService.saveTopicVideo(activeTopicProfile.id, {
       title: videoTitle,
       url: videoUrl,
       duration: videoDuration,
       instructor: videoInstructor
     });
-    const updated = curriculumService.getTopicById(contentModalTopic.id);
-    setContentModalTopic(updated);
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
     showToast('Video Lecture details updated!');
   };
 
   const handleAddFlashcard = (e) => {
     e.preventDefault();
-    if (!newCardQ || !newCardA || !contentModalTopic) return;
-    curriculumService.addTopicFlashcard(contentModalTopic.id, {
+    if (!newCardQ || !newCardA || !activeTopicProfile) return;
+    curriculumService.addTopicFlashcard(activeTopicProfile.id, {
       question: newCardQ,
       answer: newCardA
     });
-    const updated = curriculumService.getTopicById(contentModalTopic.id);
-    setContentModalTopic(updated);
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
     setNewCardQ('');
     setNewCardA('');
     showToast('Flashcard added to topic!');
   };
 
   const handleDeleteFlashcard = (cardId) => {
-    if (!contentModalTopic) return;
-    curriculumService.deleteTopicFlashcard(contentModalTopic.id, cardId);
-    const updated = curriculumService.getTopicById(contentModalTopic.id);
-    setContentModalTopic(updated);
+    if (!activeTopicProfile) return;
+    curriculumService.deleteTopicFlashcard(activeTopicProfile.id, cardId);
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
     showToast('Flashcard deleted.');
   };
 
   const handleSaveClinicalNotes = () => {
-    if (!contentModalTopic) return;
-    curriculumService.saveTopicContent(contentModalTopic.id, {
+    if (!activeTopicProfile) return;
+    curriculumService.saveTopicContent(activeTopicProfile.id, {
       clinicalNotes: clinicalNotesText
     });
-    const updated = curriculumService.getTopicById(contentModalTopic.id);
-    setContentModalTopic(updated);
+    const updated = curriculumService.getTopicById(activeTopicProfile.id);
+    setActiveTopicProfile(updated);
     showToast('Clinical Pearls saved!');
   };
 
@@ -474,9 +590,1085 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       )}
 
       {/* ========================================================================= */}
-      {/* 1. DEDICATED CHAPTER PROFILE & TOPICS VIEW (When a Chapter is Selected)   */}
+      {/* 1. DEDICATED TOPIC CONTENT STUDIO (FULL PAGE VIEW - NO MODALS)            */}
       {/* ========================================================================= */}
-      {activeChapterProfile ? (
+      {activeTopicProfile ? (
+        <div className="space-y-6 animate-in fade-in">
+          
+          {/* Breadcrumb & Topic Navigation Bar */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
+              <button
+                id="btn-back-to-chapter"
+                onClick={() => setActiveTopicProfile(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Chapter {activeTopicChapter?.chapterNumber}</span>
+              </button>
+              <span className="text-slate-300">/</span>
+              <span className="text-slate-600">{activeTopicSubject?.name || 'Subject'}</span>
+              <span className="text-slate-300">/</span>
+              <span className="text-slate-600">Chapter {activeTopicChapter?.chapterNumber}: {activeTopicChapter?.title}</span>
+              <span className="text-slate-300">/</span>
+              <span className="text-slate-900 font-bold">
+                Topic {activeTopicProfile.topicNumber}: {activeTopicProfile.title}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">
+              {/* Prev / Next Topic Switchers */}
+              {prevTopic && (
+                <button
+                  id="btn-prev-topic"
+                  onClick={() => handleOpenTopicStudio(prevTopic)}
+                  title={`Previous Topic: ${prevTopic.title}`}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <ArrowLeft className="w-3 h-3 text-slate-400" />
+                  <span>Topic {prevTopic.topicNumber}</span>
+                </button>
+              )}
+              {nextTopic && (
+                <button
+                  id="btn-next-topic"
+                  onClick={() => handleOpenTopicStudio(nextTopic)}
+                  title={`Next Topic: ${nextTopic.title}`}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Topic {nextTopic.topicNumber}</span>
+                  <ArrowRight className="w-3 h-3 text-slate-400" />
+                </button>
+              )}
+              <button
+                onClick={() => handleOpenTopicModal(activeTopicChapter, activeTopicProfile)}
+                className="px-3.5 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200/80 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Topic Info</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Topic Profile Banner Card (Light Modern Theme) */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 sm:p-8 space-y-5 relative overflow-hidden">
+            {/* Ambient corner tint */}
+            <div className="absolute top-0 right-0 w-96 h-48 bg-gradient-to-bl from-indigo-50/60 via-sky-50/20 to-transparent rounded-bl-full pointer-events-none" />
+
+            <div className="flex flex-wrap items-center gap-2 relative z-10">
+              <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-black">
+                Topic {activeTopicProfile.topicNumber} Content Studio
+              </span>
+              <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold">
+                Chapter {activeTopicChapter?.chapterNumber}: {activeTopicChapter?.title}
+              </span>
+              <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold">
+                {activeTopicSubject?.name} ({activeTopicSubject?.code})
+              </span>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                activeTopicProfile.difficulty === 'High-Yield'
+                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                  : activeTopicProfile.difficulty === 'Advanced / Super-Specialty'
+                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                  : 'bg-blue-50 text-blue-700 border border-blue-200'
+              }`}>
+                {activeTopicProfile.difficulty}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">
+                ⏱️ {activeTopicProfile.duration || '45 mins'}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                Status: {activeTopicProfile.status || 'Published'}
+              </span>
+            </div>
+
+            <div className="space-y-1.5 max-w-4xl relative z-10">
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+                {activeTopicProfile.title}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                {activeTopicProfile.clinicalNotes 
+                  ? activeTopicProfile.clinicalNotes 
+                  : 'Structured sub-topic study module. Manage interactive live classes, attached PDF notes, diagnostic images, high-yield videos, and spaced-repetition flashcards below.'}
+              </p>
+            </div>
+
+            {/* Quick Metrics Bar with 1-click tab jumps */}
+            {(() => {
+              const content = activeTopicProfile.content || {};
+              const liveCount = content.liveClasses?.length || 0;
+              const hasLiveNow = content.liveClasses?.some(l => l.status === 'Live Now');
+              const pdfCount = (content.pdfList?.length || content.pdfs?.length || 0);
+              const imgCount = content.images?.length || 0;
+              const hasVideo = Boolean(content.video?.url || content.video?.title);
+              const cardCount = content.flashcards?.length || 0;
+
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 relative z-10">
+                  <div 
+                    onClick={() => setContentActiveTab('live')}
+                    className={`rounded-2xl p-3 text-center transition-all cursor-pointer border ${
+                      contentActiveTab === 'live' 
+                        ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-200' 
+                        : 'bg-rose-50/50 border-rose-100 hover:bg-rose-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      {hasLiveNow && <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />}
+                      <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">Live Classes</span>
+                    </div>
+                    <span className="text-xl font-black text-rose-700">{liveCount}</span>
+                  </div>
+
+                  <div 
+                    onClick={() => setContentActiveTab('pdf')}
+                    className={`rounded-2xl p-3 text-center transition-all cursor-pointer border ${
+                      contentActiveTab === 'pdf' 
+                        ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200' 
+                        : 'bg-slate-50 border-slate-200/80 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">PDF Notes</span>
+                    <span className="text-xl font-black text-slate-900">{pdfCount}</span>
+                  </div>
+
+                  <div 
+                    onClick={() => setContentActiveTab('images')}
+                    className={`rounded-2xl p-3 text-center transition-all cursor-pointer border ${
+                      contentActiveTab === 'images' 
+                        ? 'bg-sky-100 border-sky-300 ring-2 ring-sky-200' 
+                        : 'bg-sky-50/70 border-sky-100 hover:bg-sky-50'
+                    }`}
+                  >
+                    <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wider block">Images & ECG</span>
+                    <span className="text-xl font-black text-sky-700">{imgCount}</span>
+                  </div>
+
+                  <div 
+                    onClick={() => setContentActiveTab('video')}
+                    className={`rounded-2xl p-3 text-center transition-all cursor-pointer border ${
+                      contentActiveTab === 'video' 
+                        ? 'bg-red-50 border-red-300 ring-2 ring-red-200' 
+                        : 'bg-red-50/50 border-red-100 hover:bg-red-50'
+                    }`}
+                  >
+                    <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block">Video Stream</span>
+                    <span className="text-xl font-black text-red-700">{hasVideo ? '1 Active' : '0'}</span>
+                  </div>
+
+                  <div 
+                    onClick={() => setContentActiveTab('flashcards')}
+                    className={`rounded-2xl p-3 text-center transition-all cursor-pointer border ${
+                      contentActiveTab === 'flashcards' 
+                        ? 'bg-amber-100 border-amber-300 ring-2 ring-amber-200' 
+                        : 'bg-amber-50/70 border-amber-100 hover:bg-amber-50'
+                    }`}
+                  >
+                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Flashcards</span>
+                    <span className="text-xl font-black text-amber-700">{cardCount}</span>
+                  </div>
+
+                  <div 
+                    onClick={() => setContentActiveTab('notes')}
+                    className={`rounded-2xl p-3 text-center transition-all cursor-pointer border ${
+                      contentActiveTab === 'notes' 
+                        ? 'bg-emerald-100 border-emerald-300 ring-2 ring-emerald-200' 
+                        : 'bg-emerald-50/70 border-emerald-100 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Clinical Pearls</span>
+                    <span className="text-xl font-black text-emerald-700">{content.clinicalNotes ? 'Ready' : 'Draft'}</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Full Page Topic Content Studio Card */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
+            
+            {/* Studio Navigation Tabs */}
+            <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none">
+              {[
+                { 
+                  id: 'live', 
+                  label: 'Live Classes & Tele-Rounds', 
+                  icon: Radio, 
+                  count: activeTopicProfile.content?.liveClasses?.length || 0,
+                  isLive: activeTopicProfile.content?.liveClasses?.some(l => l.status === 'Live Now')
+                },
+                { 
+                  id: 'pdf', 
+                  label: 'PDF Study Notes', 
+                  icon: FileText, 
+                  count: (activeTopicProfile.content?.pdfList?.length || activeTopicProfile.content?.pdfs?.length || 0)
+                },
+                { 
+                  id: 'images', 
+                  label: 'Clinical Images & ECGs', 
+                  icon: ImageIcon, 
+                  count: activeTopicProfile.content?.images?.length || 0 
+                },
+                { 
+                  id: 'video', 
+                  label: 'Video Lecture Stream', 
+                  icon: Video, 
+                  count: activeTopicProfile.content?.video?.url || activeTopicProfile.content?.video?.title ? 1 : 0 
+                },
+                { 
+                  id: 'flashcards', 
+                  label: 'Flashcards Deck', 
+                  icon: Brain, 
+                  count: activeTopicProfile.content?.flashcards?.length || 0 
+                },
+                { 
+                  id: 'notes', 
+                  label: 'Clinical Pearls & Key High-Yields', 
+                  icon: Sparkles, 
+                  count: activeTopicProfile.content?.clinicalNotes ? 'Ready' : 0 
+                }
+              ].map(tab => {
+                const IconC = tab.icon;
+                const isActive = contentActiveTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    id={`tab-studio-${tab.id}`}
+                    onClick={() => setContentActiveTab(tab.id)}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shrink-0 ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/60'
+                    }`}
+                  >
+                    {tab.isLive && !isActive && <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />}
+                    <IconC className={`w-4 h-4 ${isActive ? 'text-white' : tab.id === 'live' ? 'text-rose-600' : 'text-slate-500'}`} />
+                    <span>{tab.label}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                      isActive 
+                        ? 'bg-white/20 text-white' 
+                        : tab.id === 'live' && tab.count > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-700'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Content Tabs Bodies */}
+            {/* TAB 1: LIVE CLASSES */}
+            {contentActiveTab === 'live' && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                      <Radio className="w-5 h-5 text-rose-600" />
+                      <span>Live Classes & Tele-Round Sessions ({activeTopicProfile.content?.liveClasses?.length || 0})</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Schedule live interactive patient case discussions, ECG telemetry drills, and faculty Q&A sessions for this topic.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowAddLiveForm(!showAddLiveForm)}
+                    className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{showAddLiveForm ? 'Close Form' : 'Schedule Live Class'}</span>
+                  </button>
+                </div>
+
+                {showAddLiveForm && (
+                  <form onSubmit={handleAddLiveClass} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-rose-600" />
+                        Schedule New Live Interactive Session
+                      </h4>
+                      <span className="text-[11px] font-medium text-slate-400">Linked to Topic {activeTopicProfile.topicNumber}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Live Session Title *</label>
+                        <input
+                          type="text"
+                          required
+                          value={newLiveTitle}
+                          onChange={(e) => setNewLiveTitle(e.target.value)}
+                          placeholder="e.g. Live Auscultation & Heart Murmurs Diagnostic Drill"
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Lead Faculty / Instructor *</label>
+                        <input
+                          type="text"
+                          required
+                          value={newLiveInstructor}
+                          onChange={(e) => setNewLiveInstructor(e.target.value)}
+                          placeholder="e.g. Dr. Rajiv Mehta (MD, DM Cardiology)"
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Date</label>
+                        <input
+                          type="text"
+                          value={newLiveDate}
+                          onChange={(e) => setNewLiveDate(e.target.value)}
+                          placeholder="e.g. Tomorrow or 2026-09-18"
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Time Slot</label>
+                        <input
+                          type="text"
+                          value={newLiveTime}
+                          onChange={(e) => setNewLiveTime(e.target.value)}
+                          placeholder="e.g. 07:00 PM - 08:15 PM IST"
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Duration</label>
+                        <input
+                          type="text"
+                          value={newLiveDuration}
+                          onChange={(e) => setNewLiveDuration(e.target.value)}
+                          placeholder="e.g. 75 mins"
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Platform</label>
+                        <select
+                          value={newLivePlatform}
+                          onChange={(e) => setNewLivePlatform(e.target.value)}
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-rose-500 focus:outline-none cursor-pointer"
+                        >
+                          <option value="Zoom Live Interactive">Zoom Live Interactive</option>
+                          <option value="Google Meet">Google Meet</option>
+                          <option value="In-App Live Room">In-App Live Room</option>
+                          <option value="YouTube Live Stream">YouTube Live Stream</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Join / Meeting Link *</label>
+                        <input
+                          type="url"
+                          required
+                          value={newLiveJoinUrl}
+                          onChange={(e) => setNewLiveJoinUrl(e.target.value)}
+                          placeholder="https://zoom.us/j/..."
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Meeting ID</label>
+                        <input
+                          type="text"
+                          value={newLiveMeetingId}
+                          onChange={(e) => setNewLiveMeetingId(e.target.value)}
+                          placeholder="e.g. 987 654 3210"
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Passcode / Access Key</label>
+                        <input
+                          type="text"
+                          value={newLivePasscode}
+                          onChange={(e) => setNewLivePasscode(e.target.value)}
+                          placeholder="e.g. CARDIO2026"
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Initial Status</label>
+                        <select
+                          value={newLiveStatus}
+                          onChange={(e) => setNewLiveStatus(e.target.value)}
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-rose-500 focus:outline-none cursor-pointer"
+                        >
+                          <option value="Scheduled">Scheduled</option>
+                          <option value="Live Now">Live Now</option>
+                          <option value="Completed">Completed</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">Recording Embed / Video URL (Optional)</label>
+                      <input
+                        type="url"
+                        value={newLiveRecordingUrl}
+                        onChange={(e) => setNewLiveRecordingUrl(e.target.value)}
+                        placeholder="https://www.youtube.com/embed/... (archived session playback)"
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddLiveForm(false)}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Radio className="w-3.5 h-3.5" />
+                        <span>Save & Schedule Live Class</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* List of Scheduled / Active Live Classes */}
+                <div className="space-y-4">
+                  {(!activeTopicProfile.content?.liveClasses || activeTopicProfile.content.liveClasses.length === 0) ? (
+                    <div className="p-8 text-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+                        <Radio className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1 max-w-sm mx-auto">
+                        <h4 className="text-sm font-bold text-slate-800">No Live Classes Scheduled Yet</h4>
+                        <p className="text-xs text-slate-500">
+                          Add an interactive tele-round, patient case drill, or live lecture for this topic so students can attend in real time.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowAddLiveForm(true)}
+                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Schedule First Live Class</span>
+                      </button>
+                    </div>
+                  ) : (
+                    activeTopicProfile.content.liveClasses.map((live) => {
+                      const isLiveNow = live.status === 'Live Now';
+                      const isCompleted = live.status === 'Completed';
+
+                      return (
+                        <div
+                          key={live.id}
+                          className={`rounded-3xl border p-5 sm:p-6 transition-all space-y-4 shadow-xs ${
+                            isLiveNow
+                              ? 'bg-gradient-to-r from-rose-50/70 via-white to-amber-50/40 border-rose-200 ring-1 ring-rose-200'
+                              : isCompleted
+                              ? 'bg-slate-50/60 border-slate-200'
+                              : 'bg-white border-slate-200 hover:border-indigo-200'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                {isLiveNow ? (
+                                  <span className="px-3 py-1 rounded-full bg-rose-500 text-white text-xs font-black flex items-center gap-1.5 shadow-xs">
+                                    <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                                    <span>LIVE NOW IN SESSION</span>
+                                  </span>
+                                ) : isCompleted ? (
+                                  <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Completed & Archived</span>
+                                  </span>
+                                ) : (
+                                  <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    <span>Upcoming Live Class</span>
+                                  </span>
+                                )}
+
+                                <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1">
+                                  <Tv className="w-3 h-3 text-slate-500" />
+                                  <span>{live.platform}</span>
+                                </span>
+                              </div>
+
+                              <h4 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
+                                {live.title}
+                              </h4>
+
+                              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                                <GraduationCap className="w-4 h-4 text-indigo-600" />
+                                <span>{live.instructor}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                              {!isCompleted && !isLiveNow && (
+                                <button
+                                  onClick={() => handleToggleLiveStatus(live.id, 'Live Now')}
+                                  title="Mark session as Live Now"
+                                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span className="w-2 h-2 rounded-full bg-rose-600" />
+                                  <span>Go Live</span>
+                                </button>
+                              )}
+                              {isLiveNow && (
+                                <button
+                                  onClick={() => handleToggleLiveStatus(live.id, 'Completed')}
+                                  title="Mark session as Completed"
+                                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>End Session</span>
+                                </button>
+                              )}
+                              {isCompleted && (
+                                <button
+                                  onClick={() => handleToggleLiveStatus(live.id, 'Scheduled')}
+                                  title="Re-open session as Scheduled"
+                                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
+                                >
+                                  <span>Re-open</span>
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => handleDeleteLiveClass(live.id)}
+                                title="Delete Live Class"
+                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl cursor-pointer transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Session Details Strip */}
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/70 text-xs">
+                            <div>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase block">Date & Time</span>
+                              <span className="font-bold text-slate-800">{live.date} • {live.time}</span>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase block">Duration</span>
+                              <span className="font-bold text-slate-800">⏱️ {live.duration}</span>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase block">Meeting ID</span>
+                              <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                <span>{live.meetingId || 'N/A'}</span>
+                                {live.meetingId && (
+                                  <button
+                                    onClick={() => handleCopyText(live.meetingId, `mid-${live.id}`)}
+                                    title="Copy Meeting ID"
+                                    className="text-slate-400 hover:text-indigo-600 cursor-pointer"
+                                  >
+                                    {copiedId === `mid-${live.id}` ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase block">Passcode</span>
+                              <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                <span>{live.passcode || 'None'}</span>
+                                {live.passcode && (
+                                  <button
+                                    onClick={() => handleCopyText(live.passcode, `pwd-${live.id}`)}
+                                    title="Copy Passcode"
+                                    className="text-slate-400 hover:text-indigo-600 cursor-pointer"
+                                  >
+                                    {copiedId === `pwd-${live.id}` ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Links */}
+                          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                            <div className="flex items-center gap-2">
+                              {live.joinUrl && (
+                                <a
+                                  href={live.joinUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-xs ${
+                                    isLiveNow
+                                      ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                                      : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                  }`}
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  <span>{isLiveNow ? 'Join Live Room Now ➔' : 'Open Meeting Link ↗'}</span>
+                                </a>
+                              )}
+
+                              {live.recordingUrl && (
+                                <a
+                                  href={live.recordingUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+                                >
+                                  <Play className="w-3.5 h-3.5 text-indigo-600" />
+                                  <span>Watch Recording</span>
+                                </a>
+                              )}
+                            </div>
+
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              Topic {activeTopicProfile.topicNumber}: <span className="font-bold text-slate-600">{activeTopicProfile.title}</span>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: PDF NOTES */}
+            {contentActiveTab === 'pdf' && (
+              <div className="space-y-6">
+                <form onSubmit={handleAddPdf} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Plus className="w-3.5 h-3.5 text-indigo-600" />
+                      Attach New PDF Study Module
+                    </h4>
+                    <span className="text-[11px] font-medium text-slate-400">PDF study guide, guideline summary or lecture notes</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">PDF Title *</label>
+                      <input
+                        id="input-pdf-title"
+                        type="text"
+                        required
+                        value={newPdfTitle}
+                        onChange={(e) => setNewPdfTitle(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">File Name</label>
+                      <input
+                        id="input-pdf-filename"
+                        type="text"
+                        value={newPdfFile}
+                        onChange={(e) => setNewPdfFile(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">Pages</label>
+                      <input
+                        id="input-pdf-pages"
+                        type="number"
+                        value={newPdfPages}
+                        onChange={(e) => setNewPdfPages(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-[11px] font-bold text-slate-700">Faculty Author</label>
+                      <input
+                        id="input-pdf-author"
+                        type="text"
+                        value={newPdfAuthor}
+                        onChange={(e) => setNewPdfAuthor(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      id="btn-upload-pdf"
+                      type="submit"
+                      className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      <span>Upload & Attach PDF</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* PDF List */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                    Attached PDF Documents ({activeTopicProfile.content?.pdfList?.length || activeTopicProfile.content?.pdfs?.length || 0})
+                  </h4>
+                  {(!activeTopicProfile.content?.pdfList || activeTopicProfile.content.pdfList.length === 0) && (!activeTopicProfile.content?.pdfs || activeTopicProfile.content.pdfs.length === 0) ? (
+                    <p className="text-xs text-slate-400 italic p-4 bg-slate-50 rounded-2xl text-center">No PDF notes attached yet.</p>
+                  ) : (
+                    (activeTopicProfile.content.pdfList || activeTopicProfile.content.pdfs || []).map((pdf) => (
+                      <div
+                        key={pdf.id}
+                        className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 shadow-2xs hover:border-indigo-200 transition-all"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">{pdf.title}</div>
+                            <div className="text-[11px] text-slate-500">
+                              {pdf.fileName} • {pdf.pages} Pages • By {pdf.author}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => showToast(`Previewing "${pdf.title}"`)}
+                            className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Preview</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeletePdf(pdf.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                            title="Remove PDF"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: CLINICAL IMAGES */}
+            {contentActiveTab === 'images' && (
+              <div className="space-y-6">
+                <form onSubmit={handleAddImage} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5 text-sky-600" />
+                    Add Diagnostic ECG, Specimen, or Clinical Image
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">Image Title *</label>
+                      <input
+                        id="input-image-title"
+                        type="text"
+                        required
+                        value={newImageTitle}
+                        onChange={(e) => setNewImageTitle(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">Image Web URL *</label>
+                      <input
+                        id="input-image-url"
+                        type="text"
+                        required
+                        value={newImageUrl}
+                        onChange={(e) => setNewImageUrl(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">Diagnostic Annotation / Caption</label>
+                    <input
+                      id="input-image-caption"
+                      type="text"
+                      value={newImageCaption}
+                      onChange={(e) => setNewImageCaption(e.target.value)}
+                      placeholder="Pathology findings, wave vectors, or clinical pearls..."
+                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      id="btn-add-image"
+                      type="submit"
+                      className="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span>Add Clinical Image</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* Image Grid */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                    Attached Diagnostic Images ({activeTopicProfile.content?.images?.length || 0})
+                  </h4>
+                  {(!activeTopicProfile.content?.images || activeTopicProfile.content.images.length === 0) ? (
+                    <p className="text-xs text-slate-400 italic p-4 bg-slate-50 rounded-2xl text-center">No images attached yet.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {activeTopicProfile.content.images.map((img) => (
+                        <div
+                          key={img.id}
+                          className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs space-y-2 group hover:border-sky-300 transition-all"
+                        >
+                          <div 
+                            className="h-44 bg-slate-100 overflow-hidden relative cursor-pointer"
+                            onClick={() => setLightboxImage(img)}
+                          >
+                            <img src={img.url} alt={img.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                            <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <ZoomIn className="w-7 h-7 drop-shadow-md" />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteImage(img.id);
+                              }}
+                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/70 hover:bg-rose-600 text-white cursor-pointer z-10"
+                              title="Delete image"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="p-3.5 space-y-1">
+                            <div className="text-xs font-bold text-slate-900 truncate">{img.title}</div>
+                            <div className="text-[11px] text-slate-500 line-clamp-2">{img.caption}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: VIDEO LECTURE */}
+            {contentActiveTab === 'video' && (
+              <div className="space-y-6">
+                <form onSubmit={handleSaveVideo} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Video className="w-3.5 h-3.5 text-red-600" />
+                      Configure High-Yield Video Lecture
+                    </h4>
+                    <span className="text-[11px] font-medium text-slate-400">Streamable lesson embed</span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">Lecture Title</label>
+                    <input
+                      id="input-video-title"
+                      type="text"
+                      value={videoTitle}
+                      onChange={(e) => setVideoTitle(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-red-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700">Video Embed URL (YouTube/Vimeo)</label>
+                      <input
+                        id="input-video-url"
+                        type="text"
+                        value={videoUrl}
+                        onChange={(e) => setVideoUrl(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-red-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Duration</label>
+                        <input
+                          id="input-video-duration"
+                          type="text"
+                          value={videoDuration}
+                          onChange={(e) => setVideoDuration(e.target.value)}
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-red-500 focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">Faculty</label>
+                        <input
+                          id="input-video-instructor"
+                          type="text"
+                          value={videoInstructor}
+                          onChange={(e) => setVideoInstructor(e.target.value)}
+                          className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-red-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      id="btn-save-video"
+                      type="submit"
+                      className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                    >
+                      Save Video Lecture
+                    </button>
+                  </div>
+                </form>
+
+                {/* Video Preview Player */}
+                {videoUrl && (
+                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Play className="w-3.5 h-3.5 text-red-600" />
+                      Video Player Preview
+                    </h4>
+                    <div className="aspect-video w-full max-w-2xl rounded-2xl overflow-hidden bg-black shadow-md">
+                      <iframe
+                        src={videoUrl}
+                        title={videoTitle}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 5: FLASHCARDS */}
+            {contentActiveTab === 'flashcards' && (
+              <div className="space-y-6">
+                <form onSubmit={handleAddFlashcard} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Brain className="w-3.5 h-3.5 text-amber-600" />
+                    Add Active-Recall Flashcard
+                  </h4>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">Question / Clinical Prompt *</label>
+                    <input
+                      id="input-card-q"
+                      type="text"
+                      required
+                      placeholder="e.g. Hallmark of AV dissociation on rhythm strip?"
+                      value={newCardQ}
+                      onChange={(e) => setNewCardQ(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">Answer / Core Medical Pearl *</label>
+                    <textarea
+                      id="input-card-a"
+                      rows={2}
+                      required
+                      placeholder="e.g. Independent sinus P waves marching across wide QRS complexes with capture/fusion beats."
+                      value={newCardA}
+                      onChange={(e) => setNewCardA(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      id="btn-add-flashcard"
+                      type="submit"
+                      className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                    >
+                      + Add Card to Deck
+                    </button>
+                  </div>
+                </form>
+
+                {/* Cards List */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                    Topic Cards ({activeTopicProfile.content?.flashcards?.length || 0})
+                  </h4>
+                  {(!activeTopicProfile.content?.flashcards || activeTopicProfile.content.flashcards.length === 0) ? (
+                    <p className="text-xs text-slate-400 italic p-4 bg-slate-50 rounded-2xl text-center">No flashcards in this deck yet.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {activeTopicProfile.content.flashcards.map((card, idx) => (
+                        <div
+                          key={card.id || idx}
+                          className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs relative group hover:border-amber-300 transition-all"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="text-xs font-bold text-amber-900">Card #{idx + 1}: {card.question}</span>
+                            <button
+                              onClick={() => handleDeleteFlashcard(card.id)}
+                              className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition-colors"
+                              title="Delete Card"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <p className="text-xs text-slate-700 bg-amber-50/50 border border-amber-100 p-3 rounded-xl leading-relaxed">
+                            <span className="font-black text-amber-800 block mb-0.5">Answer:</span> {card.answer}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 6: CLINICAL PEARLS & NOTES */}
+            {contentActiveTab === 'notes' && (
+              <div className="space-y-6">
+                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                      High-Yield Clinical Pearls & Exam Traps
+                    </h4>
+                    <span className="text-[11px] font-medium text-slate-400">Essential high-yield takeaways</span>
+                  </div>
+                  <textarea
+                    id="input-clinical-notes"
+                    rows={8}
+                    value={clinicalNotesText}
+                    onChange={(e) => setClinicalNotesText(e.target.value)}
+                    placeholder="Key diagnostic algorithms, must-know clinical triads, treatment guidelines, and exam distractor traps..."
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed"
+                  />
+                  <div className="flex justify-end pt-1">
+                    <button
+                      id="btn-save-pearls"
+                      onClick={handleSaveClinicalNotes}
+                      className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                    >
+                      Save Clinical Pearls
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+        </div>
+      ) : activeChapterProfile ? (
         <div className="space-y-6 animate-in fade-in">
           
           {/* Back Button & Breadcrumbs Navigation Bar */}
@@ -691,7 +1883,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
 
                         <div className="flex items-center gap-2 self-end sm:self-auto">
                           <button
-                            onClick={() => handleOpenContentModal(top)}
+                            onClick={() => handleOpenTopicStudio(top)}
                             className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer border border-indigo-200/60"
                           >
                             <UploadCloud className="w-3.5 h-3.5" />
@@ -1293,455 +2485,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL: TOPIC CONTENT MANAGER (PDF, Images, Video, Flashcards)            */}
-      {/* ========================================================================= */}
-      {contentModalTopic && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 max-h-[92vh] flex flex-col justify-between overflow-hidden">
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
-                    Topic Content Studio
-                  </span>
-                  <span className="text-xs text-slate-400 font-bold">•</span>
-                  <span className="text-xs font-bold text-slate-500">Topic {contentModalTopic.topicNumber}</span>
-                </div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate mt-0.5">
-                  {contentModalTopic.title}
-                </h3>
-              </div>
-              <button
-                onClick={() => setContentModalTopic(null)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {/* Content Tabs Navigation */}
-            <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto shrink-0 scrollbar-none">
-              {[
-                { id: 'pdf', label: 'PDF Notes', icon: FileText, count: contentModalTopic.content?.pdfList?.length || (contentModalTopic.content?.pdf ? 1 : 0) },
-                { id: 'images', label: 'Clinical Images & ECG', icon: ImageIcon, count: contentModalTopic.content?.images?.length || 0 },
-                { id: 'video', label: 'Video Lecture', icon: Video, count: contentModalTopic.content?.video ? 1 : 0 },
-                { id: 'flashcards', label: 'Flashcards Deck', icon: Brain, count: contentModalTopic.content?.flashcards?.length || 0 },
-                { id: 'notes', label: 'Clinical Pearls', icon: Sparkles, count: contentModalTopic.content?.clinicalNotes ? 'Yes' : 0 }
-              ].map(tab => {
-                const IconC = tab.icon;
-                const isActive = contentActiveTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    id={`tab-content-${tab.id}`}
-                    onClick={() => setContentActiveTab(tab.id)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shrink-0 ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    <IconC className="w-4 h-4" />
-                    <span>{tab.label}</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      isActive ? 'bg-indigo-700 text-white' : 'bg-slate-200 text-slate-600'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Content Tab Body */}
-            <div className="overflow-y-auto flex-grow pr-1 space-y-4">
-              
-              {/* TAB 1: PDF NOTES */}
-              {contentActiveTab === 'pdf' && (
-                <div className="space-y-4">
-                  {/* Add PDF Box */}
-                  <form onSubmit={handleAddPdf} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <Plus className="w-3.5 h-3.5 text-indigo-600" />
-                      Attach New PDF Study Module
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600">PDF Title *</label>
-                        <input
-                          id="input-pdf-title"
-                          type="text"
-                          required
-                          value={newPdfTitle}
-                          onChange={(e) => setNewPdfTitle(e.target.value)}
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600">File Name</label>
-                        <input
-                          id="input-pdf-filename"
-                          type="text"
-                          value={newPdfFile}
-                          onChange={(e) => setNewPdfFile(e.target.value)}
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600">Pages</label>
-                        <input
-                          id="input-pdf-pages"
-                          type="number"
-                          value={newPdfPages}
-                          onChange={(e) => setNewPdfPages(e.target.value)}
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                        />
-                      </div>
-                      <div className="space-y-1 sm:col-span-2">
-                        <label className="text-[11px] font-bold text-slate-600">Faculty Author</label>
-                        <input
-                          id="input-pdf-author"
-                          type="text"
-                          value={newPdfAuthor}
-                          onChange={(e) => setNewPdfAuthor(e.target.value)}
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end pt-1">
-                      <button
-                        id="btn-upload-pdf"
-                        type="submit"
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
-                      >
-                        <UploadCloud className="w-3.5 h-3.5" />
-                        <span>Upload & Attach PDF</span>
-                      </button>
-                    </div>
-                  </form>
-
-                  {/* PDF List */}
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Attached PDF Documents ({contentModalTopic.content?.pdfList?.length || 0})
-                    </h4>
-                    {(!contentModalTopic.content?.pdfList || contentModalTopic.content.pdfList.length === 0) ? (
-                      <p className="text-xs text-slate-400 italic">No PDF notes attached yet.</p>
-                    ) : (
-                      contentModalTopic.content.pdfList.map((pdf) => (
-                        <div
-                          key={pdf.id}
-                          className="bg-white p-3.5 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 shadow-2xs"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                              <FileText className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-slate-900 truncate">{pdf.title}</div>
-                              <div className="text-[10px] text-slate-400">
-                                {pdf.fileName} • {pdf.pages} Pages • By {pdf.author}
-                              </div>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleDeletePdf(pdf.id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
-                            title="Remove PDF"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: CLINICAL IMAGES */}
-              {contentActiveTab === 'images' && (
-                <div className="space-y-4">
-                  <form onSubmit={handleAddImage} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <Plus className="w-3.5 h-3.5 text-sky-600" />
-                      Add Diagnostic ECG / Histology Image
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600">Image Title *</label>
-                        <input
-                          id="input-image-title"
-                          type="text"
-                          required
-                          value={newImageTitle}
-                          onChange={(e) => setNewImageTitle(e.target.value)}
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600">Image Web URL *</label>
-                        <input
-                          id="input-image-url"
-                          type="text"
-                          required
-                          value={newImageUrl}
-                          onChange={(e) => setNewImageUrl(e.target.value)}
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-600">Diagnostic Annotation / Caption</label>
-                      <input
-                        id="input-image-caption"
-                        type="text"
-                        value={newImageCaption}
-                        onChange={(e) => setNewImageCaption(e.target.value)}
-                        placeholder="Pathology findings, wave vectors, or clinical pearls..."
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                      />
-                    </div>
-                    <div className="flex justify-end pt-1">
-                      <button
-                        id="btn-add-image"
-                        type="submit"
-                        className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
-                      >
-                        <ImageIcon className="w-3.5 h-3.5" />
-                        <span>Add Clinical Image</span>
-                      </button>
-                    </div>
-                  </form>
-
-                  {/* Image Grid */}
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Attached Diagnostic Images ({contentModalTopic.content?.images?.length || 0})
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {contentModalTopic.content?.images?.map((img) => (
-                        <div
-                          key={img.id}
-                          className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs space-y-2 group"
-                        >
-                          <div 
-                            className="h-32 bg-slate-100 overflow-hidden relative cursor-pointer"
-                            onClick={() => setLightboxImage(img)}
-                          >
-                            <img src={img.url} alt={img.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                            <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                              <ZoomIn className="w-6 h-6" />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteImage(img.id);
-                              }}
-                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/70 hover:bg-rose-600 text-white cursor-pointer z-10"
-                              title="Delete image"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <div className="p-3 space-y-1">
-                            <div className="text-xs font-bold text-slate-900 truncate">{img.title}</div>
-                            <div className="text-[10px] text-slate-500 line-clamp-2">{img.caption}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: VIDEO LECTURE */}
-              {contentActiveTab === 'video' && (
-                <form onSubmit={handleSaveVideo} className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <Video className="w-3.5 h-3.5 text-red-600" />
-                    Video Lecture Stream
-                  </h4>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Lecture Title</label>
-                    <input
-                      id="input-video-title"
-                      type="text"
-                      value={videoTitle}
-                      onChange={(e) => setVideoTitle(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Video Embed URL (YouTube/Vimeo)</label>
-                      <input
-                        id="input-video-url"
-                        type="text"
-                        value={videoUrl}
-                        onChange={(e) => setVideoUrl(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700">Duration</label>
-                        <input
-                          id="input-video-duration"
-                          type="text"
-                          value={videoDuration}
-                          onChange={(e) => setVideoDuration(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700">Faculty</label>
-                        <input
-                          id="input-video-instructor"
-                          type="text"
-                          value={videoInstructor}
-                          onChange={(e) => setVideoInstructor(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-end pt-2">
-                    <button
-                      id="btn-save-video"
-                      type="submit"
-                      className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
-                    >
-                      Save Video Lecture
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* TAB 4: FLASHCARDS DECK */}
-              {contentActiveTab === 'flashcards' && (
-                <div className="space-y-4">
-                  <form onSubmit={handleAddFlashcard} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <Brain className="w-3.5 h-3.5 text-emerald-600" />
-                      Add Active-Recall Flashcard
-                    </h4>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-600">Question / Clinical Prompt *</label>
-                      <input
-                        id="input-card-q"
-                        type="text"
-                        required
-                        placeholder="e.g. Hallmark of AV dissociation on rhythm strip?"
-                        value={newCardQ}
-                        onChange={(e) => setNewCardQ(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-600">Answer / Core Medical Pearl *</label>
-                      <textarea
-                        id="input-card-a"
-                        rows={2}
-                        required
-                        placeholder="e.g. Independent sinus P waves marching across wide QRS complexes with capture/fusion beats."
-                        value={newCardA}
-                        onChange={(e) => setNewCardA(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium"
-                      />
-                    </div>
-                    <div className="flex justify-end pt-1">
-                      <button
-                        id="btn-add-flashcard"
-                        type="submit"
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
-                      >
-                        + Add Card to Deck
-                      </button>
-                    </div>
-                  </form>
-
-                  {/* Cards List */}
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Topic Cards ({contentModalTopic.content?.flashcards?.length || 0})
-                    </h4>
-                    {(!contentModalTopic.content?.flashcards || contentModalTopic.content.flashcards.length === 0) ? (
-                      <p className="text-xs text-slate-400 italic">No flashcards in this deck yet.</p>
-                    ) : (
-                      contentModalTopic.content.flashcards.map((card, idx) => (
-                        <div
-                          key={card.id || idx}
-                          className="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-1.5 shadow-2xs relative group"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <span className="text-xs font-bold text-indigo-700">Q: {card.question}</span>
-                            <button
-                              onClick={() => handleDeleteFlashcard(card.id)}
-                              className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
-                              title="Delete Card"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl">
-                            <span className="font-bold text-slate-800">A:</span> {card.answer}
-                          </p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 5: CLINICAL PEARLS & NOTES */}
-              {contentActiveTab === 'notes' && (
-                <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                    High-Yield Clinical Pearls Summary
-                  </h4>
-                  <textarea
-                    id="input-clinical-notes"
-                    rows={6}
-                    value={clinicalNotesText}
-                    onChange={(e) => setClinicalNotesText(e.target.value)}
-                    placeholder="Key diagnostic algorithms, must-know clinical triads, treatment guidelines..."
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed"
-                  />
-                  <div className="flex justify-end pt-1">
-                    <button
-                      id="btn-save-pearls"
-                      onClick={handleSaveClinicalNotes}
-                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
-                    >
-                      Save Clinical Pearls
-                    </button>
-                  </div>
-                </div>
-              )}
-
-            </div>
-
-            {/* Modal Footer */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end shrink-0">
-              <button
-                id="btn-close-content-modal"
-                onClick={() => setContentModalTopic(null)}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-colors"
-              >
-                Done / Close Editor
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* LIGHTBOX MODAL: FULL CLINICAL IMAGE PREVIEW                               */}

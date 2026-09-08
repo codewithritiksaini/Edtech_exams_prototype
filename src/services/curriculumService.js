@@ -345,6 +345,36 @@ export const INITIAL_TOPICS = [
           answer: 'A low-pitched rumbling mid-to-late diastolic murmur at the apex caused by severe Aortic Regurgitation jet impinging on anterior mitral leaflet.'
         }
       ],
+      liveClasses: [
+        {
+          id: 'live-auscultation-1',
+          title: 'Live Masterclass: Heart Murmurs & Bedside Auscultation Maneuvers',
+          instructor: 'Dr. Rajiv Mehta (MD, DM Cardiology)',
+          date: 'Tomorrow',
+          time: '07:00 PM - 08:15 PM IST',
+          duration: '75 mins',
+          platform: 'Zoom Live Interactive',
+          joinUrl: 'https://zoom.us/j/9876543210',
+          meetingId: '987 654 3210',
+          passcode: 'CARDIO2026',
+          status: 'Live Now',
+          recordingUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ'
+        },
+        {
+          id: 'live-auscultation-2',
+          title: 'Clinical Grand Round: Severe AS vs MR Hemodynamic Diagnostic Traps',
+          instructor: 'Dr. Siddharth V. (Clinical Specialist)',
+          date: 'Friday',
+          time: '08:00 PM - 09:00 PM IST',
+          duration: '60 mins',
+          platform: 'Google Meet',
+          joinUrl: 'https://meet.google.com/med-card-live',
+          meetingId: 'med-card-live',
+          passcode: 'NEETPG99',
+          status: 'Scheduled',
+          recordingUrl: ''
+        }
+      ],
       clinicalNotes: 'Severe aortic stenosis with valve area < 1.0 cm2 or mean gradient > 40 mmHg requires prompt valve replacement.'
     }
   },
@@ -1034,11 +1064,57 @@ class CurriculumService {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_TOPICS);
       if (stored) {
-        const parsed = JSON.parse(stored);
+        let parsed = JSON.parse(stored);
+        let updated = false;
+
+        parsed = parsed.map(topic => {
+          if (!topic.content) {
+            topic.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [], clinicalNotes: '' };
+            updated = true;
+          } else if (!topic.content.liveClasses) {
+            if (topic.id === 'top-valvular-auscultation') {
+              topic.content.liveClasses = [
+                {
+                  id: 'live-auscultation-1',
+                  title: 'Live Masterclass: Heart Murmurs & Bedside Auscultation Maneuvers',
+                  instructor: 'Dr. Rajiv Mehta (MD, DM Cardiology)',
+                  date: 'Tomorrow',
+                  time: '07:00 PM - 08:15 PM IST',
+                  duration: '75 mins',
+                  platform: 'Zoom Live Interactive',
+                  joinUrl: 'https://zoom.us/j/9876543210',
+                  meetingId: '987 654 3210',
+                  passcode: 'CARDIO2026',
+                  status: 'Live Now',
+                  recordingUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ'
+                },
+                {
+                  id: 'live-auscultation-2',
+                  title: 'Clinical Grand Round: Severe AS vs MR Hemodynamic Diagnostic Traps',
+                  instructor: 'Dr. Siddharth V. (Clinical Specialist)',
+                  date: 'Friday',
+                  time: '08:00 PM - 09:00 PM IST',
+                  duration: '60 mins',
+                  platform: 'Google Meet',
+                  joinUrl: 'https://meet.google.com/med-card-live',
+                  meetingId: 'med-card-live',
+                  passcode: 'NEETPG99',
+                  status: 'Scheduled',
+                  recordingUrl: ''
+                }
+              ];
+            } else {
+              topic.content.liveClasses = [];
+            }
+            updated = true;
+          }
+          return topic;
+        });
+
         const existingIds = new Set(parsed.map(t => t.id));
         const missing = INITIAL_TOPICS.filter(t => !existingIds.has(t.id));
-        if (missing.length > 0) {
-          const merged = [...parsed, ...missing];
+        if (missing.length > 0 || updated) {
+          const merged = missing.length > 0 ? [...parsed, ...missing] : parsed;
           localStorage.setItem(STORAGE_KEY_TOPICS, JSON.stringify(merged));
           return merged;
         }
@@ -1458,6 +1534,48 @@ class CurriculumService {
     const topic = this.getTopicById(topicId);
     if (!topic || !topic.content) return null;
     topic.content.flashcards = (topic.content.flashcards || []).filter(c => c.id !== cardId);
+    this.saveTopics();
+    return topic.content;
+  }
+
+  // Live Classes Methods
+  addTopicLiveClass(topicId, liveData) {
+    const topic = this.getTopicById(topicId);
+    if (!topic) return null;
+    if (!topic.content) topic.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [] };
+    const newLive = {
+      id: `live-${Date.now()}`,
+      title: liveData.title || 'Live Interactive Clinical Session',
+      instructor: liveData.instructor || 'Lead Medical Faculty',
+      date: liveData.date || new Date().toISOString().split('T')[0],
+      time: liveData.time || '07:00 PM IST',
+      duration: liveData.duration || '60 mins',
+      platform: liveData.platform || 'Zoom Video',
+      joinUrl: liveData.joinUrl || 'https://zoom.us/j/9876543210',
+      meetingId: liveData.meetingId || '987 654 3210',
+      passcode: liveData.passcode || 'MEDPREP',
+      status: liveData.status || 'Scheduled', // 'Scheduled' | 'Live Now' | 'Completed'
+      recordingUrl: liveData.recordingUrl || ''
+    };
+    topic.content.liveClasses = [newLive, ...(topic.content.liveClasses || [])];
+    this.saveTopics();
+    return topic.content;
+  }
+
+  updateTopicLiveClass(topicId, liveId, liveData) {
+    const topic = this.getTopicById(topicId);
+    if (!topic || !topic.content) return null;
+    topic.content.liveClasses = (topic.content.liveClasses || []).map(item => 
+      item.id === liveId ? { ...item, ...liveData } : item
+    );
+    this.saveTopics();
+    return topic.content;
+  }
+
+  deleteTopicLiveClass(topicId, liveId) {
+    const topic = this.getTopicById(topicId);
+    if (!topic || !topic.content) return null;
+    topic.content.liveClasses = (topic.content.liveClasses || []).filter(item => item.id !== liveId);
     this.saveTopics();
     return topic.content;
   }
