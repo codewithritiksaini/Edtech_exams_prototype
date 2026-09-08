@@ -408,30 +408,32 @@ export default function AdminSidebar({
 
             {(!collapsedSections.contentSchedule || !isExpanded) && (
               <div className="space-y-1">
-                {/* Content Management */}
-                <button
-                  onClick={() => handleTabClick('content')}
-                  title={!isExpanded ? 'Day-Wise Content Management' : undefined}
-                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
-                  } ${
-                    activeTab === 'content'
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                    }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <UploadCloud className={`w-4 h-4 shrink-0 ${activeTab === 'content' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                {/* Content Management - Admin Only (Faculty uses Study Schedule instead) */}
+                {isAdmin && (
+                  <button
+                    onClick={() => handleTabClick('content')}
+                    title={!isExpanded ? 'Day-Wise Content Management' : undefined}
+                    className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                      isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                    } ${
+                      activeTab === 'content'
+                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                      }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+                      <UploadCloud className={`w-4 h-4 shrink-0 ${activeTab === 'content' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      {isExpanded && (
+                        <span className="whitespace-nowrap shrink-0">Content Management</span>
+                      )}
+                    </div>
                     {isExpanded && (
-                      <span className="whitespace-nowrap shrink-0">{isAdmin ? 'Content Management' : 'Assigned Daily Content'}</span>
+                      <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
+                        Drip Feed
+                      </span>
                     )}
-                  </div>
-                  {isExpanded && (
-                    <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
-                      Drip Feed
-                    </span>
-                  )}
-                </button>
+                  </button>
+                )}
 
                 {/* Live Sessions */}
                 <button
