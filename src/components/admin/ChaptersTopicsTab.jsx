@@ -23,6 +23,7 @@ import {
   UploadCloud, 
   Check, 
   Filter, 
+  ArrowLeft,
   ArrowRight, 
   ArrowUp, 
   ArrowDown, 
@@ -43,12 +44,14 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   const [subjects, setSubjects] = useState(() => curriculumService.getSubjects());
   const [selectedSubjectId, setSelectedSubjectId] = useState(() => {
     if (initialSubjectId) return initialSubjectId;
-    const examSubs = curriculumService.getSubjects(initialExamId || 'neet-pg');
-    return examSubs[0]?.id || 'sub-neet-cardio';
+    return 'all';
   });
 
   const [chapters, setChapters] = useState(() => curriculumService.getChapters());
   const [topics, setTopics] = useState(() => curriculumService.getTopics());
+
+  // Dedicated Chapter Profile Drill-down View State
+  const [activeChapterProfile, setActiveChapterProfile] = useState(null);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,9 +59,14 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   const [collapsedChapters, setCollapsedChapters] = useState({});
   const [toastMessage, setToastMessage] = useState('');
 
-  // Chapter Modal State
+  // Chapter Modal State with Cascading Dropdowns
   const [isChapterModalOpen, setIsChapterModalOpen] = useState(false);
   const [editingChapter, setEditingChapter] = useState(null);
+  const [modalExamId, setModalExamId] = useState(initialExamId || 'neet-pg');
+  const [modalSubjectId, setModalSubjectId] = useState(() => {
+    const subs = curriculumService.getSubjects(initialExamId || 'neet-pg');
+    return subs[0]?.id || '';
+  });
   const [chapTitle, setChapTitle] = useState('');
   const [chapNumber, setChapNumber] = useState(1);
   const [chapDesc, setChapDesc] = useState('');
@@ -118,19 +126,12 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     return unsubCurriculum;
   }, []);
 
-  // Sync selectedSubjectId if exam changes or initialSubjectId changes
+  // Sync selectedSubjectId if initialSubjectId prop changes
   useEffect(() => {
     if (initialSubjectId && subjects.some(s => s.id === initialSubjectId)) {
       setSelectedSubjectId(initialSubjectId);
     }
   }, [initialSubjectId, subjects]);
-
-  useEffect(() => {
-    const currentSubs = subjects.filter(s => s.examId === selectedExamId);
-    if (currentSubs.length > 0 && !currentSubs.some(s => s.id === selectedSubjectId)) {
-      setSelectedSubjectId(currentSubs[0].id);
-    }
-  }, [selectedExamId, subjects, selectedSubjectId]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -146,34 +147,56 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   }, [subjects, selectedExamId]);
 
   const activeSubject = useMemo(() => {
-    return subjects.find(s => s.id === selectedSubjectId) || availableSubjectsForExam[0] || null;
-  }, [subjects, selectedSubjectId, availableSubjectsForExam]);
+    if (selectedSubjectId === 'all') return null;
+    return subjects.find(s => s.id === selectedSubjectId) || null;
+  }, [subjects, selectedSubjectId]);
 
-  // Filter chapters for this subject
-  const subjectChapters = useMemo(() => {
-    if (!activeSubject) return [];
-    return chapters
-      .filter(c => c.subjectId === activeSubject.id)
-      .sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
-  }, [chapters, activeSubject]);
+  // Clean Chapters List for Main View
+  const displayedChapters = useMemo(() => {
+    return chapters.filter(chap => {
+      const chapSubject = subjects.find(s => s.id === chap.subjectId);
+      const matchesExam = chap.examId === selectedExamId || chapSubject?.examId === selectedExamId;
+      if (!matchesExam) return false;
 
-  // Accordion toggle
-  const toggleChapterCollapse = (chapId) => {
-    setCollapsedChapters(prev => ({
-      ...prev,
-      [chapId]: !prev[chapId]
-    }));
-  };
+      if (selectedSubjectId !== 'all' && chap.subjectId !== selectedSubjectId) {
+        return false;
+      }
 
-  const handleCollapseAll = () => {
-    const nextState = {};
-    subjectChapters.forEach(c => { nextState[c.id] = true; });
-    setCollapsedChapters(nextState);
-  };
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesTitle = chap.title?.toLowerCase().includes(q);
+        const matchesDesc = chap.description?.toLowerCase().includes(q);
+        const matchesSubName = chapSubject?.name?.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesDesc && !matchesSubName) return false;
+      }
 
-  const handleExpandAll = () => {
-    setCollapsedChapters({});
-  };
+      return true;
+    }).sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
+  }, [chapters, subjects, selectedExamId, selectedSubjectId, searchQuery]);
+
+  // Dedicated Chapter Profile Drill-down View Selectors
+  const profileSubject = useMemo(() => {
+    if (!activeChapterProfile) return null;
+    return subjects.find(s => s.id === activeChapterProfile.subjectId) || null;
+  }, [subjects, activeChapterProfile]);
+
+  const profileTopics = useMemo(() => {
+    if (!activeChapterProfile) return [];
+    return topics
+      .filter(t => t.chapterId === activeChapterProfile.id)
+      .sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
+  }, [topics, activeChapterProfile]);
+
+  const profileFilteredTopics = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return profileTopics.filter(t => {
+      if (difficultyFilter !== 'all' && t.difficulty !== difficultyFilter) return false;
+      if (q) {
+        return t.title?.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [profileTopics, difficultyFilter, searchQuery]);
 
   // Reordering handlers
   const handleMoveChapter = (chap, direction, e) => {
@@ -190,17 +213,44 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     showToast(`Topic reordered ${direction}.`);
   };
 
+  // Cascading Handlers inside Chapter Modal
+  const handleModalExamChange = (newExamId) => {
+    setModalExamId(newExamId);
+    const examSubs = curriculumService.getSubjects(newExamId);
+    const firstSub = examSubs[0]?.id || '';
+    setModalSubjectId(firstSub);
+    const count = chapters.filter(c => c.subjectId === firstSub).length;
+    setChapNumber(count + 1);
+  };
+
+  const handleModalSubjectChange = (newSubId) => {
+    setModalSubjectId(newSubId);
+    const count = chapters.filter(c => c.subjectId === newSubId).length;
+    setChapNumber(count + 1);
+  };
+
   // Open Chapter Modal
   const handleOpenChapterModal = (chap = null) => {
     if (chap) {
       setEditingChapter(chap);
+      const exId = chap.examId || selectedExamId || 'neet-pg';
+      setModalExamId(exId);
+      setModalSubjectId(chap.subjectId);
       setChapTitle(chap.title);
       setChapNumber(chap.chapterNumber);
       setChapDesc(chap.description || '');
     } else {
       setEditingChapter(null);
+      const exId = selectedExamId || 'neet-pg';
+      setModalExamId(exId);
+      const examSubs = curriculumService.getSubjects(exId);
+      const defSub = (selectedSubjectId !== 'all' && selectedSubjectId && examSubs.some(s => s.id === selectedSubjectId))
+        ? selectedSubjectId
+        : (examSubs[0]?.id || '');
+      setModalSubjectId(defSub);
       setChapTitle('');
-      setChapNumber(subjectChapters.length + 1);
+      const count = chapters.filter(c => c.subjectId === defSub).length;
+      setChapNumber(count + 1);
       setChapDesc('');
     }
     setIsChapterModalOpen(true);
@@ -208,12 +258,19 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
 
   const handleSaveChapter = (e) => {
     e.preventDefault();
-    if (!chapTitle.trim()) return;
+    if (!chapTitle.trim()) {
+      showToast('Please enter a Chapter Name.');
+      return;
+    }
+    if (!modalSubjectId) {
+      showToast('Please select a Subject for this chapter.');
+      return;
+    }
 
-    curriculumService.saveChapter({
+    const saved = curriculumService.saveChapter({
       ...(editingChapter ? { id: editingChapter.id } : {}),
-      examId: selectedExamId,
-      subjectId: activeSubject.id,
+      examId: modalExamId,
+      subjectId: modalSubjectId,
       title: chapTitle.trim(),
       chapterNumber: Number(chapNumber),
       description: chapDesc.trim(),
@@ -221,6 +278,9 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     });
 
     setChapters(curriculumService.getChapters());
+    if (activeChapterProfile && editingChapter && activeChapterProfile.id === editingChapter.id) {
+      setActiveChapterProfile(saved);
+    }
     setIsChapterModalOpen(false);
     showToast(editingChapter ? `Chapter updated successfully!` : `New chapter "${chapTitle}" created!`);
   };
@@ -230,6 +290,9 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     curriculumService.deleteChapter(deletingChapter.id);
     setChapters(curriculumService.getChapters());
     setTopics(curriculumService.getTopics());
+    if (activeChapterProfile && activeChapterProfile.id === deletingChapter.id) {
+      setActiveChapterProfile(null);
+    }
     setDeletingChapter(null);
     showToast('Chapter and associated topics removed.');
   };
@@ -404,454 +467,583 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-3 animate-in slide-in-from-top-4">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          <span className="text-xs sm:text-sm font-semibold">{toastMessage}</span>
-        </div>
-      )}
-
-      {/* Header Banner */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-100 text-sky-700 text-xs font-bold">
-            <FolderTree className="w-3.5 h-3.5" />
-            <span>Academic Hierarchy Level 2 & 3</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Chapters, Topics & Content Hub
-          </h1>
-          <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
-            Structure your syllabus by dividing subjects into chapters and high-yield topics. Add educational assets (PDFs, Images, Videos, Flashcards) directly inside each topic.
-          </p>
-        </div>
-
-        {activeSubject && (
-          <button
-            id="btn-add-chapter"
-            onClick={() => handleOpenChapterModal(null)}
-            className="inline-flex items-center justify-center gap-2.5 px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm transition-all hover:shadow-indigo-500/20 active:scale-98 cursor-pointer shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Add New Chapter</span>
-          </button>
-        )}
-      </div>
-
-      {/* Dual Cascading Filter: 1. Exam -> 2. Subject */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
-        
-        {/* Tier 1: Exam Track Selector */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
-            <Filter className="w-3 h-3" />
-            1. Exam Track:
-          </span>
-          {exams.map(exam => (
-            <button
-              key={exam.id}
-              id={`exam-filter-${exam.id}`}
-              onClick={() => setSelectedExamId(exam.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
-                selectedExamId === exam.id
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-              }`}
-            >
-              <span>{exam.flag}</span>
-              <span>{exam.name}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Tier 2: Subject Selector */}
-        <div className="pt-2 border-t border-slate-100 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
-            <Layers className="w-3 h-3" />
-            2. Subject:
-          </span>
-          {availableSubjectsForExam.length === 0 ? (
-            <span className="text-xs text-slate-400 italic">No subjects configured for this exam track.</span>
-          ) : (
-            availableSubjectsForExam.map(sub => (
-              <button
-                key={sub.id}
-                id={`sub-filter-${sub.id}`}
-                onClick={() => setSelectedSubjectId(sub.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
-                  selectedSubjectId === sub.id
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-              >
-                <span>{sub.name}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded ${
-                  selectedSubjectId === sub.id ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-200 text-slate-600'
-                }`}>
-                  {chapters.filter(c => c.subjectId === sub.id).length}
-                </span>
-              </button>
-            ))
-          )}
-        </div>
-
-        {/* Tier 3: Search & Difficulty Filter Bar */}
-        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-          
-          <div className="flex items-center gap-2 overflow-x-auto self-start sm:self-auto">
-            <button
-              onClick={() => setDifficultyFilter('all')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                difficultyFilter === 'all'
-                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              All Topics
-            </button>
-            <button
-              onClick={() => setDifficultyFilter('High-Yield')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                difficultyFilter === 'High-Yield'
-                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              High-Yield
-            </button>
-            <button
-              onClick={() => setDifficultyFilter('Core Clinical')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                difficultyFilter === 'Core Clinical'
-                  ? 'bg-sky-50 text-sky-700 border border-sky-200'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Core Clinical
-            </button>
-            <button
-              onClick={() => setDifficultyFilter('Advanced / Super-Specialty')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                difficultyFilter === 'Advanced / Super-Specialty'
-                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Advanced
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-grow sm:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                id="search-topics-input"
-                type="text"
-                placeholder="Search topic title or term..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={handleExpandAll}
-                className="px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-              >
-                Expand All
-              </button>
-              <span className="text-slate-300">|</span>
-              <button
-                type="button"
-                onClick={handleCollapseAll}
-                className="px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-              >
-                Collapse All
-              </button>
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* Main Content Area: Chapters & Topics Tree */}
-      {!activeSubject ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-xs space-y-4">
-          <p className="text-sm text-slate-500">Please select an exam and subject above to view its curriculum.</p>
-        </div>
-      ) : subjectChapters.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-xs space-y-4">
-          <div className="w-14 h-14 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center mx-auto">
-            <FolderTree className="w-7 h-7" />
-          </div>
-          <h3 className="text-base font-bold text-slate-800">No chapters in {activeSubject.name}</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Start structuring this subject by creating Chapter 1. Then you can add topics and upload PDFs, videos, and flashcards.
-          </p>
-          <button
-            onClick={() => handleOpenChapterModal(null)}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create First Chapter</span>
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {subjectChapters.map((chap, cIdx) => {
-            const isCollapsed = collapsedChapters[chap.id];
-            const rawTopics = topics.filter(t => t.chapterId === chap.id).sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
-            
-            const q = searchQuery.trim().toLowerCase();
-            const chapterMatches = !q || chap.title.toLowerCase().includes(q) || (chap.description && chap.description.toLowerCase().includes(q));
-
-            const filteredTopics = rawTopics.filter(t => {
-              if (difficultyFilter !== 'all' && t.difficulty !== difficultyFilter) return false;
-              if (q) {
-                return chapterMatches || t.title.toLowerCase().includes(q);
-              }
-              return true;
-            });
-
-            if (q && !chapterMatches && filteredTopics.length === 0) {
-              return null;
-            }
-
-            return (
-              <div
-                key={chap.id}
-                className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden transition-all"
-              >
-                {/* Chapter Banner Header */}
-                <div 
-                  onClick={() => toggleChapterCollapse(chap.id)}
-                  className="p-5 sm:p-6 bg-slate-50/90 hover:bg-slate-100/80 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <button
-                      type="button"
-                      className="p-1 rounded-lg text-slate-400 hover:text-slate-800 shrink-0"
-                    >
-                      {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
-                          Chapter {chap.chapterNumber}
-                        </span>
-                        <span className="text-xs text-slate-400 font-bold">•</span>
-                        <span className="text-xs font-bold text-slate-500">
-                          {rawTopics.length} {rawTopics.length === 1 ? 'Topic' : 'Topics'}
-                        </span>
-                      </div>
-                      <h2 className="text-lg font-bold text-slate-900 truncate">
-                        {chap.title}
-                      </h2>
-                      {chap.description && (
-                        <p className="text-xs text-slate-500 line-clamp-1">{chap.description}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions on Header */}
-                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {/* Chapter reorder buttons */}
-                    <div className="flex items-center gap-0.5 mr-1 bg-white p-1 rounded-xl border border-slate-200">
-                      <button
-                        type="button"
-                        disabled={cIdx === 0}
-                        onClick={(e) => handleMoveChapter(chap, 'up', e)}
-                        className="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 cursor-pointer"
-                        title="Move Chapter Up"
-                      >
-                        <ArrowUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={cIdx === subjectChapters.length - 1}
-                        onClick={(e) => handleMoveChapter(chap, 'down', e)}
-                        className="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 cursor-pointer"
-                        title="Move Chapter Down"
-                      >
-                        <ArrowDown className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <button
-                      id={`btn-add-topic-${chap.id}`}
-                      onClick={() => handleOpenTopicModal(chap, null)}
-                      className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>+ Add Topic</span>
-                    </button>
-                    <button
-                      onClick={() => handleOpenChapterModal(chap)}
-                      title="Edit Chapter"
-                      className="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all cursor-pointer"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeletingChapter(chap)}
-                      title="Delete Chapter"
-                      className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Topics Container (Collapsible) */}
-                {!isCollapsed && (
-                  <div className="p-4 sm:p-6">
-                    {filteredTopics.length === 0 ? (
-                      <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-2xl space-y-2">
-                        <p className="text-xs text-slate-400 font-medium">
-                          {rawTopics.length === 0 
-                            ? 'No topics under this chapter yet.' 
-                            : 'No topics match the search or filter.'}
-                        </p>
-                        <button
-                          onClick={() => handleOpenTopicModal(chap, null)}
-                          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
-                        >
-                          + Add Topic
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-3">
-                        {filteredTopics.map((top, tIdx) => {
-                          const content = top.content || {};
-                          const pdfCount = content.pdfList?.length || (content.pdf ? 1 : 0);
-                          const imgCount = content.images?.length || 0;
-                          const hasVid = Boolean(content.video);
-                          const fcCount = content.flashcards?.length || 0;
-
-                          return (
-                            <div
-                              key={top.id}
-                              className="bg-slate-50/70 hover:bg-white border border-slate-200 hover:border-indigo-200 rounded-2xl p-4 transition-all shadow-2xs hover:shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 group"
-                            >
-                              {/* Topic Title & Badges */}
-                              <div className="space-y-1.5 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
-                                    Topic {top.topicNumber}
-                                  </span>
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                                    {top.difficulty || 'High-Yield'}
-                                  </span>
-                                  <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
-                                    <Clock className="w-3 h-3" />
-                                    {top.duration || '45 mins'}
-                                  </span>
-                                </div>
-
-                                <h4 className="text-sm font-bold text-slate-900 truncate">
-                                  {top.title}
-                                </h4>
-
-                                {/* Asset Indicators */}
-                                <div className="flex items-center gap-2 pt-1 flex-wrap">
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
-                                    pdfCount > 0 ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-slate-100 text-slate-400'
-                                  }`}>
-                                    <FileText className="w-3 h-3" />
-                                    {pdfCount > 0 ? `${pdfCount} PDF` : '0 PDF'}
-                                  </span>
-
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
-                                    imgCount > 0 ? 'bg-sky-50 text-sky-700 border border-sky-100' : 'bg-slate-100 text-slate-400'
-                                  }`}>
-                                    <ImageIcon className="w-3 h-3" />
-                                    {imgCount > 0 ? `${imgCount} Diagrams` : '0 Images'}
-                                  </span>
-
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
-                                    hasVid ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-slate-100 text-slate-400'
-                                  }`}>
-                                    <Video className="w-3 h-3" />
-                                    {hasVid ? 'Video' : 'No Video'}
-                                  </span>
-
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
-                                    fcCount > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-400'
-                                  }`}>
-                                    <Brain className="w-3 h-3" />
-                                    {fcCount > 0 ? `${fcCount} Cards` : '0 Cards'}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Topic Actions & Reorder */}
-                              <div className="flex items-center gap-2 shrink-0">
-                                
-                                {/* Topic Reorder Arrows */}
-                                <div className="flex items-center gap-0.5 bg-white p-1 rounded-xl border border-slate-200">
-                                  <button
-                                    type="button"
-                                    disabled={tIdx === 0}
-                                    onClick={(e) => handleMoveTopic(top, 'up', e)}
-                                    className="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 cursor-pointer"
-                                    title="Move Topic Up"
-                                  >
-                                    <ArrowUp className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={tIdx === filteredTopics.length - 1}
-                                    onClick={(e) => handleMoveTopic(top, 'down', e)}
-                                    className="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 cursor-pointer"
-                                    title="Move Topic Down"
-                                  >
-                                    <ArrowDown className="w-3 h-3" />
-                                  </button>
-                                </div>
-
-                                <button
-                                  id={`btn-manage-content-${top.id}`}
-                                  onClick={() => handleOpenContentModal(top)}
-                                  className="px-3.5 py-2 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-800 border border-slate-200 hover:border-indigo-300 font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
-                                >
-                                  <UploadCloud className="w-3.5 h-3.5 text-indigo-600" />
-                                  <span>Manage Content</span>
-                                </button>
-
-                                <button
-                                  onClick={() => handleOpenTopicModal(chap, top)}
-                                  title="Edit Topic Details"
-                                  className="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                </button>
-
-                                <button
-                                  onClick={() => setDeletingTopic(top)}
-                                  title="Delete Topic"
-                                  className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-all cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="fixed top-20 right-6 z-50 bg-white text-slate-900 px-5 py-3 rounded-2xl shadow-xl border border-slate-200 flex items-center gap-3 animate-in slide-in-from-top-4">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span className="text-xs sm:text-sm font-bold">{toastMessage}</span>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: ADD / EDIT CHAPTER                                                 */}
+      {/* 1. DEDICATED CHAPTER PROFILE & TOPICS VIEW (When a Chapter is Selected)   */}
+      {/* ========================================================================= */}
+      {activeChapterProfile ? (
+        <div className="space-y-6 animate-in fade-in">
+          
+          {/* Back Button & Breadcrumbs Navigation Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
+              <button
+                onClick={() => setActiveChapterProfile(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Chapters List</span>
+              </button>
+              <span className="text-slate-300">/</span>
+              <span className="text-slate-600">{profileSubject?.name || 'Subject'}</span>
+              <span className="text-slate-300">/</span>
+              <span className="text-slate-900 font-bold">
+                Chapter {activeChapterProfile.chapterNumber}: {activeChapterProfile.title}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                onClick={() => handleOpenChapterModal(activeChapterProfile)}
+                className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                <span>Edit Chapter Profile</span>
+              </button>
+              <button
+                onClick={() => handleOpenTopicModal(activeChapterProfile, null)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Add New Topic</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Chapter Profile Banner Card (Light Modern Theme) */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 sm:p-8 space-y-5 relative overflow-hidden">
+            {/* Subtle background ambient corner tint */}
+            <div className="absolute top-0 right-0 w-96 h-48 bg-gradient-to-bl from-indigo-50/60 via-sky-50/20 to-transparent rounded-bl-full pointer-events-none" />
+
+            <div className="flex flex-wrap items-center gap-2 relative z-10">
+              <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-black">
+                Chapter {activeChapterProfile.chapterNumber} Profile
+              </span>
+              <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold">
+                {profileSubject?.name} ({profileSubject?.code})
+              </span>
+              <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-bold">
+                {selectedExam.flag} {selectedExam.name}
+              </span>
+            </div>
+
+            <div className="space-y-1.5 max-w-3xl relative z-10">
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+                {activeChapterProfile.title}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                {activeChapterProfile.description || 'Structured medical curriculum chapter. Add sub-topics and link high-yield clinical assets below.'}
+              </p>
+            </div>
+
+            {/* Chapter Metrics Overview */}
+            {(() => {
+              let totalPdfs = 0;
+              let totalVideos = 0;
+              let totalCards = 0;
+              let totalImages = 0;
+
+              profileTopics.forEach(t => {
+                const c = t.content || {};
+                totalPdfs += (c.pdfs?.length || 0);
+                totalImages += (c.images?.length || 0);
+                if (c.video?.url || c.video?.title) totalVideos += 1;
+                totalCards += (c.flashcards?.length || 0);
+              });
+
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 relative z-10">
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 text-center transition-all hover:bg-slate-100/70">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Topics</span>
+                    <span className="text-xl font-black text-slate-900">{profileTopics.length}</span>
+                  </div>
+                  <div className="bg-rose-50/70 border border-rose-100 rounded-2xl p-3 text-center transition-all hover:bg-rose-50">
+                    <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">PDF Notes</span>
+                    <span className="text-xl font-black text-rose-700">{totalPdfs}</span>
+                  </div>
+                  <div className="bg-sky-50/70 border border-sky-100 rounded-2xl p-3 text-center transition-all hover:bg-sky-50">
+                    <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wider block">Videos</span>
+                    <span className="text-xl font-black text-sky-700">{totalVideos}</span>
+                  </div>
+                  <div className="bg-amber-50/70 border border-amber-100 rounded-2xl p-3 text-center transition-all hover:bg-amber-50">
+                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Flashcards</span>
+                    <span className="text-xl font-black text-amber-700">{totalCards}</span>
+                  </div>
+                  <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-3 text-center transition-all hover:bg-emerald-50">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Clinical Imgs</span>
+                    <span className="text-xl font-black text-emerald-700">{totalImages}</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Topics in this Chapter Section */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-indigo-600" />
+                  <span>Topics in this Chapter ({profileTopics.length})</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Sub-topics, clinical competencies, and high-yield study assets inside Chapter {activeChapterProfile.chapterNumber}.
+                </p>
+              </div>
+
+              <button
+                onClick={() => handleOpenTopicModal(activeChapterProfile, null)}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Add New Topic</span>
+              </button>
+            </div>
+
+            {/* Topic Filter & Search Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 overflow-x-auto self-start sm:self-auto">
+                {['all', 'High-Yield', 'Core Clinical', 'Advanced / Super-Specialty'].map(diff => (
+                  <button
+                    key={diff}
+                    onClick={() => setDifficultyFilter(diff)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0 ${
+                      difficultyFilter === diff
+                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {diff === 'all' ? 'All Difficulties' : diff}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search topic title..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Topics List */}
+            {profileFilteredTopics.length === 0 ? (
+              <div className="text-center py-12 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+                <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+                <h4 className="text-sm font-bold text-slate-700">No topics in this chapter yet</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Start adding high-yield topics to Chapter {activeChapterProfile.chapterNumber} to link PDFs, videos, and flashcards.
+                </p>
+                <button
+                  onClick={() => handleOpenTopicModal(activeChapterProfile, null)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2 mt-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Add First Topic</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {profileFilteredTopics.map((top, tIdx) => {
+                  const content = top.content || {};
+                  const pdfCount = content.pdfs?.length || 0;
+                  const imageCount = content.images?.length || 0;
+                  const hasVideo = Boolean(content.video?.url || content.video?.title);
+                  const flashCount = content.flashcards?.length || 0;
+
+                  return (
+                    <div 
+                      key={top.id}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 hover:border-indigo-200 hover:shadow-xs transition-all space-y-3"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center shrink-0 border border-slate-200">
+                            {activeChapterProfile.chapterNumber}.{top.topicNumber || tIdx + 1}
+                          </span>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-sm sm:text-base font-bold text-slate-900">{top.title}</h4>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                top.difficulty === 'High-Yield'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : top.difficulty === 'Advanced / Super-Specialty'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : 'bg-sky-100 text-sky-800'
+                              }`}>
+                                {top.difficulty || 'High-Yield'}
+                              </span>
+                              <span className="text-[11px] text-slate-500 font-medium">
+                                ⏱️ {top.duration || '45 mins'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                          <button
+                            onClick={() => handleOpenContentModal(top)}
+                            className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer border border-indigo-200/60"
+                          >
+                            <UploadCloud className="w-3.5 h-3.5" />
+                            <span>Manage Content ({pdfCount + imageCount + (hasVideo ? 1 : 0) + flashCount})</span>
+                          </button>
+
+                          <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
+                            <button
+                              onClick={(e) => handleMoveTopic(top, 'up', e)}
+                              title="Move Up"
+                              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => handleMoveTopic(top, 'down', e)}
+                              title="Move Down"
+                              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleOpenTopicModal(activeChapterProfile, top)}
+                              title="Edit Topic"
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingTopic(top)}
+                              title="Delete Topic"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Educational Assets Badges */}
+                      <div className="flex items-center gap-2 flex-wrap text-xs pt-1 border-t border-slate-100">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">Bound Assets:</span>
+                        {pdfCount > 0 ? (
+                          <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-bold text-[11px] flex items-center gap-1 border border-rose-100">
+                            <FileText className="w-3 h-3" />
+                            {pdfCount} PDF Notes
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">No PDFs</span>
+                        )}
+                        {hasVideo ? (
+                          <span className="px-2 py-0.5 rounded bg-sky-50 text-sky-700 font-bold text-[11px] flex items-center gap-1 border border-sky-100">
+                            <Video className="w-3 h-3" />
+                            Video Lecture
+                          </span>
+                        ) : null}
+                        {flashCount > 0 ? (
+                          <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-bold text-[11px] flex items-center gap-1 border border-amber-100">
+                            <Brain className="w-3 h-3" />
+                            {flashCount} Flashcards
+                          </span>
+                        ) : null}
+                        {imageCount > 0 ? (
+                          <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[11px] flex items-center gap-1 border border-emerald-100">
+                            <ImageIcon className="w-3 h-3" />
+                            {imageCount} Clinical Imgs
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+        </div>
+      ) : (
+        /* ========================================================================= */
+        /* 2. MAIN CHAPTERS STUDIO LIST VIEW (Clean Uncluttered Chapters Roster)     */
+        /* ========================================================================= */
+        <div className="space-y-6">
+
+          {/* Header Banner */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-100 text-sky-700 text-xs font-bold">
+                <FolderTree className="w-3.5 h-3.5" />
+                <span>Academic Hierarchy Level 2</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Chapters Studio
+              </h1>
+              <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
+                Manage syllabus chapters across medical disciplines. Open any chapter's profile to add and configure high-yield topics, clinical notes, and multimedia.
+              </p>
+            </div>
+
+            <button
+              id="btn-add-chapter"
+              onClick={() => handleOpenChapterModal(null)}
+              className="inline-flex items-center justify-center gap-2.5 px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm transition-all hover:shadow-indigo-500/20 active:scale-98 cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Add New Chapter</span>
+            </button>
+          </div>
+
+          {/* Dual Cascading Filter: 1. Exam -> 2. Subject */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            
+            {/* Tier 1: Exam Track Selector */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
+                <Filter className="w-3 h-3" />
+                1. Exam Track:
+              </span>
+              {exams.map(exam => (
+                <button
+                  key={exam.id}
+                  id={`exam-filter-${exam.id}`}
+                  onClick={() => {
+                    setSelectedExamId(exam.id);
+                    setSelectedSubjectId('all');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+                    selectedExamId === exam.id
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <span>{exam.flag}</span>
+                  <span>{exam.name}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Tier 2: Subject Selector with "All Disciplines" */}
+            <div className="pt-2 border-t border-slate-100 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
+                <Layers className="w-3 h-3" />
+                2. Subject:
+              </span>
+              <button
+                onClick={() => setSelectedSubjectId('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+                  selectedSubjectId === 'all'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                <span>All Disciplines</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded ${
+                  selectedSubjectId === 'all' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {chapters.filter(c => {
+                    const sub = subjects.find(s => s.id === c.subjectId);
+                    return c.examId === selectedExamId || sub?.examId === selectedExamId;
+                  }).length}
+                </span>
+              </button>
+
+              {availableSubjectsForExam.map(sub => {
+                const subChapCount = chapters.filter(c => c.subjectId === sub.id).length;
+                return (
+                  <button
+                    key={sub.id}
+                    id={`sub-filter-${sub.id}`}
+                    onClick={() => setSelectedSubjectId(sub.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
+                      selectedSubjectId === sub.id
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <span>{sub.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded ${
+                      selectedSubjectId === sub.id ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {subChapCount}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Tier 3: Search Bar */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3">
+              <div className="relative w-full max-w-md">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search chapters by title, description, or discipline..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <span className="text-xs font-bold text-slate-400 shrink-0">
+                {displayedChapters.length} {displayedChapters.length === 1 ? 'Chapter' : 'Chapters'} Listed
+              </span>
+            </div>
+
+          </div>
+
+          {/* Clean Chapters List Cards */}
+          {displayedChapters.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-xs space-y-4">
+              <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
+                <FolderTree className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800">No chapters found</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                No chapters match your current search and filter criteria. Create a new chapter to begin structuring the syllabus.
+              </p>
+              <button
+                onClick={() => handleOpenChapterModal(null)}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create New Chapter</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {displayedChapters.map((chap) => {
+                const chapSubject = subjects.find(s => s.id === chap.subjectId);
+                const chapTopics = topics.filter(t => t.chapterId === chap.id);
+                
+                let pdfCount = 0;
+                let videoCount = 0;
+                let flashCount = 0;
+                let imageCount = 0;
+                
+                chapTopics.forEach(t => {
+                  const c = t.content || {};
+                  pdfCount += (c.pdfs?.length || 0);
+                  imageCount += (c.images?.length || 0);
+                  if (c.video?.url || c.video?.title) videoCount += 1;
+                  flashCount += (c.flashcards?.length || 0);
+                });
+
+                return (
+                  <div
+                    key={chap.id}
+                    className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs hover:shadow-md transition-all space-y-4"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          Chapter {chap.chapterNumber}
+                        </span>
+                        <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
+                          {chapSubject?.name || 'Subject'}
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-400">
+                          {selectedExam.flag} {selectedExam.shortName || selectedExam.name}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1 self-end sm:self-auto">
+                        <button 
+                          onClick={(e) => handleMoveChapter(chap, 'up', e)}
+                          title="Move Up"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={(e) => handleMoveChapter(chap, 'down', e)}
+                          title="Move Down"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleOpenChapterModal(chap)}
+                          title="Edit Chapter"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => setDeletingChapter(chap)}
+                          title="Delete Chapter"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-black text-slate-900 leading-snug">
+                        {chap.title}
+                      </h3>
+                      {chap.description && (
+                        <p className="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
+                          {chap.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Clinical Assets & Topics Summary + Profile Button */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                      <div className="flex items-center gap-2 flex-wrap text-xs">
+                        <span className="font-bold px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 border border-sky-100">
+                          📚 {chapTopics.length} {chapTopics.length === 1 ? 'Topic' : 'Topics'}
+                        </span>
+                        {pdfCount > 0 && (
+                          <span className="font-semibold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[11px]">
+                            📄 {pdfCount} PDFs
+                          </span>
+                        )}
+                        {videoCount > 0 && (
+                          <span className="font-semibold px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 text-[11px]">
+                            🎥 {videoCount} Videos
+                          </span>
+                        )}
+                        {flashCount > 0 && (
+                          <span className="font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[11px]">
+                            🧠 {flashCount} Flashcards
+                          </span>
+                        )}
+                        {imageCount > 0 && (
+                          <span className="font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px]">
+                            🖼️ {imageCount} Images
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Prominent Chapter Profile Button */}
+                      <button
+                        onClick={() => setActiveChapterProfile(chap)}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer ml-auto"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        <span>Chapter Profile & Topics ({chapTopics.length}) ➔</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: ADD / EDIT CHAPTER (Cascading Dropdowns: Exam -> Subject -> Chapter) */}
       {/* ========================================================================= */}
       {isChapterModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
@@ -863,10 +1055,10 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    {editingChapter ? 'Edit Chapter' : 'Add Chapter'}
+                    {editingChapter ? 'Edit Chapter' : 'Add New Chapter'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Under Subject: {activeSubject?.name}
+                    Define exam, subject, and chapter syllabus module.
                   </p>
                 </div>
               </div>
@@ -879,6 +1071,50 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
             </div>
 
             <form onSubmit={handleSaveChapter} className="space-y-4">
+              {/* Dropdown 1: Exam Track */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>1. Select Exam Track *</span>
+                </label>
+                <select
+                  value={modalExamId}
+                  onChange={(e) => handleModalExamChange(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
+                >
+                  {exams.map(exam => (
+                    <option key={exam.id} value={exam.id}>
+                      {exam.flag} {exam.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Dropdown 2: Subject (Cascading from Exam) */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>2. Select Subject *</span>
+                </label>
+                <select
+                  value={modalSubjectId}
+                  onChange={(e) => handleModalSubjectChange(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
+                >
+                  {curriculumService.getSubjects(modalExamId).length === 0 ? (
+                    <option value="" disabled>No subjects found for this exam</option>
+                  ) : (
+                    curriculumService.getSubjects(modalExamId).map(sub => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name} ({sub.code})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* Chapter Number & Chapter Name */}
               <div className="grid grid-cols-4 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -896,13 +1132,13 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
 
                 <div className="col-span-3 space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Chapter Title *
+                    Chapter Name *
                   </label>
                   <input
                     id="input-chapter-title"
                     type="text"
                     required
-                    placeholder="e.g. Cardiac Arrhythmias & Conduction Disorders"
+                    placeholder="e.g. Cardiac Arrhythmias"
                     value={chapTitle}
                     onChange={(e) => setChapTitle(e.target.value)}
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -912,12 +1148,12 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Description / Sub-areas
+                  Description / Sub-areas (Optional)
                 </label>
                 <textarea
                   id="input-chapter-description"
                   rows={3}
-                  placeholder="Outline key pathologies or syllabus modules in this chapter..."
+                  placeholder="Outline key pathologies or clinical competencies covered in this chapter..."
                   value={chapDesc}
                   onChange={(e) => setChapDesc(e.target.value)}
                   className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -935,9 +1171,10 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 <button
                   id="btn-submit-chapter"
                   type="submit"
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
                 >
-                  {editingChapter ? 'Save Changes' : 'Create Chapter'}
+                  <Plus className="w-4 h-4" />
+                  <span>{editingChapter ? 'Save Changes' : 'Create Chapter'}</span>
                 </button>
               </div>
             </form>
@@ -1496,7 +1733,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               <button
                 id="btn-close-content-modal"
                 onClick={() => setContentModalTopic(null)}
-                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-colors"
               >
                 Done / Close Editor
               </button>
