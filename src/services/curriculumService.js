@@ -232,6 +232,48 @@ export const INITIAL_CHAPTERS = [
     chapterNumber: 2,
     description: 'Anion gap calculations, Winter formula, delta ratio, and renal tubular acidosis.',
     status: 'Active'
+  },
+
+  // USMLE Step 1 Chapters
+  {
+    id: 'chap-usmle-pvloops',
+    examId: 'usmle',
+    subjectId: 'sub-usmle-cvs',
+    title: 'Ventricular Pressure-Volume Loops & Murmurs',
+    chapterNumber: 1,
+    description: 'Wiggers diagram, stroke volume, inotropy, and pressure-volume loop shifts in valvular stenosis and regurgitation.',
+    status: 'Active'
+  },
+  {
+    id: 'chap-usmle-autonomic',
+    examId: 'usmle',
+    subjectId: 'sub-usmle-neuro',
+    title: 'Autonomic Pharmacology & Receptor Signaling',
+    chapterNumber: 1,
+    description: 'Alpha, beta, and muscarinic receptor kinetics, autonomic reflex loops, and pressor mechanisms.',
+    status: 'Active'
+  },
+
+  // PLAB 1 & 2 Chapters
+  {
+    id: 'chap-plab-chestpain',
+    examId: 'plab',
+    subjectId: 'sub-plab-acute',
+    title: 'NICE Clinical Guidelines: Acute Chest Pain & ACS',
+    chapterNumber: 1,
+    description: 'Emergency department triage, troponin pathway, GRACE risk assessment, and Sepsis 6 resuscitation.',
+    status: 'Active'
+  },
+
+  // Europe Licensing Chapters
+  {
+    id: 'chap-eur-anamnese',
+    examId: 'europe',
+    subjectId: 'sub-eur-fsp',
+    title: 'Medical History Taking (Anamnese) & Doctor Handover',
+    chapterNumber: 1,
+    description: 'German medical terminology, SOCRATES pain history in German, and structured doctor-to-doctor presentation.',
+    status: 'Active'
   }
 ];
 
@@ -488,11 +530,207 @@ export const INITIAL_TOPICS = [
       ],
       clinicalNotes: 'Always check FEV1/FVC ratio first: < 0.70 confirms obstruction.'
     }
+  },
+
+  // Under Chapter: Acute Coronary Syndromes & STEMI Pathways
+  {
+    id: 'top-cad-stemi',
+    examId: 'neet-pg',
+    subjectId: 'sub-neet-cardio',
+    chapterId: 'chap-neet-cad',
+    title: 'STEMI Localization & Culprit Artery ECG Criteria',
+    topicNumber: 1,
+    duration: '45 mins',
+    difficulty: 'High-Yield',
+    status: 'Published',
+    content: {
+      pdfList: [
+        {
+          id: 'pdf-stemi-1',
+          fileName: 'STEMI_Culprit_Artery_ECG_Algorithms.pdf',
+          title: 'Acute Coronary Syndromes: STEMI vs NSTEMI Triage & Reperfusion',
+          pages: 24,
+          size: '5.1 MB',
+          updated: 'Recently updated',
+          author: 'Dr. Siddharth V. & Dr. Rajiv Mehta'
+        }
+      ],
+      images: [
+        {
+          id: 'img-stemi-1',
+          title: 'Hyperacute Anteroseptal STEMI (LAD Occlusion)',
+          url: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=900&auto=format&fit=crop&q=80',
+          caption: 'ST elevation in V1-V4 with reciprocal depression in II, III, aVF indicating proximal LAD occlusion.'
+        }
+      ],
+      video: {
+        title: 'Door-to-Balloon Strategy & Primary PCI Guidelines',
+        duration: '32:15',
+        instructor: 'Dr. Siddharth V.',
+        url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        thumbnail: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80'
+      },
+      flashcards: [
+        {
+          id: 'fc-stemi-1',
+          question: 'What is the cutoff for ST elevation in V2-V3 for men < 40 years to diagnose STEMI?',
+          answer: '>= 2.5 mm (0.25 mV). In men >= 40 it is >= 2.0 mm; in women of any age it is >= 1.5 mm.'
+        }
+      ],
+      clinicalNotes: 'Time is myocardium: primary PCI within 90 minutes or thrombolysis within 30 minutes if transfer time > 120 mins.'
+    }
+  },
+
+  // USMLE Topic
+  {
+    id: 'top-usmle-pvloops',
+    examId: 'usmle',
+    subjectId: 'sub-usmle-cvs',
+    chapterId: 'chap-usmle-pvloops',
+    title: 'Wiggers Diagram & Valvular Shifts on PV Loops',
+    topicNumber: 1,
+    duration: '45 mins',
+    difficulty: 'High-Yield',
+    status: 'Published',
+    content: {
+      pdfList: [
+        {
+          id: 'pdf-usmle-1',
+          fileName: 'USMLE_Cardiovascular_Pressure_Volume_Loops.pdf',
+          title: 'High-Yield USMLE PV Loops: Contractility, Afterload & Preload',
+          pages: 20,
+          size: '4.2 MB',
+          updated: 'Recently updated',
+          author: 'USMLE Faculty Panel'
+        }
+      ],
+      images: [
+        {
+          id: 'img-usmle-1',
+          title: 'Ventricular Pressure-Volume Loop Pathology Shifts',
+          url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80',
+          caption: 'Pressure-Volume loop changes under altered preload, afterload, inotropy, and aortic stenosis.'
+        }
+      ],
+      video: {
+        title: 'Mastering USMLE Cardiovascular Hemodynamics',
+        duration: '38:00',
+        instructor: 'Dr. Michael Hayes, MD',
+        url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        thumbnail: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80'
+      },
+      flashcards: [
+        {
+          id: 'fc-usmle-1',
+          question: 'How does aortic stenosis affect the peak ventricular pressure on the PV loop?',
+          answer: 'Markedly increases peak left ventricular systolic pressure due to high afterload and transvalvular gradient.'
+        }
+      ],
+      clinicalNotes: 'Width of PV loop = Stroke Volume (EDV - ESV).'
+    }
+  },
+
+  // PLAB Topic
+  {
+    id: 'top-plab-triage',
+    examId: 'plab',
+    subjectId: 'sub-plab-acute',
+    chapterId: 'chap-plab-chestpain',
+    title: 'Emergency Triage & Troponin Protocols (NICE NG185)',
+    topicNumber: 1,
+    duration: '40 mins',
+    difficulty: 'High-Yield',
+    status: 'Published',
+    content: {
+      pdfList: [
+        {
+          id: 'pdf-plab-1',
+          fileName: 'NICE_Clinical_Guideline_Acute_Chest_Pain_NHS.pdf',
+          title: 'NICE NG185: Acute Chest Pain of Recent Onset',
+          pages: 18,
+          size: '3.8 MB',
+          updated: 'Recently updated',
+          author: 'NHS Foundation Trust Faculty'
+        }
+      ],
+      images: [
+        {
+          id: 'img-plab-1',
+          title: 'NHS Acute Medical Unit Troponin Algorithm',
+          url: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?w=900&auto=format&fit=crop&q=80',
+          caption: 'High-sensitivity cardiac troponin (hs-cTn) 0h/1h rule-out/rule-in protocol.'
+        }
+      ],
+      video: {
+        title: 'PLAB 1 Clinical Vignettes: ED Chest Pain Pathway',
+        duration: '30:00',
+        instructor: 'Dr. Sarah Jenkins, MRCP (UK)',
+        url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        thumbnail: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80'
+      },
+      flashcards: [
+        {
+          id: 'fc-plab-1',
+          question: 'What is the immediate pharmacological management of suspected ACS in NHS ED before transfer?',
+          answer: 'Aspirin 300 mg chewable, GTN sublingual, IV access, and ECG within 10 minutes.'
+        }
+      ],
+      clinicalNotes: 'Always perform ECG within 10 minutes of patient arrival.'
+    }
+  },
+
+  // Europe Topic
+  {
+    id: 'top-eur-dialogue',
+    examId: 'europe',
+    subjectId: 'sub-eur-fsp',
+    chapterId: 'chap-eur-anamnese',
+    title: 'Strukturierte Schmerzanamnese & Arzt-zu-Arzt Übergabe',
+    topicNumber: 1,
+    duration: '35 mins',
+    difficulty: 'High-Yield',
+    status: 'Published',
+    content: {
+      pdfList: [
+        {
+          id: 'pdf-eur-1',
+          fileName: 'FSP_Fachsprachprufung_Schmerzanamnese_Leitfaden.pdf',
+          title: 'FSP Leitfaden: Anamnesegespräch & Arzt-Brief Dokumentation',
+          pages: 22,
+          size: '4.5 MB',
+          updated: 'Recently updated',
+          author: 'Dr. med. Lukas Weber'
+        }
+      ],
+      images: [
+        {
+          id: 'img-eur-1',
+          title: 'SOCRATES Schema auf Deutsch (Schmerzanalyse)',
+          url: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80',
+          caption: 'Schmerzcharakter, Lokalisation, Ausstrahlung, Stärke und Begleitsymptome.'
+        }
+      ],
+      video: {
+        title: 'Simulation: Arzt-Patienten-Gespräch bei akutem Koronarsyndrom',
+        duration: '25:00',
+        instructor: 'Dr. med. Lukas Weber',
+        url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        thumbnail: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80'
+      },
+      flashcards: [
+        {
+          id: 'fc-eur-1',
+          question: 'Wie übersetzen Sie "retrosternales Engegefühl mit Ausstrahlung in den linken Arm"?',
+          answer: 'Retrosternal tightness radiating to the left arm (typisch für Angina Pectoris / Myokardinfarkt).'
+        }
+      ],
+      clinicalNotes: 'Wichtig für FSP: Empathische Kommunikation und Vermeidung von Fachjargon im Patientengespräch.'
+    }
   }
 ];
 
 export const INITIAL_SCHEDULE = [
-  // Week 1 — Cardiology Track
+  // NEET PG — Week 1 (Days 1 to 7 Complete Curriculum)
   {
     id: 'sched-neet-w1-d1',
     examId: 'neet-pg',
@@ -558,11 +796,47 @@ export const INITIAL_SCHEDULE = [
     subjectName: 'Cardiology & Hemodynamics',
     chapterId: 'chap-neet-cad',
     chapterTitle: 'Acute Coronary Syndromes & STEMI Pathways',
-    topicIds: [],
+    topicIds: ['top-cad-stemi'],
     scheduledDate: '2026-09-11',
     status: 'Scheduled',
     estimatedTime: '1.5 hours',
     hasLive: false,
+    hasTest: false
+  },
+  {
+    id: 'sched-neet-w1-d5',
+    examId: 'neet-pg',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiology & Respiratory Foundations',
+    dayNumber: 5,
+    dayTitle: 'Day 5 — Pulmonary Function Tests & Spirometry Loops',
+    subjectId: 'sub-neet-pulmo',
+    subjectName: 'Respiratory Medicine & Pulmonology',
+    chapterId: 'chap-neet-pft',
+    chapterTitle: 'Pulmonary Function Testing & Flow-Volume Loops',
+    topicIds: ['top-pulmo-pft'],
+    scheduledDate: '2026-09-12',
+    status: 'Scheduled',
+    estimatedTime: '1.5 hours',
+    hasLive: false,
+    hasTest: false
+  },
+  {
+    id: 'sched-neet-w1-d6',
+    examId: 'neet-pg',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiology & ECG Foundations',
+    dayNumber: 6,
+    dayTitle: 'Day 6 — High-Yield ECG Mastery & Clinical Flashcards Sprint',
+    subjectId: 'sub-neet-cardio',
+    subjectName: 'Cardiology & Hemodynamics',
+    chapterId: 'chap-neet-arrhythmias',
+    chapterTitle: 'Cardiac Arrhythmias & Clinical ECG Mastery',
+    topicIds: ['top-ecg-arrhythmias'],
+    scheduledDate: '2026-09-13',
+    status: 'Scheduled',
+    estimatedTime: '1.0 hour',
+    hasLive: true,
     hasTest: false
   },
   {
@@ -575,8 +849,8 @@ export const INITIAL_SCHEDULE = [
     subjectId: 'sub-neet-cardio',
     subjectName: 'Cardiology & Hemodynamics',
     chapterId: 'chap-neet-valvular',
-    chapterTitle: 'Valvular Heart Diseases',
-    topicIds: [],
+    chapterTitle: 'Valvular Heart Diseases & Auscultation Dynamics',
+    topicIds: ['top-valvular-murmurs'],
     scheduledDate: '2026-09-14',
     status: 'Scheduled',
     estimatedTime: '1.0 hour',
@@ -584,7 +858,7 @@ export const INITIAL_SCHEDULE = [
     hasTest: true
   },
 
-  // Week 2 — Pulmonology Track
+  // Week 2 — Pulmonology Track (NEET PG)
   {
     id: 'sched-neet-w2-d8',
     examId: 'neet-pg',
@@ -601,6 +875,84 @@ export const INITIAL_SCHEDULE = [
     status: 'Scheduled',
     estimatedTime: '1.5 hours',
     hasLive: false,
+    hasTest: false
+  },
+
+  // USMLE Step 1 — Week 1 Track
+  {
+    id: 'sched-usmle-w1-d1',
+    examId: 'usmle',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiovascular Physiology & Pathology',
+    dayNumber: 1,
+    dayTitle: 'Day 1 — Pressure-Volume Loops & Valvular Shifts',
+    subjectId: 'sub-usmle-cvs',
+    subjectName: 'Cardiovascular Physiology & Pathology',
+    chapterId: 'chap-usmle-pvloops',
+    chapterTitle: 'Ventricular Pressure-Volume Loops & Murmurs',
+    topicIds: ['top-usmle-pvloops'],
+    scheduledDate: '2026-09-08',
+    status: 'Active',
+    estimatedTime: '2.0 hours',
+    hasLive: true,
+    hasTest: false
+  },
+  {
+    id: 'sched-usmle-w1-d2',
+    examId: 'usmle',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiovascular Physiology & Pathology',
+    dayNumber: 2,
+    dayTitle: 'Day 2 — Autonomic Receptor Kinetics & Pressors',
+    subjectId: 'sub-usmle-neuro',
+    subjectName: 'Autonomic & Neuro-Pharmacology',
+    chapterId: 'chap-usmle-autonomic',
+    chapterTitle: 'Autonomic Pharmacology & Receptor Signaling',
+    topicIds: ['top-usmle-pvloops'],
+    scheduledDate: '2026-09-09',
+    status: 'Scheduled',
+    estimatedTime: '1.5 hours',
+    hasLive: false,
+    hasTest: false
+  },
+
+  // PLAB 1 — Week 1 Track
+  {
+    id: 'sched-plab-w1-d1',
+    examId: 'plab',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Acute Clinical Presentations & NHS Protocols',
+    dayNumber: 1,
+    dayTitle: 'Day 1 — Acute Chest Pain Triage & NICE Troponin Pathways',
+    subjectId: 'sub-plab-acute',
+    subjectName: 'NHS Acute Clinical Presentations & Guidelines',
+    chapterId: 'chap-plab-chestpain',
+    chapterTitle: 'NICE Clinical Guidelines: Acute Chest Pain & ACS',
+    topicIds: ['top-plab-triage'],
+    scheduledDate: '2026-09-08',
+    status: 'Active',
+    estimatedTime: '1.5 hours',
+    hasLive: true,
+    hasTest: false
+  },
+
+  // Europe Licensing (FSP) — Week 1 Track
+  {
+    id: 'sched-eur-w1-d1',
+    examId: 'europe',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — FSP Medical Terminology & Clinical Handover',
+    dayNumber: 1,
+    dayTitle: 'Day 1 — Strukturierte Schmerzanamnese (SOCRATES auf Deutsch)',
+    subjectId: 'sub-eur-fsp',
+    subjectName: 'Fachsprachprüfung (FSP) Medical Terminology',
+    chapterId: 'chap-eur-anamnese',
+    chapterTitle: 'Medical History Taking (Anamnese) & Doctor Handover',
+    topicIds: ['top-eur-dialogue'],
+    scheduledDate: '2026-09-08',
+    status: 'Active',
+    estimatedTime: '1.5 hours',
+    hasLive: true,
     hasTest: false
   }
 ];
@@ -623,7 +975,17 @@ class CurriculumService {
   loadSubjects() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_SUBJECTS);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const existingIds = new Set(parsed.map(s => s.id));
+        const missing = INITIAL_SUBJECTS.filter(s => !existingIds.has(s.id));
+        if (missing.length > 0) {
+          const merged = [...parsed, ...missing];
+          localStorage.setItem(STORAGE_KEY_SUBJECTS, JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      }
     } catch (e) {
       console.warn('Failed to load subjects from storage:', e);
     }
@@ -642,7 +1004,17 @@ class CurriculumService {
   loadChapters() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_CHAPTERS);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const existingIds = new Set(parsed.map(c => c.id));
+        const missing = INITIAL_CHAPTERS.filter(c => !existingIds.has(c.id));
+        if (missing.length > 0) {
+          const merged = [...parsed, ...missing];
+          localStorage.setItem(STORAGE_KEY_CHAPTERS, JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      }
     } catch (e) {
       console.warn('Failed to load chapters from storage:', e);
     }
@@ -661,7 +1033,17 @@ class CurriculumService {
   loadTopics() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_TOPICS);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const existingIds = new Set(parsed.map(t => t.id));
+        const missing = INITIAL_TOPICS.filter(t => !existingIds.has(t.id));
+        if (missing.length > 0) {
+          const merged = [...parsed, ...missing];
+          localStorage.setItem(STORAGE_KEY_TOPICS, JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      }
     } catch (e) {
       console.warn('Failed to load topics from storage:', e);
     }
@@ -680,7 +1062,17 @@ class CurriculumService {
   loadSchedule() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_SCHEDULE);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const existingIds = new Set(parsed.map(s => s.id));
+        const missing = INITIAL_SCHEDULE.filter(s => !existingIds.has(s.id));
+        if (missing.length > 0) {
+          const merged = [...parsed, ...missing];
+          localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      }
     } catch (e) {
       console.warn('Failed to load schedule from storage:', e);
     }
