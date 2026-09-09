@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { authService, USER_ROLES } from './authService';
+import { curriculumService } from './curriculumService';
 
 const STORAGE_KEY_FACULTY = 'medprep_phase5_faculty_v1';
 const STORAGE_KEY_STUDENTS = 'medprep_phase5_students_v1';
@@ -17,6 +18,7 @@ export const INITIAL_FACULTY = [
     specialty: 'MD Cardiology (AIIMS New Delhi)',
     assignedExams: ['neet-pg', 'usmle'],
     assignedExamsLabels: ['NEET PG & NExT', 'USMLE Step 1 & 2'],
+    assignedSubjects: ['sub-neet-cardio', 'sub-usmle-cvs'],
     assignedWeeks: 'Weeks 1–4 (Cardiology & ECG)',
     contentUploadedCount: 14,
     liveSessionsCount: 6,
@@ -28,8 +30,9 @@ export const INITIAL_FACULTY = [
     name: 'Dr. Ananya Sen',
     email: 'ananya.pharma@demo.com',
     specialty: 'MD Pharmacology (PGI Chandigarh)',
-    assignedExams: ['usmle'],
-    assignedExamsLabels: ['USMLE Step 1 & 2'],
+    assignedExams: ['usmle', 'neet-pg'],
+    assignedExamsLabels: ['USMLE Step 1 & 2', 'NEET PG & NExT'],
+    assignedSubjects: ['sub-neet-pharma', 'sub-usmle-neuro'],
     assignedWeeks: 'Weeks 5–8 (Autonomic & Neuro-Pharm)',
     contentUploadedCount: 22,
     liveSessionsCount: 8,
@@ -43,6 +46,7 @@ export const INITIAL_FACULTY = [
     specialty: 'MRCP UK (Lead NHS Clinician)',
     assignedExams: ['plab'],
     assignedExamsLabels: ['PLAB 1 & 2 / UKMLA'],
+    assignedSubjects: ['sub-plab-acute'],
     assignedWeeks: 'All Weeks (NHS Guidelines & OSCE)',
     contentUploadedCount: 31,
     liveSessionsCount: 12,
@@ -54,8 +58,9 @@ export const INITIAL_FACULTY = [
     name: 'Dr. Elena Rossi',
     email: 'elena.rossi@demo.com',
     specialty: 'MD Internal Medicine (Charité Berlin)',
-    assignedExams: ['europe'],
-    assignedExamsLabels: ['Europe Medical Licensing'],
+    assignedExams: ['europe', 'neet-pg'],
+    assignedExamsLabels: ['Europe Medical Licensing', 'NEET PG & NExT'],
+    assignedSubjects: ['sub-neet-nephro'],
     assignedWeeks: 'All Weeks (FSP & KP Terminology)',
     contentUploadedCount: 8,
     liveSessionsCount: 4,
@@ -69,6 +74,7 @@ export const INITIAL_FACULTY = [
     specialty: 'MS General Surgery (KEM Mumbai)',
     assignedExams: ['neet-pg'],
     assignedExamsLabels: ['NEET PG & NExT'],
+    assignedSubjects: ['sub-neet-gastro', 'sub-neet-patho'],
     assignedWeeks: 'Weeks 9–12 (Trauma & Operative)',
     contentUploadedCount: 18,
     liveSessionsCount: 5,
@@ -272,12 +278,14 @@ export const peopleService = {
     const list = peopleService.getFacultyList();
     let updated;
     const existingIndex = list.findIndex(f => f.id === facultyData.id);
+    const assignedSubjects = facultyData.assignedSubjects || [];
 
     if (existingIndex !== -1) {
       updated = [...list];
       updated[existingIndex] = {
         ...updated[existingIndex],
-        ...facultyData
+        ...facultyData,
+        assignedSubjects
       };
     } else {
       const newFaculty = {
@@ -287,6 +295,7 @@ export const peopleService = {
         specialty: facultyData.specialty || 'MD Clinical Specialist',
         assignedExams: facultyData.assignedExams || ['neet-pg'],
         assignedExamsLabels: facultyData.assignedExamsLabels || ['NEET PG & NExT'],
+        assignedSubjects,
         assignedWeeks: facultyData.assignedWeeks || 'All Weeks',
         contentUploadedCount: 0,
         liveSessionsCount: 0,
@@ -303,15 +312,41 @@ export const peopleService = {
       console.warn('Faculty write error:', e);
     }
 
+    // Connect with curriculumService: synchronize subject assignment so subjects know who is teaching them!
+    try {
+      curriculumService.assignFacultyToSubjects(facultyData.email, facultyData.name, assignedSubjects);
+    } catch (e) {
+      console.warn('Curriculum faculty sync error:', e);
+    }
+
     // Connect with authService: register account so this email can immediately log in!
     authService.registerFacultyAccount?.({
       email: facultyData.email,
       name: facultyData.name,
       assignedExams: facultyData.assignedExamsLabels || facultyData.assignedExams,
+      assignedSubjects,
       assignedWeeks: facultyData.assignedWeeks
     });
 
     return updated;
+  },
+
+  getCurrentFacultyProfile: () => {
+    try {
+      const user = authService.getCurrentUser();
+      const list = peopleService.getFacultyList();
+      if (!user) return list[0];
+      const found = list.find(f => f.email?.toLowerCase() === user.email?.toLowerCase());
+      return found || list[0];
+    } catch (e) {
+      return INITIAL_FACULTY[0];
+    }
+  },
+
+  getFacultyAssignedSubjects: (facultyEmail) => {
+    const list = peopleService.getFacultyList();
+    const fac = list.find(f => f.email?.toLowerCase() === facultyEmail?.toLowerCase());
+    return fac?.assignedSubjects || [];
   },
 
   toggleFacultyStatus: (id) => {

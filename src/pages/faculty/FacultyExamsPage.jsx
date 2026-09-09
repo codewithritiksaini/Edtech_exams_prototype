@@ -15,19 +15,15 @@ import {
 } from 'lucide-react';
 import { catalogService } from '../../services/catalogService';
 import { curriculumService } from '../../services/curriculumService';
-import { facultyProfileData } from '../../data/mockData';
+import { peopleService } from '../../services/peopleService';
 
 export default function FacultyExamsPage() {
   const navigate = useNavigate();
   const [exams] = useState(() => catalogService.getExams());
   const [searchQuery, setSearchQuery] = useState('');
-
-  const assignedMap = {
-    'neet-pg': { assigned: true, role: 'Lead Specialist', dept: 'Cardiology & Hemodynamics', authoredChaps: 8 },
-    'usmle-step-1': { assigned: true, role: 'Contributing Lead', dept: 'Cardiovascular System', authoredChaps: 6 },
-    'plab-1': { assigned: true, role: 'Clinical Examiner', dept: 'Cardiovascular Medicine', authoredChaps: 5 },
-    'fmge': { assigned: false, role: 'Department Consultant', dept: 'Cardiology', authoredChaps: 3 }
-  };
+  const currentFaculty = peopleService.getCurrentFacultyProfile();
+  const assignedSubjectIds = currentFaculty?.assignedSubjects || [];
+  const assignedExamsList = currentFaculty?.assignedExams || [];
 
   const filteredExams = exams.filter(ex => 
     ex.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -74,12 +70,17 @@ export default function FacultyExamsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredExams.map((exam) => {
           const subjects = curriculumService.getSubjectsByExam(exam.id) || [];
-          const assignInfo = assignedMap[exam.id] || { assigned: false, role: 'Reviewer', dept: 'Medicine', authoredChaps: 0 };
+          const assignedSubjectsInExam = subjects.filter(s => assignedSubjectIds.includes(s.id));
+          const isDirectlyAssigned = assignedExamsList.includes(exam.id) || assignedSubjectsInExam.length > 0;
 
           return (
             <div
               key={exam.id}
-              className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between group space-y-6"
+              className={`bg-white rounded-3xl p-6 sm:p-7 border shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group space-y-6 ${
+                isDirectlyAssigned
+                  ? 'border-indigo-200/90 ring-1 ring-indigo-50 hover:border-indigo-400'
+                  : 'border-slate-200/80 hover:border-slate-300'
+              }`}
             >
               <div className="space-y-4">
                 {/* Header with Flag & Badge */}
@@ -91,10 +92,10 @@ export default function FacultyExamsPage() {
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                           {exam.region}
                         </span>
-                        {assignInfo.assigned && (
+                        {isDirectlyAssigned && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                             <GraduationCap className="w-3 h-3 text-indigo-600" />
-                            <span>{assignInfo.role}</span>
+                            <span>Assigned Track</span>
                           </span>
                         )}
                       </div>
@@ -110,17 +111,38 @@ export default function FacultyExamsPage() {
                   {exam.description || 'Comprehensive medical licensing and clinical knowledge prep curriculum.'}
                 </p>
 
-                {/* Assigned Department Callout */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Assigned Specialty</span>
-                    <div className="font-bold text-slate-800">{assignInfo.dept}</div>
+                {/* Assigned Department / Subjects Callout */}
+                {isDirectlyAssigned ? (
+                  <div className="p-3.5 rounded-2xl bg-indigo-50/60 border border-indigo-100 flex items-center justify-between text-xs">
+                    <div className="min-w-0 pr-3">
+                      <span className="text-[10px] font-bold text-indigo-500 uppercase">Your Assigned Subject(s)</span>
+                      <div className="font-bold text-slate-900 truncate">
+                        {assignedSubjectsInExam.length > 0
+                          ? assignedSubjectsInExam.map(s => s.name).join(', ')
+                          : (currentFaculty?.specialty || 'General Track Access')}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] font-bold text-indigo-500 uppercase">Assigned Scope</span>
+                      <div className="font-bold text-indigo-700">
+                        {assignedSubjectsInExam.length > 0 
+                          ? `${assignedSubjectsInExam.length} of ${subjects.length} Subjects`
+                          : 'Track Lead'}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Authored Chapters</span>
-                    <div className="font-bold text-indigo-600">{assignInfo.authoredChaps} Units</div>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Access Level</span>
+                      <div className="font-medium text-slate-600">Curriculum Explorer (Auditing)</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Total Units</span>
+                      <div className="font-bold text-slate-600">{subjects.length} Subjects</div>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Stat pills */}
                 <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">

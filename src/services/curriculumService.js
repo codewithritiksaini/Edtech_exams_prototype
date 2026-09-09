@@ -1282,6 +1282,10 @@ class CurriculumService {
     return this.subjects.filter(s => s.examId === examId);
   }
 
+  getSubjectsByExam(examId) {
+    return this.getSubjects(examId);
+  }
+
   getSubjectById(id) {
     return this.subjects.find(s => s.id === id) || null;
   }
@@ -1357,6 +1361,35 @@ class CurriculumService {
     return this.subjects;
   }
 
+  assignFacultyToSubjects(facultyEmail, facultyName, subjectIds = []) {
+    let changed = false;
+    const cleanEmail = (facultyEmail || '').trim().toLowerCase();
+    this.subjects = this.subjects.map(sub => {
+      if (subjectIds.includes(sub.id)) {
+        changed = true;
+        return {
+          ...sub,
+          assignedFacultyName: facultyName,
+          facultyEmail: cleanEmail
+        };
+      } else if (sub.facultyEmail && sub.facultyEmail.toLowerCase() === cleanEmail) {
+        // Unassigned from this faculty
+        changed = true;
+        return {
+          ...sub,
+          assignedFacultyName: 'Unassigned',
+          facultyEmail: ''
+        };
+      }
+      return sub;
+    });
+
+    if (changed) {
+      this.saveSubjects();
+    }
+    return this.subjects;
+  }
+
   // ---------------------------------------------------------------------------
   // 2. CHAPTERS CRUD
   // ---------------------------------------------------------------------------
@@ -1369,6 +1402,14 @@ class CurriculumService {
       list = list.filter(c => c.subjectId === subjectId);
     }
     return list;
+  }
+
+  getChaptersBySubject(subjectId, examId = null) {
+    return this.getChapters(subjectId, examId);
+  }
+
+  getChaptersByExam(examId) {
+    return this.getChapters(null, examId);
   }
 
   getChapterById(id) {
@@ -1501,6 +1542,18 @@ class CurriculumService {
       list = list.filter(t => t.chapterId === chapterId);
     }
     return list;
+  }
+
+  getTopicsByChapter(chapterId, subjectId = null, examId = null) {
+    return this.getTopics(chapterId, subjectId, examId);
+  }
+
+  getTopicsBySubject(subjectId, examId = null) {
+    return this.getTopics(null, subjectId, examId);
+  }
+
+  getTopicsByExam(examId) {
+    return this.getTopics(null, null, examId);
   }
 
   getTopicById(id) {

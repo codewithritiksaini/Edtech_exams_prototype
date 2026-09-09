@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   GraduationCap, 
   Plus, 
@@ -16,10 +16,15 @@ import {
   Mail, 
   Key,
   Layers,
-  Calendar
+  Calendar,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Check
 } from 'lucide-react';
 import { peopleService } from '../../services/peopleService';
 import { catalogService } from '../../services/catalogService';
+import { curriculumService } from '../../services/curriculumService';
 
 export default function ManageFacultyTab() {
   const [facultyList, setFacultyList] = useState(() => peopleService.getFacultyList());
@@ -44,8 +49,29 @@ export default function ManageFacultyTab() {
   const [formPassword, setFormPassword] = useState('demo123');
   const [formSpecialty, setFormSpecialty] = useState('MD Clinical Specialist');
   const [formSelectedExams, setFormSelectedExams] = useState(['neet-pg']);
+  const [formSelectedSubjects, setFormSelectedSubjects] = useState(['sub-neet-cardio']);
   const [formWeeks, setFormWeeks] = useState('Weeks 1–4 (Core Concepts)');
   const [formStatus, setFormStatus] = useState('Active');
+
+  // Multi-Select Dropdown States
+  const [isExamDropdownOpen, setIsExamDropdownOpen] = useState(false);
+  const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
+  const [subjectDropdownSearch, setSubjectDropdownSearch] = useState('');
+  const examDropdownRef = useRef(null);
+  const subjectDropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (examDropdownRef.current && !examDropdownRef.current.contains(event.target)) {
+        setIsExamDropdownOpen(false);
+      }
+      if (subjectDropdownRef.current && !subjectDropdownRef.current.contains(event.target)) {
+        setIsSubjectDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = peopleService.subscribe((payload) => {
@@ -66,8 +92,13 @@ export default function ManageFacultyTab() {
     setFormPassword('demo123');
     setFormSpecialty('MD Clinical Specialist');
     setFormSelectedExams(['neet-pg']);
+    const defaultSubs = curriculumService.getSubjectsByExam('neet-pg') || [];
+    setFormSelectedSubjects(defaultSubs.length > 0 ? [defaultSubs[0].id] : []);
     setFormWeeks('Weeks 1–4 (Cardiology & Clinical Vignettes)');
     setFormStatus('Active');
+    setIsExamDropdownOpen(false);
+    setIsSubjectDropdownOpen(false);
+    setSubjectDropdownSearch('');
     setIsModalOpen(true);
   };
 
@@ -78,19 +109,59 @@ export default function ManageFacultyTab() {
     setFormPassword('demo123');
     setFormSpecialty(fac.specialty);
     setFormSelectedExams([...(fac.assignedExams || ['neet-pg'])]);
+    setFormSelectedSubjects([...(fac.assignedSubjects || [])]);
     setFormWeeks(fac.assignedWeeks || 'All Weeks');
     setFormStatus(fac.status);
+    setIsExamDropdownOpen(false);
+    setIsSubjectDropdownOpen(false);
+    setSubjectDropdownSearch('');
     setIsModalOpen(true);
+  };
+
+  const handleToggleSubject = (subjectId) => {
+    setFormSelectedSubjects(prev => {
+      if (prev.includes(subjectId)) {
+        return prev.filter(id => id !== subjectId);
+      } else {
+        return [...prev, subjectId];
+      }
+    });
+  };
+
+  const handleSelectAllSubjectsForExam = (examId) => {
+    const examSubs = curriculumService.getSubjectsByExam(examId) || [];
+    const examSubIds = examSubs.map(s => s.id);
+    setFormSelectedSubjects(prev => {
+      const remaining = prev.filter(id => !examSubIds.includes(id));
+      return [...remaining, ...examSubIds];
+    });
+  };
+
+  const handleDeselectAllSubjectsForExam = (examId) => {
+    const examSubs = curriculumService.getSubjectsByExam(examId) || [];
+    const examSubIds = examSubs.map(s => s.id);
+    setFormSelectedSubjects(prev => prev.filter(id => !examSubIds.includes(id)));
   };
 
   const handleToggleExamInForm = (examId) => {
     setFormSelectedExams(prev => {
+      let next;
       if (prev.includes(examId)) {
         if (prev.length === 1) return prev; // keep at least 1
-        return prev.filter(id => id !== examId);
+        next = prev.filter(id => id !== examId);
+        // Also remove subjects belonging to this unselected exam
+        const removedExamSubs = curriculumService.getSubjectsByExam(examId) || [];
+        const removedIds = removedExamSubs.map(s => s.id);
+        setFormSelectedSubjects(curr => curr.filter(id => !removedIds.includes(id)));
       } else {
-        return [...prev, examId];
+        next = [...prev, examId];
+        // Automatically pre-select first subject of newly added exam
+        const addedSubs = curriculumService.getSubjectsByExam(examId) || [];
+        if (addedSubs.length > 0) {
+          setFormSelectedSubjects(curr => [...curr, addedSubs[0].id]);
+        }
       }
+      return next;
     });
   };
 
@@ -98,6 +169,11 @@ export default function ManageFacultyTab() {
     e.preventDefault();
     if (!formName.trim() || !formEmail.trim()) {
       alert('Please fill out Faculty Name and valid Email.');
+      return;
+    }
+
+    if (formSelectedSubjects.length === 0) {
+      alert('Please select at least one teaching subject for this faculty member.');
       return;
     }
 
@@ -113,6 +189,7 @@ export default function ManageFacultyTab() {
       specialty: formSpecialty,
       assignedExams: formSelectedExams,
       assignedExamsLabels: matchedLabels,
+      assignedSubjects: formSelectedSubjects,
       assignedWeeks: formWeeks,
       status: formStatus
     };
@@ -122,8 +199,8 @@ export default function ManageFacultyTab() {
     setIsModalOpen(false);
     showToast(
       editingFaculty 
-        ? `Faculty profile "${formName}" updated successfully!` 
-        : `Faculty "${formName}" created! Login enabled for ${formEmail.trim().toLowerCase()}`
+        ? `Faculty profile "${formName}" updated with ${formSelectedSubjects.length} subject(s)!` 
+        : `Faculty "${formName}" provisioned with ${formSelectedSubjects.length} subject(s)! Login enabled for ${formEmail.trim().toLowerCase()}`
     );
   };
 
@@ -196,7 +273,7 @@ export default function ManageFacultyTab() {
             className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 self-start sm:self-auto cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add New Faculty</span>
+            <span>Add New Faculty</span>
           </button>
         </div>
 
@@ -242,7 +319,7 @@ export default function ManageFacultyTab() {
               <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] font-bold">
                 <th className="py-3 px-4">Faculty Specialist</th>
                 <th className="py-3 px-4">Login Email</th>
-                <th className="py-3 px-4">Assigned Exam(s)</th>
+                <th className="py-3 px-4">Assigned Exam(s) & Subject(s)</th>
                 <th className="py-3 px-4">Granular Scope</th>
                 <th className="py-3 px-4 text-center">Content Uploaded</th>
                 <th className="py-3 px-4 text-center">Status</th>
@@ -280,14 +357,37 @@ export default function ManageFacultyTab() {
                     </span>
                   </td>
 
-                  {/* Assigned Exams (Badges) */}
-                  <td className="py-3.5 px-4">
-                    <div className="flex flex-wrap gap-1">
-                      {fac.assignedExamsLabels?.map((label, i) => (
-                        <span key={i} className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold border border-indigo-100 text-[10px]">
-                          {label}
+                  {/* Assigned Exams & Subjects (Badges) */}
+                  <td className="py-3.5 px-4 max-w-xs">
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap gap-1">
+                        {fac.assignedExamsLabels?.map((label, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold border border-indigo-100 text-[10px]">
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                      {fac.assignedSubjects && fac.assignedSubjects.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-1">
+                          {fac.assignedSubjects.slice(0, 3).map((subId) => {
+                            const sub = curriculumService.getSubjectById(subId);
+                            return sub ? (
+                              <span key={subId} className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[9.5px] border border-slate-200/80">
+                                {sub.name}
+                              </span>
+                            ) : null;
+                          })}
+                          {fac.assignedSubjects.length > 3 && (
+                            <span className="text-[9.5px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                              +{fac.assignedSubjects.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-amber-600 font-medium italic">
+                          No subjects assigned
                         </span>
-                      ))}
+                      )}
                     </div>
                   </td>
 
@@ -455,37 +555,378 @@ export default function ManageFacultyTab() {
                     </div>
                   </div>
 
-                  {/* Assign Exam(s) - Multi-Select Checkboxes */}
-                  <div className="space-y-2 pt-1">
-                    <label className="font-bold text-slate-800 block">
-                      Assign Exam Category Scope (Multi-Select) *
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {catalogExams.map((exam) => {
-                        const isChecked = formSelectedExams.includes(exam.id);
-                        return (
-                          <div
-                            key={exam.id}
-                            onClick={() => handleToggleExamInForm(exam.id)}
-                            className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                              isChecked 
-                                ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 font-bold' 
-                                : 'bg-slate-50 border-slate-200 text-slate-500'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-base">{exam.flag}</span>
-                              <span className="text-xs">{exam.name}</span>
-                            </div>
-                            <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold ${
-                              isChecked ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'
-                            }`}>
-                              {isChecked ? '✓' : ''}
-                            </span>
-                          </div>
-                        );
-                      })}
+                  {/* 1. Assign Exam Category Scope - Multi-Select Dropdown */}
+                  <div className="space-y-1.5 pt-1" ref={examDropdownRef}>
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-800 text-xs">
+                        Assign Exam Category Scope (Multi-Select Dropdown) *
+                      </label>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        {formSelectedExams.length} Selected
+                      </span>
                     </div>
+
+                    <div className="relative">
+                      {/* Trigger Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsExamDropdownOpen(prev => !prev);
+                          setIsSubjectDropdownOpen(false);
+                        }}
+                        className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border bg-white text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                          isExamDropdownOpen 
+                            ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs' 
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                          {formSelectedExams.length === 0 ? (
+                            <span className="text-slate-400 text-xs">Select Exam Tracks...</span>
+                          ) : (
+                            formSelectedExams.map(examId => {
+                              const ex = catalogExams.find(e => e.id === examId) || { id: examId, name: examId.toUpperCase() };
+                              return (
+                                <span
+                                  key={examId}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200 text-xs font-bold shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleExamInForm(examId);
+                                  }}
+                                >
+                                  <span>{ex.flag}</span>
+                                  <span>{ex.name}</span>
+                                  <X className="w-3 h-3 text-indigo-400 hover:text-indigo-700 cursor-pointer" />
+                                </span>
+                              );
+                            })
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-slate-400 shrink-0 ml-2">
+                          {isExamDropdownOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </div>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isExamDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 z-40 bg-white rounded-2xl border border-slate-200 shadow-xl p-2.5 space-y-1.5 animate-in fade-in slide-in-from-top-1">
+                          <div className="flex items-center justify-between px-2 py-1 text-[11px] font-bold text-slate-500 border-b border-slate-100 pb-1.5">
+                            <span>Available Exam Tracks</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const allIds = catalogExams.map(e => e.id);
+                                  setFormSelectedExams(allIds);
+                                }}
+                                className="text-indigo-600 hover:underline cursor-pointer"
+                              >
+                                Select All ({catalogExams.length})
+                              </button>
+                              <span>•</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (catalogExams.length > 0) {
+                                    setFormSelectedExams([catalogExams[0].id]);
+                                  }
+                                }}
+                                className="text-slate-400 hover:underline cursor-pointer"
+                              >
+                                Reset
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="max-h-56 overflow-y-auto space-y-1 p-0.5">
+                            {catalogExams.map((exam) => {
+                              const isChecked = formSelectedExams.includes(exam.id);
+                              return (
+                                <div
+                                  key={exam.id}
+                                  onClick={() => handleToggleExamInForm(exam.id)}
+                                  className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                                    isChecked
+                                      ? 'bg-indigo-50/80 border-indigo-200 text-indigo-950 font-bold'
+                                      : 'bg-white border-transparent hover:bg-slate-50 text-slate-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="text-xl">{exam.flag}</span>
+                                    <div>
+                                      <div className="text-xs font-bold text-slate-900 leading-snug">{exam.name}</div>
+                                      <div className="text-[10px] text-slate-400">{exam.region} • {curriculumService.getSubjectsByExam(exam.id)?.length || 0} Subjects</div>
+                                    </div>
+                                  </div>
+                                  <div className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold ${
+                                    isChecked ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-transparent'
+                                  }`}>
+                                    ✓
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="pt-1.5 border-t border-slate-100 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setIsExamDropdownOpen(false)}
+                              className="px-3 py-1 bg-indigo-600 text-white font-bold text-xs rounded-lg hover:bg-indigo-700 cursor-pointer"
+                            >
+                              Done
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. Assign Teaching Subject(s) - Multi-Select Dropdown */}
+                  <div className="space-y-1.5 pt-2" ref={subjectDropdownRef}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="font-bold text-slate-800 text-xs block">
+                          Assign Teaching Subject(s) (Multi-Select Dropdown) *
+                        </label>
+                        <span className="text-[11px] text-slate-500">
+                          Faculty will only get teaching & authoring access to the subjects selected below.
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
+                        {formSelectedSubjects.length} Selected
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      {/* Trigger Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (formSelectedExams.length > 0) {
+                            setIsSubjectDropdownOpen(prev => !prev);
+                            setIsExamDropdownOpen(false);
+                          }
+                        }}
+                        className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border bg-white text-left transition-all flex items-center justify-between gap-2 ${
+                          formSelectedExams.length === 0
+                            ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                            : isSubjectDropdownOpen
+                            ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs cursor-pointer'
+                            : 'border-slate-200 hover:border-slate-300 cursor-pointer'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                          {formSelectedExams.length === 0 ? (
+                            <span className="text-slate-400 text-xs italic">Please select an exam track above first...</span>
+                          ) : formSelectedSubjects.length === 0 ? (
+                            <span className="text-slate-400 text-xs">Click to select teaching subject(s)...</span>
+                          ) : (
+                            <>
+                              {formSelectedSubjects.slice(0, 3).map(subId => {
+                                const allSubs = curriculumService.getSubjects ? curriculumService.getSubjects() : [];
+                                const sub = allSubs.find(s => s.id === subId) || { id: subId, name: subId };
+                                return (
+                                  <span
+                                    key={subId}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200 text-xs font-bold shrink-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleSubject(subId);
+                                    }}
+                                  >
+                                    <Layers className="w-3 h-3 text-indigo-600 shrink-0" />
+                                    <span className="truncate max-w-[140px]">{sub.name}</span>
+                                    <X className="w-3 h-3 text-indigo-400 hover:text-indigo-700 cursor-pointer shrink-0" />
+                                  </span>
+                                );
+                              })}
+                              {formSelectedSubjects.length > 3 && (
+                                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
+                                  +{formSelectedSubjects.length - 3} more
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-slate-400 shrink-0 ml-2">
+                          {isSubjectDropdownOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </div>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isSubjectDropdownOpen && formSelectedExams.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 z-40 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 space-y-2.5 animate-in fade-in slide-in-from-top-1">
+                          {/* Search Input inside Dropdown */}
+                          <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                              <input
+                                type="text"
+                                placeholder="Filter subjects by name or code..."
+                                value={subjectDropdownSearch}
+                                onChange={(e) => setSubjectDropdownSearch(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-slate-50"
+                              />
+                            </div>
+                            {subjectDropdownSearch && (
+                              <button
+                                type="button"
+                                onClick={() => setSubjectDropdownSearch('')}
+                                className="text-xs text-slate-400 hover:text-slate-600 px-1 font-bold"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Quick Global Action Header */}
+                          <div className="flex items-center justify-between px-1 text-[11px] font-bold text-slate-500 border-b border-slate-100 pb-1.5">
+                            <span>Subjects by Track</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const allAvailableSubs = formSelectedExams.flatMap(examId => curriculumService.getSubjectsByExam(examId) || []);
+                                  const allSubIds = allAvailableSubs.map(s => s.id);
+                                  setFormSelectedSubjects(allSubIds);
+                                }}
+                                className="text-indigo-600 hover:underline cursor-pointer"
+                              >
+                                Select All
+                              </button>
+                              <span>•</span>
+                              <button
+                                type="button"
+                                onClick={() => setFormSelectedSubjects([])}
+                                className="text-slate-400 hover:underline cursor-pointer"
+                              >
+                                Clear All
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Grouped Subjects Scrollable List */}
+                          <div className="max-h-60 overflow-y-auto space-y-3 p-1 divide-y divide-slate-100">
+                            {formSelectedExams.map(examId => {
+                              const exam = catalogExams.find(e => e.id === examId) || { id: examId, name: examId.toUpperCase() };
+                              const allExamSubjects = curriculumService.getSubjectsByExam(examId) || [];
+                              const filteredExamSubjects = allExamSubjects.filter(sub => 
+                                !subjectDropdownSearch ||
+                                sub.name.toLowerCase().includes(subjectDropdownSearch.toLowerCase()) ||
+                                (sub.code && sub.code.toLowerCase().includes(subjectDropdownSearch.toLowerCase()))
+                              );
+                              const selectedInThisExam = allExamSubjects.filter(s => formSelectedSubjects.includes(s.id)).length;
+
+                              return (
+                                <div key={examId} className="pt-2.5 first:pt-0 space-y-1.5">
+                                  {/* Track Group Header */}
+                                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 px-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span>{exam.flag}</span>
+                                      <span className="text-slate-900">{exam.name}</span>
+                                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-extrabold">
+                                        {selectedInThisExam} of {allExamSubjects.length} selected
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[10px]">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSelectAllSubjectsForExam(examId)}
+                                        className="text-indigo-600 hover:underline cursor-pointer font-bold"
+                                      >
+                                        All
+                                      </button>
+                                      <span className="text-slate-300">|</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeselectAllSubjectsForExam(examId)}
+                                        className="text-slate-400 hover:underline cursor-pointer"
+                                      >
+                                        None
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Subject items */}
+                                  {filteredExamSubjects.length === 0 ? (
+                                    <div className="text-[11px] text-slate-400 italic px-2 py-1">
+                                      {subjectDropdownSearch ? 'No matching subjects found in this track.' : 'No subjects configured yet.'}
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-1">
+                                      {filteredExamSubjects.map(sub => {
+                                        const isChecked = formSelectedSubjects.includes(sub.id);
+                                        return (
+                                          <div
+                                            key={sub.id}
+                                            onClick={() => handleToggleSubject(sub.id)}
+                                            className={`p-2 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                                              isChecked
+                                                ? 'bg-indigo-50/90 border-indigo-200 text-indigo-950 font-bold shadow-2xs'
+                                                : 'bg-white border-transparent hover:bg-slate-50 text-slate-700'
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
+                                                {sub.code || 'SUB'}
+                                              </span>
+                                              <span className="text-xs font-semibold truncate">{sub.name}</span>
+                                            </div>
+                                            <div className={`w-4 h-4 rounded shrink-0 flex items-center justify-center text-[10px] font-bold ${
+                                              isChecked ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-transparent'
+                                            }`}>
+                                              ✓
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Dropdown Footer */}
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                            <span className="text-slate-500 font-medium">
+                              {formSelectedSubjects.length} subject{formSelectedSubjects.length !== 1 ? 's' : ''} assigned
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setIsSubjectDropdownOpen(false)}
+                              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+                            >
+                              Done
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Selected Subjects Quick-View Badges Bar (shown below dropdown for fast review) */}
+                    {formSelectedSubjects.length > 0 && !isSubjectDropdownOpen && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        {formSelectedSubjects.map(subId => {
+                          const allSubs = curriculumService.getSubjects ? curriculumService.getSubjects() : [];
+                          const sub = allSubs.find(s => s.id === subId) || { id: subId, name: subId };
+                          return (
+                            <span
+                              key={subId}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold border border-slate-200/80 transition-colors"
+                            >
+                              <span>{sub.name}</span>
+                              <X 
+                                className="w-3 h-3 text-slate-400 hover:text-red-500 cursor-pointer" 
+                                onClick={() => handleToggleSubject(subId)}
+                              />
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Granular Scope (Weeks/Days) */}

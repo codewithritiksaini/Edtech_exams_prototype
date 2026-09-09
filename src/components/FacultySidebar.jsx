@@ -16,6 +16,8 @@ import {
   X, 
   GraduationCap 
 } from 'lucide-react';
+import { peopleService } from '../services/peopleService';
+import { curriculumService } from '../services/curriculumService';
 
 export default function FacultySidebar({ 
   activeTab, 
@@ -52,6 +54,17 @@ export default function FacultySidebar({
 
   // The sidebar is expanded if it is pinned OR currently hovered
   const isExpanded = effectivePinned || isHovered;
+
+  const currentFaculty = peopleService.getCurrentFacultyProfile();
+  const assignedSubjectIds = currentFaculty?.assignedSubjects || [];
+  const allSubjects = curriculumService.getSubjects ? curriculumService.getSubjects() : [];
+  const myAssignedSubjects = allSubjects.filter(s => assignedSubjectIds.includes(s.id));
+  const assignedNames = myAssignedSubjects.map(s => s.name);
+  const displayAssignmentTitle = assignedNames.length > 0 
+    ? (assignedNames.slice(0, 2).join(' & ') + (assignedNames.length > 2 ? ` +${assignedNames.length - 2} more` : ''))
+    : (currentFaculty?.specialty || 'General Faculty Scope');
+  const facultyExamCount = currentFaculty?.assignedExams?.length || 1;
+  const facultySubjectCount = assignedSubjectIds.length || myAssignedSubjects.length || 1;
 
   const toggleSection = (sectionKey) => {
     if (!isExpanded) return;
@@ -459,18 +472,18 @@ export default function FacultySidebar({
                   Teaching Assignment
                 </span>
               </div>
-              <div className="text-xs font-bold text-slate-900">
-                Cardiology & ECG Curriculum
+              <div className="text-xs font-bold text-slate-900 truncate" title={displayAssignmentTitle}>
+                {displayAssignmentTitle}
               </div>
               <p className="text-[10.5px] text-slate-600 leading-snug">
-                2 Active Exam Modules • 28 Week-Days Controlled
+                {facultySubjectCount} Subject{facultySubjectCount > 1 ? 's' : ''} • {facultyExamCount} Exam Track{facultyExamCount > 1 ? 's' : ''}
               </p>
             </div>
           ) : (
             <div className="flex justify-center">
               <div 
                 className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-2xs cursor-pointer hover:border-indigo-300 transition-colors"
-                title="Teaching Assignment: Cardiology & ECG Curriculum (2 Active Exam Modules • 28 Week-Days Controlled)"
+                title={`Teaching Assignment: ${displayAssignmentTitle} (${facultySubjectCount} Subjects • ${facultyExamCount} Exams)`}
               >
                 <GraduationCap className="w-4 h-4 text-indigo-600" />
               </div>
