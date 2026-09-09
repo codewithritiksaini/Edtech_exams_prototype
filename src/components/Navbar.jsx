@@ -95,19 +95,37 @@ export default function Navbar({ onOpenLogin, onOpenDemo }) {
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2.5">
+            <Link
+              to="/student/dashboard"
+              className="px-3 py-1.5 text-xs font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200/80 rounded-xl transition-all"
+            >
+              Student LMS
+            </Link>
+            <Link
+              to="/faculty"
+              className="px-3 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 rounded-xl transition-all"
+            >
+              Faculty
+            </Link>
+            <Link
+              to="/admin"
+              className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-all"
+            >
+              Admin
+            </Link>
             <button
               onClick={onOpenLogin}
-              className="px-4 py-2 text-sm font-semibold text-slate-700 hover:text-brand-600 hover:bg-slate-100/80 rounded-lg transition-all cursor-pointer"
+              className="px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:text-brand-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
             >
               Login
             </button>
             <button
               onClick={() => scrollToSection('courses')}
-              className="px-5 py-2.5 text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 active:scale-95 rounded-xl shadow-md shadow-brand-500/25 transition-all flex items-center gap-2 group cursor-pointer"
+              className="px-4 py-2 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 active:scale-95 rounded-xl shadow-sm shadow-brand-500/25 transition-all flex items-center gap-1.5 group cursor-pointer"
             >
               <span>Get Started</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
 
@@ -163,6 +181,32 @@ export default function Navbar({ onOpenLogin, onOpenDemo }) {
             >
               Student Reviews
             </button>
+            <div className="pt-2 border-t border-slate-200 space-y-1.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block px-3">Portals Direct Access</span>
+              <div className="grid grid-cols-3 gap-2 px-3">
+                <Link
+                  to="/student/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 text-center text-xs font-bold text-brand-700 bg-brand-50 border border-brand-200 rounded-lg"
+                >
+                  Student LMS
+                </Link>
+                <Link
+                  to="/faculty"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 text-center text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded-lg"
+                >
+                  Faculty
+                </Link>
+                <Link
+                  to="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 text-center text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg"
+                >
+                  Admin
+                </Link>
+              </div>
+            </div>
             <div className="pt-2">
               <button
                 onClick={() => scrollToSection('courses')}

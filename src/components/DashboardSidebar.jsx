@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
   BookOpen, 
@@ -14,14 +15,17 @@ import {
 import { dashboardUserData } from '../data/mockData';
 
 export default function DashboardSidebar({ activeTab, onSelectTab, isOpen, onClose }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard (Home)', icon: Home },
-    { id: 'courses', label: 'My Course(s)', icon: BookOpen, badge: '1 Active' },
-    { id: 'plan', label: 'Study Plan', icon: Calendar, badge: 'Week 1' },
-    { id: 'live', label: 'Live Sessions', icon: Video, badge: 'Tonight' },
-    { id: 'tests', label: 'Tests', icon: FileText, badge: '2 Pending' },
-    { id: 'progress', label: 'Progress', icon: BarChart3 },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'dashboard', label: 'Dashboard (Home)', icon: Home, route: '/student/dashboard' },
+    { id: 'courses', label: 'My Course(s)', icon: BookOpen, badge: '1 Active', route: '/student/courses' },
+    { id: 'plan', label: 'Study Plan', icon: Calendar, badge: 'Week 1', route: '/student/study-plan' },
+    { id: 'live', label: 'Live Sessions', icon: Video, badge: 'Tonight', route: '/student/live-sessions' },
+    { id: 'tests', label: 'Tests', icon: FileText, badge: '2 Pending', route: '/student/tests' },
+    { id: 'progress', label: 'Progress', icon: BarChart3, route: '/student/progress' },
+    { id: 'settings', label: 'Settings', icon: Settings, route: '/student/settings' },
   ];
 
   return (
@@ -59,12 +63,20 @@ export default function DashboardSidebar({ activeTab, onSelectTab, isOpen, onClo
           <nav className="space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = activeTab === item.id;
+              const isActive = activeTab ? activeTab === item.id : (
+                location.pathname === item.route ||
+                (item.id === 'dashboard' && (location.pathname === '/dashboard' || location.pathname === '/student')) ||
+                (item.id === 'courses' && (location.pathname.startsWith('/student/courses') || location.pathname.startsWith('/courses'))) ||
+                (item.id === 'plan' && (location.pathname.startsWith('/student/study-plan') || location.pathname.startsWith('/day/'))) ||
+                (item.id === 'tests' && (location.pathname.startsWith('/student/tests') || location.pathname.startsWith('/test/'))) ||
+                (item.route !== '/student/dashboard' && location.pathname.startsWith(item.route))
+              );
               return (
                 <button
                   key={item.id}
                   onClick={() => {
-                    onSelectTab(item.id);
+                    if (onSelectTab) onSelectTab(item.id);
+                    else navigate(item.route);
                     if (onClose) onClose();
                   }}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${

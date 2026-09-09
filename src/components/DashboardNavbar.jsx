@@ -181,15 +181,21 @@ export default function DashboardNavbar({ onToggleSidebar, isSidebarOpen }) {
 
                   <div className="p-2 space-y-1">
                     <button
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        navigate('/student/settings');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                     >
                       <User className="w-4 h-4 text-slate-500" />
                       <span>Student Profile</span>
                     </button>
                     <button
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        navigate('/student/settings');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                     >
                       <Settings className="w-4 h-4 text-slate-500" />
                       <span>Study Preferences & Goals</span>

@@ -19,7 +19,7 @@ export const MOCK_ACCOUNTS = {
     targetCourse: 'NEET PG & NExT 2026',
     packageTier: 'Standard (6 Months)',
     avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=120&auto=format&fit=crop&q=80',
-    redirectTo: '/dashboard'
+    redirectTo: '/student/dashboard'
   },
   'faculty@demo.com': {
     email: 'faculty@demo.com',
@@ -30,7 +30,7 @@ export const MOCK_ACCOUNTS = {
     assignedScope: 'NEET PG & USMLE — Cardiology & ECG (Weeks 1–4)',
     assignedStudentsCount: 680,
     avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=120&auto=format&fit=crop&q=80',
-    redirectTo: '/admin'
+    redirectTo: '/faculty'
   },
   'admin@demo.com': {
     email: 'admin@demo.com',
@@ -129,7 +129,7 @@ class AuthService {
       assignedScope: `${Array.isArray(faculty.assignedExams) ? faculty.assignedExams.join(', ') : faculty.assignedExams} (${faculty.assignedWeeks || 'All Weeks'})`,
       assignedStudentsCount: 680,
       avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=120&auto=format&fit=crop&q=80',
-      redirectTo: '/admin'
+      redirectTo: '/faculty'
     };
     MOCK_ACCOUNTS[cleanEmail] = newAccount;
     try {

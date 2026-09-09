@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -29,6 +30,8 @@ export default function AdminSidebar({
   isOpenMobile, 
   onCloseMobile 
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [currentUser, setCurrentUser] = useState(authService.getCurrentUser());
   const [isHovered, setIsHovered] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({
@@ -58,8 +61,45 @@ export default function AdminSidebar({
     }));
   };
 
+  const TAB_ROUTES = {
+    dashboard: '/admin/dashboard',
+    exams: '/admin/exams',
+    subjects: '/admin/exams/neet-pg/subjects',
+    curriculum: '/admin/exams/neet-pg/subjects/sub-neet-cardio/chapters',
+    schedule: '/admin/schedule/neet-pg',
+    packages: '/admin/packages',
+    faculty: '/admin/faculty',
+    students: '/admin/students',
+    content: '/admin/content-repository',
+    live: '/admin/live-sessions',
+    tests: '/admin/tests',
+    analytics: '/admin/analytics',
+  };
+
+  const isTabActive = (tabId) => {
+    if (activeTab) return activeTab === tabId;
+    const p = location.pathname;
+    if (tabId === 'dashboard') return p === '/admin' || p === '/admin/dashboard';
+    if (tabId === 'exams') return p === '/admin/exams' || (p.startsWith('/admin/exams') && !p.includes('/subjects'));
+    if (tabId === 'subjects') return p.includes('/subjects') && !p.includes('/chapters');
+    if (tabId === 'curriculum') return p.includes('/chapters') || p.includes('/topics');
+    if (tabId === 'schedule') return p.startsWith('/admin/schedule');
+    if (tabId === 'packages') return p.startsWith('/admin/packages');
+    if (tabId === 'faculty') return p.startsWith('/admin/faculty');
+    if (tabId === 'students') return p.startsWith('/admin/students');
+    if (tabId === 'content') return p.startsWith('/admin/content-repository');
+    if (tabId === 'live') return p.startsWith('/admin/live-sessions');
+    if (tabId === 'tests') return p.startsWith('/admin/tests');
+    if (tabId === 'analytics') return p.startsWith('/admin/analytics');
+    return false;
+  };
+
   const handleTabClick = (tabId) => {
-    onSelectTab(tabId);
+    if (onSelectTab) {
+      onSelectTab(tabId);
+    } else if (TAB_ROUTES[tabId]) {
+      navigate(TAB_ROUTES[tabId]);
+    }
     if (onCloseMobile) onCloseMobile();
     // If not pinned, collapse back on tab selection
     if (!isPinned) {
@@ -177,12 +217,12 @@ export default function AdminSidebar({
               className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 isExpanded ? 'gap-3 px-3 py-2' : 'justify-center p-2.5'
               } ${
-                activeTab === 'dashboard'
+                isTabActive('dashboard')
                   ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
               }`}
             >
-              <LayoutDashboard className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-400'}`} />
+              <LayoutDashboard className={`w-4 h-4 shrink-0 ${isTabActive('dashboard') ? 'text-indigo-600' : 'text-slate-400'}`} />
               {isExpanded && <span className="whitespace-nowrap">Dashboard</span>}
             </button>
           </div>
@@ -210,13 +250,13 @@ export default function AdminSidebar({
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
-                    activeTab === 'exams'
+                    isTabActive('exams')
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <BookOpen className={`w-4 h-4 shrink-0 ${activeTab === 'exams' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <BookOpen className={`w-4 h-4 shrink-0 ${isTabActive('exams') ? 'text-indigo-600' : 'text-slate-400'}`} />
                     {isExpanded && <span className="whitespace-nowrap shrink-0">{isAdmin ? 'Manage Exams' : 'Exams & Courses'}</span>}
                   </div>
                   {isExpanded && (
@@ -233,13 +273,13 @@ export default function AdminSidebar({
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
-                    activeTab === 'subjects'
+                    isTabActive('subjects')
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <Layers className={`w-4 h-4 shrink-0 ${activeTab === 'subjects' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <Layers className={`w-4 h-4 shrink-0 ${isTabActive('subjects') ? 'text-indigo-600' : 'text-slate-400'}`} />
                     {isExpanded && <span className="whitespace-nowrap shrink-0">Subjects</span>}
                   </div>
                   {isExpanded && (
@@ -256,13 +296,13 @@ export default function AdminSidebar({
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
-                    activeTab === 'curriculum'
+                    isTabActive('curriculum')
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <FolderTree className={`w-4 h-4 shrink-0 ${activeTab === 'curriculum' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <FolderTree className={`w-4 h-4 shrink-0 ${isTabActive('curriculum') ? 'text-indigo-600' : 'text-slate-400'}`} />
                     {isExpanded && <span className="whitespace-nowrap shrink-0">Chapters & Topics</span>}
                   </div>
                   {isExpanded && (
@@ -279,13 +319,13 @@ export default function AdminSidebar({
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
-                    activeTab === 'schedule'
+                    isTabActive('schedule')
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <Calendar className={`w-4 h-4 shrink-0 ${activeTab === 'schedule' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <Calendar className={`w-4 h-4 shrink-0 ${isTabActive('schedule') ? 'text-indigo-600' : 'text-slate-400'}`} />
                     {isExpanded && <span className="whitespace-nowrap shrink-0">Study Schedule</span>}
                   </div>
                   {isExpanded && (
@@ -303,13 +343,13 @@ export default function AdminSidebar({
                     className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                     } ${
-                      activeTab === 'packages'
+                      isTabActive('packages')
                         ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                      <Package className={`w-4 h-4 shrink-0 ${activeTab === 'packages' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      <Package className={`w-4 h-4 shrink-0 ${isTabActive('packages') ? 'text-indigo-600' : 'text-slate-400'}`} />
                       {isExpanded && <span className="whitespace-nowrap shrink-0">Manage Packages</span>}
                     </div>
                     {isExpanded && (
@@ -347,13 +387,13 @@ export default function AdminSidebar({
                     className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                     } ${
-                      activeTab === 'faculty'
+                      isTabActive('faculty')
                         ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                      <GraduationCap className={`w-4 h-4 shrink-0 ${activeTab === 'faculty' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      <GraduationCap className={`w-4 h-4 shrink-0 ${isTabActive('faculty') ? 'text-indigo-600' : 'text-slate-400'}`} />
                       {isExpanded && <span className="whitespace-nowrap shrink-0">Manage Faculty</span>}
                     </div>
                     {isExpanded && (
@@ -371,13 +411,13 @@ export default function AdminSidebar({
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
-                    activeTab === 'students'
+                    isTabActive('students')
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <Users className={`w-4 h-4 shrink-0 ${activeTab === 'students' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <Users className={`w-4 h-4 shrink-0 ${isTabActive('students') ? 'text-indigo-600' : 'text-slate-400'}`} />
                     {isExpanded && (
                       <span className="whitespace-nowrap shrink-0">{isAdmin ? 'Manage Students' : 'Enrolled Students'}</span>
                     )}
@@ -416,13 +456,13 @@ export default function AdminSidebar({
                     className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                     } ${
-                      activeTab === 'content'
+                      isTabActive('content')
                         ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                       }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                      <UploadCloud className={`w-4 h-4 shrink-0 ${activeTab === 'content' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      <UploadCloud className={`w-4 h-4 shrink-0 ${isTabActive('content') ? 'text-indigo-600' : 'text-slate-400'}`} />
                       {isExpanded && (
                         <span className="whitespace-nowrap shrink-0">Content Management</span>
                       )}
@@ -442,13 +482,13 @@ export default function AdminSidebar({
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
-                    activeTab === 'live'
+                    isTabActive('live')
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <Video className={`w-4 h-4 shrink-0 ${activeTab === 'live' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <Video className={`w-4 h-4 shrink-0 ${isTabActive('live') ? 'text-indigo-600' : 'text-slate-400'}`} />
                     {isExpanded && <span className="whitespace-nowrap shrink-0">Live Sessions</span>}
                   </div>
                   {isExpanded && (
@@ -465,13 +505,13 @@ export default function AdminSidebar({
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
-                    activeTab === 'tests'
+                    isTabActive('tests')
                       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <FileText className={`w-4 h-4 shrink-0 ${activeTab === 'tests' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <FileText className={`w-4 h-4 shrink-0 ${isTabActive('tests') ? 'text-indigo-600' : 'text-slate-400'}`} />
                     {isExpanded && <span className="whitespace-nowrap shrink-0">Manage Tests</span>}
                   </div>
                   {isExpanded && (
@@ -493,13 +533,13 @@ export default function AdminSidebar({
                 className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                 } ${
-                  activeTab === 'analytics'
+                  isTabActive('analytics')
                     ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                  <BarChart3 className={`w-4 h-4 shrink-0 ${activeTab === 'analytics' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                  <BarChart3 className={`w-4 h-4 shrink-0 ${isTabActive('analytics') ? 'text-indigo-600' : 'text-slate-400'}`} />
                   {isExpanded && <span className="whitespace-nowrap shrink-0">Reports & Analytics</span>}
                 </div>
                 {isExpanded && (

@@ -111,17 +111,17 @@ export default function Footer({ onExploreCourses }) {
             </ul>
           </div>
 
-          {/* Column 3: Quick Links */}
+          {/* Column 3: Portal Directory */}
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-white uppercase tracking-wider">
-              Quick Links
+              Portals & LMS
             </h4>
             <ul className="space-y-2 text-sm text-slate-400">
-              <li><button onClick={scrollToTop} className="hover:text-white transition-colors">Home</button></li>
-              <li><a href="#courses" className="hover:text-white transition-colors">Courses & Pricing</a></li>
-              <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
-              <li><a href="#what-you-get" className="hover:text-white transition-colors">Everything You Get</a></li>
-              <li><a href="#testimonials" className="hover:text-white transition-colors">Student Reviews</a></li>
+              <li><Link to="/student/dashboard" className="hover:text-white transition-colors">Student LMS Dashboard</Link></li>
+              <li><Link to="/student/courses" className="hover:text-white transition-colors">Student 5-Level Learning</Link></li>
+              <li><Link to="/faculty" className="hover:text-white transition-colors">Faculty Academic Console</Link></li>
+              <li><Link to="/admin" className="hover:text-white transition-colors">Super Admin Mission Control</Link></li>
+              <li><Link to="/login" className="hover:text-white transition-colors">Unified Portal Sign In</Link></li>
             </ul>
           </div>
 

@@ -407,7 +407,7 @@ export const catalogService = {
     return updated;
   },
 
-  deleteExam: (id) => {
+  deleteExam: (id, force = false) => {
     const exams = catalogService.getExams();
     const exam = exams.find(e => e.id === id);
     if (!exam) return { success: false, reason: 'Exam track not found.' };
@@ -417,11 +417,11 @@ export const catalogService = {
     const hasEnrolledStudents = (exam.enrolledStudents || 0) > 0;
 
     // Rule: Attempting to delete an Exam that already has Packages/Students tied to it
-    // should show a warning: "This exam has active packages and enrolled students. Deactivate instead of deleting."
-    if (hasActivePackages || hasEnrolledStudents) {
+    // should show a warning unless force is explicitly set
+    if (!force && (hasActivePackages || hasEnrolledStudents)) {
       return {
         success: false,
-        reason: 'This exam has active packages and enrolled students. Deactivate instead of deleting.',
+        reason: 'This exam has active packages or enrolled students. You can deactivate it, or confirm force delete.',
         hasDependents: true
       };
     }

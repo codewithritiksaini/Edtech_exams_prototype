@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
   UploadCloud, 
@@ -8,18 +9,24 @@ import {
   BarChart3, 
   X,
   Sparkles,
-  BookOpen
+  BookOpen,
+  Calendar
 } from 'lucide-react';
 import { facultyProfileData } from '../data/mockData';
 
 export default function FacultySidebar({ activeTab, onSelectTab, isOpen, onClose }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const menuItems = [
-    { id: 'overview', label: 'Dashboard (Overview)', icon: Home },
-    { id: 'upload', label: 'Upload Content', icon: UploadCloud, badge: 'Main Flow' },
-    { id: 'live', label: 'Schedule Live Session', icon: Video, badge: 'Tonight' },
-    { id: 'tests', label: 'Manage Tests', icon: FileText },
-    { id: 'students', label: 'My Students', icon: Users, badge: '1.4k' },
-    { id: 'analytics', label: 'Reports & Analytics', icon: BarChart3 },
+    { id: 'overview', label: 'Dashboard (Overview)', icon: Home, route: '/faculty/dashboard' },
+    { id: 'exams', label: 'Exams & Curriculum', icon: BookOpen, badge: 'Assigned', route: '/faculty/exams' },
+    { id: 'schedule', label: 'Teaching Schedule', icon: Calendar, route: '/faculty/schedule' },
+    { id: 'upload', label: 'Upload Content', icon: UploadCloud, badge: 'Main Flow', route: '/faculty/upload' },
+    { id: 'live', label: 'Schedule Live Session', icon: Video, badge: 'Tonight', route: '/faculty/live-sessions' },
+    { id: 'tests', label: 'Manage Tests', icon: FileText, route: '/faculty/tests' },
+    { id: 'students', label: 'My Students', icon: Users, badge: '1.4k', route: '/faculty/students' },
+    { id: 'analytics', label: 'Reports & Analytics', icon: BarChart3, route: '/faculty/analytics' },
   ];
 
   return (
@@ -56,12 +63,17 @@ export default function FacultySidebar({ activeTab, onSelectTab, isOpen, onClose
           <nav className="space-y-1.5">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = activeTab === item.id;
+              const isActive = activeTab ? activeTab === item.id : (
+                (item.id === 'overview' && (location.pathname === '/faculty' || location.pathname === '/faculty/dashboard')) ||
+                location.pathname === item.route || 
+                (item.route !== '/faculty/dashboard' && location.pathname.startsWith(item.route))
+              );
               return (
                 <button
                   key={item.id}
                   onClick={() => {
-                    onSelectTab(item.id);
+                    if (onSelectTab) onSelectTab(item.id);
+                    else navigate(item.route);
                     if (onClose) onClose();
                   }}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
