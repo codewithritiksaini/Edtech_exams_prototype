@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { 
   Layers, 
   Plus, 
@@ -25,8 +25,10 @@ import {
   LayoutGrid, 
   Table as TableIcon,
   ChevronRight,
+  ChevronDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  AlertTriangle
 } from 'lucide-react';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
@@ -56,16 +58,31 @@ const AVAILABLE_COLORS = [
 export default function AdminSubjectsPage() {
   const { examId: routeExamId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [exams, setExams] = useState(() => catalogService.getExams());
-  const selectedExamId = routeExamId || 'neet-pg';
-
   const [subjects, setSubjects] = useState(() => curriculumService.getSubjects());
   const [chapters, setChapters] = useState(() => curriculumService.getChapters());
   const [topics, setTopics] = useState(() => curriculumService.getTopics());
 
+  // If accessed via old route /admin/exams/:examId/subjects, normalize cleanly to /admin/subjects?exam=:examId
+  useEffect(() => {
+    if (routeExamId) {
+      navigate(`/admin/subjects?exam=${routeExamId}`, { replace: true });
+    }
+  }, [routeExamId, navigate]);
+
+  // Selected exam filter: from URL query param ?exam=..., default to 'all'
+  const initialExamFilter = searchParams.get('exam') || (routeExamId || 'all');
+  const [selectedExamFilter, setSelectedExamFilter] = useState(initialExamFilter);
+
+  useEffect(() => {
+    const q = searchParams.get('exam') || 'all';
+    setSelectedExamFilter(q);
+  }, [searchParams]);
+
   // View & Filter State
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewMode] = useState('table');
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
@@ -73,8 +90,10 @@ export default function AdminSubjectsPage() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
+  const [deletingSubject, setDeletingSubject] = useState(null);
 
   // Form State
+  const [formExamId, setFormExamId] = useState('neet-pg');
   const [formName, setFormName] = useState('');
   const [formCode, setFormCode] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -103,29 +122,47 @@ export default function AdminSubjectsPage() {
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  const selectedExam = useMemo(() => {
-    return exams.find(e => e.id === selectedExamId) || exams[0] || { id: 'neet-pg', name: 'NEET PG', flag: '🇮🇳' };
-  }, [exams, selectedExamId]);
+  const handleExamFilterChange = (newExamId) => {
+    setSelectedExamFilter(newExamId);
+    if (newExamId === 'all') {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('exam');
+      setSearchParams(newParams);
+    } else {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('exam', newExamId);
+      setSearchParams(newParams);
+    }
+  };
 
-  // Filter subjects for current exam
-  const examSubjects = useMemo(() => {
+  // Filter subjects globally or by selected exam
+  const filteredSubjects = useMemo(() => {
     return subjects
-      .filter(s => s.examId === selectedExamId)
       .filter(s => {
+        if (selectedExamFilter !== 'all' && s.examId !== selectedExamFilter) return false;
         if (statusFilter !== 'all' && s.status !== statusFilter) return false;
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
-          return s.name.toLowerCase().includes(q) || (s.code && s.code.toLowerCase().includes(q));
+          const examObj = exams.find(e => e.id === s.examId);
+          const examName = examObj?.name?.toLowerCase() || '';
+          return (
+            s.name.toLowerCase().includes(q) || 
+            (s.code && s.code.toLowerCase().includes(q)) ||
+            examName.includes(q) ||
+            (s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(q))
+          );
         }
         return true;
       })
       .sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [subjects, selectedExamId, statusFilter, searchQuery]);
+  }, [subjects, selectedExamFilter, statusFilter, searchQuery, exams]);
 
   const handleOpenCreateModal = () => {
     setEditingSubject(null);
+    const targetExam = selectedExamFilter !== 'all' ? selectedExamFilter : (exams[0]?.id || 'neet-pg');
+    setFormExamId(targetExam);
     setFormName('');
-    setFormCode(`${selectedExamId.toUpperCase().slice(0, 4)}-${Math.floor(100 + Math.random() * 900)}`);
+    setFormCode(`${targetExam.toUpperCase().slice(0, 4)}-${Math.floor(100 + Math.random() * 900)}`);
     setFormDescription('Comprehensive clinical pathophysiology, emergency management, pharmacotherapy, and grand round case vignettes.');
     setFormIcon('Heart');
     setFormColor('rose');
@@ -136,6 +173,7 @@ export default function AdminSubjectsPage() {
 
   const handleOpenEditModal = (subject) => {
     setEditingSubject(subject);
+    setFormExamId(subject.examId || 'neet-pg');
     setFormName(subject.name);
     setFormCode(subject.code || '');
     setFormDescription(subject.description || '');
@@ -153,6 +191,7 @@ export default function AdminSubjectsPage() {
     if (editingSubject) {
       curriculumService.saveSubject({
         ...editingSubject,
+        examId: formExamId,
         name: formName.trim(),
         code: formCode.trim(),
         description: formDescription.trim(),
@@ -164,7 +203,7 @@ export default function AdminSubjectsPage() {
       showToast(`Subject "${formName}" updated successfully!`);
     } else {
       curriculumService.saveSubject({
-        examId: selectedExamId,
+        examId: formExamId,
         name: formName.trim(),
         code: formCode.trim(),
         description: formDescription.trim(),
@@ -176,13 +215,6 @@ export default function AdminSubjectsPage() {
       showToast(`New subject "${formName}" added successfully!`);
     }
     setIsModalOpen(false);
-  };
-
-  const handleDeleteSubject = (subjectId, subjectName) => {
-    if (window.confirm(`Are you sure you want to delete subject "${subjectName}"? This will remove all associated chapters and topics.`)) {
-      curriculumService.deleteSubject(subjectId);
-      showToast(`Subject "${subjectName}" deleted.`);
-    }
   };
 
   const handleMoveOrder = (subjectId, direction) => {
@@ -205,84 +237,85 @@ export default function AdminSubjectsPage() {
         </div>
       )}
 
-      {/* Header Banner */}
+      {/* Global Subjects Header Banner */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Link 
-              to="/admin/exams"
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider flex items-center gap-1"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to All Exams</span>
-            </Link>
+            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5" />
+              <span>Curriculum Architecture • Level 2</span>
+            </span>
             <span className="text-slate-300">•</span>
-            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-              Level 2 • Subject Modules
+            <span className="text-xs font-bold text-slate-400">
+              Master Academic Repository
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{selectedExam.flag}</span>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              {selectedExam.name} — Subjects
-            </h1>
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
+              <Layers className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Curriculum Subjects & Modules
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Central repository for medical discipline modules across all licensing tracks
+              </p>
+            </div>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
-            Manage medical discipline modules for <strong>{selectedExam.name}</strong>. 
-            Click <strong>"Manage Chapters ➡️"</strong> on any subject to explore its syllabus units and clinical topics.
+          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed pt-1">
+            Browse and organize subject modules, faculty leads, and syllabus chapters. Click <strong>"Manage Chapters ➡️"</strong> to drill down into chapter units and clinical topics.
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreateModal}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Add Subject Module</span>
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={handleOpenCreateModal}
+            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Add Subject Module</span>
+          </button>
+        </div>
       </div>
 
-      {/* Exam Switcher Tabs Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {exams.map((exam) => {
-          const isCurrent = exam.id === selectedExamId;
-          const subCount = subjects.filter(s => s.examId === exam.id).length;
-          return (
-            <button
-              key={exam.id}
-              onClick={() => navigate(`/admin/exams/${exam.id}/subjects`)}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 shrink-0 cursor-pointer border ${
-                isCurrent
-                  ? 'bg-white text-indigo-700 border-indigo-200 shadow-sm ring-2 ring-indigo-500/10'
-                  : 'bg-white/60 text-slate-600 border-slate-200/80 hover:bg-white hover:text-slate-900'
-              }`}
+      {/* Toolbar: Search, Exam Dropdown Filter, Status Filter, View Toggle */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          {/* Search bar */}
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search subjects, codes, faculty..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Exam Dropdown Filter */}
+          <div className="relative w-full sm:w-auto">
+            <select
+              value={selectedExamFilter}
+              onChange={(e) => handleExamFilterChange(e.target.value)}
+              className="w-full sm:w-auto pl-3 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer appearance-none transition-colors"
             >
-              <span className="text-base">{exam.flag}</span>
-              <span>{exam.name}</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                isCurrent ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'
-              }`}>
-                {subCount}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Toolbar: Search, Status Filter, View Toggle */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search subjects or code..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-          />
+              <option value="all">🌐 All Exam Tracks ({subjects.length})</option>
+              {exams.map(exam => {
+                const count = subjects.filter(s => s.examId === exam.id).length;
+                return (
+                  <option key={exam.id} value={exam.id}>
+                    {exam.flag} {exam.name} ({count})
+                  </option>
+                );
+              })}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+        <div className="flex items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
           {/* Status Filters */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
             {['all', 'Active', 'Draft'].map((st) => (
@@ -295,22 +328,13 @@ export default function AdminSubjectsPage() {
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                {st === 'all' ? 'All Subjects' : st}
+                {st === 'all' ? 'All Status' : st}
               </button>
             ))}
           </div>
 
           {/* View Mode Toggle */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-2xs' : 'text-slate-400'
-              }`}
-              title="Grid View"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
             <button
               onClick={() => setViewMode('table')}
               className={`p-1.5 rounded-lg transition-all cursor-pointer ${
@@ -320,18 +344,29 @@ export default function AdminSubjectsPage() {
             >
               <TableIcon className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-2xs' : 'text-slate-400'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
 
       {/* Grid View */}
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {examSubjects.map((subject, idx) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredSubjects.map((subject, idx) => {
             const IconComponent = getSubjectIcon(subject.icon);
             const subjectChapters = chapters.filter(c => c.subjectId === subject.id);
             const subjectTopics = topics.filter(t => t.subjectId === subject.id);
             const colorMeta = AVAILABLE_COLORS.find(c => c.id === subject.color) || AVAILABLE_COLORS[0];
+            const exam = exams.find(e => e.id === subject.examId);
+            const targetExamId = subject.examId || 'neet-pg';
 
             return (
               <div
@@ -346,16 +381,22 @@ export default function AdminSubjectsPage() {
                         <IconComponent className="w-5 h-5" />
                       </div>
                       <div>
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                          {subject.code || `MOD-0${idx + 1}`}
-                        </span>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200/60 inline-flex items-center gap-1">
+                            <span>{exam?.flag}</span>
+                            <span className="truncate max-w-[90px]">{exam?.name || subject.examId}</span>
+                          </span>
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-mono">
+                            {subject.code || `MOD-0${idx + 1}`}
+                          </span>
+                        </div>
                         <h3 className="text-base font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">
                           {subject.name}
                         </h3>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => handleMoveOrder(subject.id, 'up')}
                         disabled={idx === 0}
@@ -366,7 +407,7 @@ export default function AdminSubjectsPage() {
                       </button>
                       <button
                         onClick={() => handleMoveOrder(subject.id, 'down')}
-                        disabled={idx === examSubjects.length - 1}
+                        disabled={idx === filteredSubjects.length - 1}
                         className="p-1 rounded text-slate-300 hover:text-slate-700 disabled:opacity-30 cursor-pointer"
                         title="Move Down"
                       >
@@ -414,7 +455,7 @@ export default function AdminSubjectsPage() {
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteSubject(subject.id, subject.name)}
+                      onClick={() => setDeletingSubject(subject)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white transition-colors cursor-pointer"
                       title="Delete Subject"
                     >
@@ -424,7 +465,7 @@ export default function AdminSubjectsPage() {
 
                   {/* LEVEL 3 DRILLDOWN ACTION */}
                   <Link
-                    to={`/admin/exams/${selectedExamId}/subjects/${subject.id}/chapters`}
+                    to={`/admin/exams/${targetExamId}/subjects/${subject.id}/chapters`}
                     className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                   >
                     <span>Manage Chapters</span>
@@ -435,20 +476,20 @@ export default function AdminSubjectsPage() {
             );
           })}
 
-          {examSubjects.length === 0 && (
+          {filteredSubjects.length === 0 && (
             <div className="col-span-full bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-4">
               <Layers className="w-12 h-12 text-slate-300 mx-auto" />
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-slate-800">No Subject Modules Found</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  No subjects match your query for {selectedExam.name}. Click below to add the first subject module.
+                  No subjects match your selected filters. Try changing your search query or exam track.
                 </p>
               </div>
               <button
                 onClick={handleOpenCreateModal}
-                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold"
+                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold cursor-pointer"
               >
-                + Add First Subject
+                + Add Subject Module
               </button>
             </div>
           )}
@@ -460,18 +501,21 @@ export default function AdminSubjectsPage() {
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
               <tr>
                 <th className="py-3 px-4">Subject Module</th>
+                <th className="py-3 px-4">Exam Track</th>
                 <th className="py-3 px-4">Code</th>
                 <th className="py-3 px-4">Faculty Lead</th>
                 <th className="py-3 px-4 text-center">Chapters</th>
                 <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Action</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {examSubjects.map((subject) => {
+              {filteredSubjects.map((subject) => {
                 const IconComponent = getSubjectIcon(subject.icon);
                 const colorMeta = AVAILABLE_COLORS.find(c => c.id === subject.color) || AVAILABLE_COLORS[0];
                 const count = chapters.filter(c => c.subjectId === subject.id).length;
+                const exam = exams.find(e => e.id === subject.examId);
+                const targetExamId = subject.examId || 'neet-pg';
 
                 return (
                   <tr key={subject.id} className="hover:bg-indigo-50/30 transition-colors">
@@ -480,34 +524,85 @@ export default function AdminSubjectsPage() {
                         <div className={`w-8 h-8 rounded-lg ${colorMeta.bg} ${colorMeta.text} flex items-center justify-center shrink-0`}>
                           <IconComponent className="w-4 h-4" />
                         </div>
-                        <Link
-                          to={`/admin/exams/${selectedExamId}/subjects/${subject.id}/chapters`}
-                          className="font-extrabold hover:text-indigo-600 transition-colors"
-                        >
-                          {subject.name}
-                        </Link>
+                        <div>
+                          <Link
+                            to={`/admin/exams/${targetExamId}/subjects/${subject.id}/chapters`}
+                            className="font-extrabold hover:text-indigo-600 transition-colors block text-xs"
+                          >
+                            {subject.name}
+                          </Link>
+                          {subject.description && (
+                            <span className="text-[10px] text-slate-400 font-normal line-clamp-1 max-w-xs">
+                              {subject.description}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-500">{subject.code}</td>
+                    <td className="py-3.5 px-4">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200/80">
+                        <span>{exam?.flag || '📚'}</span>
+                        <span className="truncate max-w-[130px]">{exam?.name || subject.examId}</span>
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-semibold text-slate-500 font-mono text-[11px]">{subject.code}</td>
                     <td className="py-3.5 px-4 text-slate-700">{subject.assignedFacultyName || 'Faculty Lead'}</td>
                     <td className="py-3.5 px-4 text-center font-bold text-indigo-600">{count} Units</td>
                     <td className="py-3.5 px-4 text-center">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        subject.status === 'Draft'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                      }`}>
                         {subject.status || 'Active'}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <Link
-                        to={`/admin/exams/${selectedExamId}/subjects/${subject.id}/chapters`}
-                        className="inline-flex items-center gap-1 text-indigo-600 font-bold hover:underline"
-                      >
-                        <span>Manage Chapters</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
+                      <div className="inline-flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenEditModal(subject)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Edit Subject"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingSubject(subject)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Delete Subject"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <Link
+                          to={`/admin/exams/${targetExamId}/subjects/${subject.id}/chapters`}
+                          className="inline-flex items-center gap-1 ml-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold hover:bg-indigo-100 hover:text-indigo-800 transition-colors text-xs"
+                          title="Manage Chapters"
+                        >
+                          <span>Manage Chapters</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
+
+              {filteredSubjects.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <div className="max-w-xs mx-auto space-y-2">
+                      <Layers className="w-8 h-8 text-slate-300 mx-auto" />
+                      <p className="font-bold text-xs text-slate-600">No subjects found matching filters</p>
+                      <button
+                        onClick={handleOpenCreateModal}
+                        className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
+                      >
+                        + Add Subject Module
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -519,7 +614,7 @@ export default function AdminSubjectsPage() {
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h2 className="text-lg font-black text-slate-900">
-                {editingSubject ? 'Edit Subject Module' : `Add Subject to ${selectedExam.name}`}
+                {editingSubject ? 'Edit Subject Module' : 'Add New Subject Module'}
               </h2>
               <button 
                 onClick={() => setIsModalOpen(false)}
@@ -530,8 +625,37 @@ export default function AdminSubjectsPage() {
             </div>
 
             <form onSubmit={handleSaveSubject} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">Exam Track *</label>
+                  <select
+                    value={formExamId}
+                    onChange={(e) => setFormExamId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  >
+                    {exams.map(e => (
+                      <option key={e.id} value={e.id}>
+                        {e.flag} {e.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">Status</label>
+                  <select
+                    value={formStatus}
+                    onChange={(e) => setFormStatus(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Draft">Draft</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Subject Name</label>
+                <label className="font-bold text-slate-700">Subject Name *</label>
                 <input
                   type="text"
                   required
@@ -550,7 +674,7 @@ export default function AdminSubjectsPage() {
                     value={formCode}
                     onChange={(e) => setFormCode(e.target.value)}
                     placeholder="e.g. CARD-101"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
                   />
                 </div>
 
@@ -559,7 +683,7 @@ export default function AdminSubjectsPage() {
                   <select
                     value={formColor}
                     onChange={(e) => setFormColor(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
                   >
                     {AVAILABLE_COLORS.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
@@ -600,12 +724,12 @@ export default function AdminSubjectsPage() {
                   value={formFacultyName}
                   onChange={(e) => setFormFacultyName(e.target.value)}
                   placeholder="e.g. Dr. Siddharth V. (AIIMS)"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-medium text-slate-800"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Module Description</label>
+                <label className="font-bold text-slate-700">Description</label>
                 <textarea
                   rows={2}
                   value={formDescription}
@@ -633,6 +757,82 @@ export default function AdminSubjectsPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Subject Confirmation Modal */}
+      {deletingSubject && (() => {
+        const subChapters = chapters.filter(c => c.subjectId === deletingSubject.id);
+        const subTopics = topics.filter(t => t.subjectId === deletingSubject.id);
+        const deletingExam = exams.find(e => e.id === deletingSubject.examId);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Delete Subject Module?
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    This will permanently remove this subject and all its syllabus content.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 font-black text-xs border border-indigo-100">
+                  {deletingSubject.code ? deletingSubject.code.slice(0, 4) : 'SUB'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-[10px] font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                      {deletingExam?.flag} {deletingExam?.name || deletingSubject.examId}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">{deletingSubject.code}</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 truncate">{deletingSubject.name}</h4>
+                  <p className="text-[11px] text-slate-500 truncate">{deletingSubject.assignedFacultyName || 'Assigned Faculty'}</p>
+                </div>
+              </div>
+
+              {(subChapters.length > 0 || subTopics.length > 0) && (
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1.5">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-950">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Associated Syllabus Units Detected</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    This module currently contains <strong>{subChapters.length} chapters/units</strong> and <strong>{subTopics.length} clinical topics</strong>. Deleting this subject will also erase all associated chapters and question tags.
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setDeletingSubject(null)}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    curriculumService.deleteSubject(deletingSubject.id);
+                    showToast(`Subject "${deletingSubject.name}" deleted successfully.`);
+                    setDeletingSubject(null);
+                  }}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-sm shadow-rose-600/20 transition-all cursor-pointer"
+                >
+                  Delete Subject
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

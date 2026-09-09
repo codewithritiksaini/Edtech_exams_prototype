@@ -144,7 +144,7 @@ export default function AdminChaptersPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Link 
-              to={`/admin/exams/${examId}/subjects`}
+              to={`/admin/subjects?exam=${examId}`}
               className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider flex items-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />

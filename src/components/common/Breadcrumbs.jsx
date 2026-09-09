@@ -157,6 +157,12 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
         }
       }
     }
+  } else if (segments.includes('subjects') && !examId) {
+    crumbs.push({
+      label: 'Subjects',
+      path: `/${rootSegment}/subjects`,
+      icon: Layers
+    });
   } else if (segments.includes('schedule')) {
     crumbs.push({
       label: 'Study Schedule Planner',

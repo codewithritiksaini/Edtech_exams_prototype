@@ -64,7 +64,7 @@ export default function AdminSidebar({
   const TAB_ROUTES = {
     dashboard: '/admin/dashboard',
     exams: '/admin/exams',
-    subjects: '/admin/exams/neet-pg/subjects',
+    subjects: '/admin/subjects',
     curriculum: '/admin/exams/neet-pg/subjects/sub-neet-cardio/chapters',
     schedule: '/admin/schedule/neet-pg',
     packages: '/admin/packages',

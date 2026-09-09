@@ -351,7 +351,7 @@ export default function AdminExamsPage() {
 
                   {/* PRIMARY ACTION: EXPLORE SUBJECTS (Level 2 Drilldown) */}
                   <Link
-                    to={`/admin/exams/${exam.id}/subjects`}
+                    to={`/admin/subjects?exam=${exam.id}`}
                     className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                   >
                     <span>Explore Subjects</span>
@@ -384,7 +384,7 @@ export default function AdminExamsPage() {
                       <span className="text-xl">{exam.flag}</span>
                       <div>
                         <Link 
-                          to={`/admin/exams/${exam.id}/subjects`}
+                          to={`/admin/subjects?exam=${exam.id}`}
                           className="font-extrabold text-slate-900 hover:text-indigo-600 transition-colors"
                         >
                           {exam.name}
@@ -422,7 +422,7 @@ export default function AdminExamsPage() {
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                       <Link
-                        to={`/admin/exams/${exam.id}/subjects`}
+                        to={`/admin/subjects?exam=${exam.id}`}
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-all ml-1"
                       >
                         <span>Explore</span>
