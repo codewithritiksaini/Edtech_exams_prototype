@@ -1434,6 +1434,17 @@ class CurriculumService {
     return this.chapters;
   }
 
+  reorderChapters(subjectId, orderedIds) {
+    orderedIds.forEach((id, index) => {
+      const chap = this.chapters.find(c => c.id === id);
+      if (chap) {
+        chap.chapterNumber = index + 1;
+      }
+    });
+    this.saveChapters();
+    return this.chapters;
+  }
+
   moveTopicOrder(id, direction) {
     const top = this.topics.find(t => t.id === id);
     if (!top) return this.topics;
