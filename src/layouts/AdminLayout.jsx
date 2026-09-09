@@ -65,7 +65,7 @@ export default function AdminLayout() {
       {/* Fixed Admin Topbar */}
       <AdminNavbar onToggleSidebar={handleToggleSidebar} />
 
-      <div className="flex-1 flex pt-16">
+      <div className="flex-1 flex">
         {/* Persistent Collapsible & Pinnable Sidebar */}
         <AdminSidebar 
           isPinned={isSidebarPinned}
@@ -76,13 +76,13 @@ export default function AdminLayout() {
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
-          {/* Top Breadcrumbs & Utility Bar */}
-          <div className="bg-white border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 py-2.5 shadow-2xs">
+          {/* Top Breadcrumbs Bar */}
+          <div className="bg-white border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 py-2 shadow-2xs">
             <Breadcrumbs basePath="admin" />
           </div>
 
           {/* Child Routed Page View */}
-          <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
             <Outlet />
           </main>
         </div>

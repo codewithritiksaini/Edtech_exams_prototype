@@ -214,7 +214,7 @@ export default function AdminExamsPage() {
           className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>+ Add Exam Track</span>
+          <span>Add Exam Track</span>
         </button>
       </div>
 
