@@ -278,17 +278,6 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
       label: 'Settings',
       path: `/${rootSegment}/settings`
     });
-  } else if (segments.includes('content-repository')) {
-    crumbs.push({
-      label: 'Content Repository',
-      path: `/${rootSegment}/content-repository`
-    });
-    if (segments.includes('upload')) {
-      crumbs.push({
-        label: 'Upload New Content',
-        path: null
-      });
-    }
   }
 
   // If crumbs only has root and we are on a specific page

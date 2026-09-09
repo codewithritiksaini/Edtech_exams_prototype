@@ -9,7 +9,6 @@ export default function FacultyLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [currentUser, setCurrentUser] = useState(authService.getCurrentUser());
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Authentication guard
   useEffect(() => {
@@ -34,19 +33,48 @@ export default function FacultyLayout() {
     return unsubscribe;
   }, [navigate, location.pathname]);
 
+  // Persistent Sidebar Pin/Unpin State
+  const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
+    try {
+      const saved = localStorage.getItem('medprep_faculty_sidebar_pinned');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch (e) {
+      return true;
+    }
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const handleTogglePin = () => {
+    setIsSidebarPinned(prev => {
+      const next = !prev;
+      localStorage.setItem('medprep_faculty_sidebar_pinned', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleToggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsMobileSidebarOpen(prev => !prev);
+    } else {
+      handleTogglePin();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
       {/* Sticky Faculty Topbar */}
       <FacultyNavbar 
-        onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} 
-        isSidebarOpen={isSidebarOpen} 
+        onToggleSidebar={handleToggleSidebar} 
+        isSidebarOpen={isMobileSidebarOpen} 
       />
 
       <div className="flex-1 flex">
-        {/* Persistent Faculty Sidebar */}
+        {/* Persistent Pinnable & Collapsible Faculty Sidebar */}
         <FacultySidebar 
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
+          isPinned={isSidebarPinned}
+          onTogglePin={handleTogglePin}
+          isOpenMobile={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
 
         {/* Main Content Area */}

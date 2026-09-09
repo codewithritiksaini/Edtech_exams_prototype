@@ -21,7 +21,6 @@ import AdminTopicsPage from './pages/admin/AdminTopicsPage';
 import AdminContentStudioPage from './pages/admin/AdminContentStudioPage';
 import AdminOverviewPage from './pages/admin/AdminOverviewPage';
 import AdminSchedulePage from './pages/admin/AdminSchedulePage';
-import AdminContentRepoPage from './pages/admin/AdminContentRepoPage';
 import AdminPackagesPage from './pages/admin/AdminPackagesPage';
 import AdminFacultyPage from './pages/admin/AdminFacultyPage';
 import AdminStudentsPage from './pages/admin/AdminStudentsPage';
@@ -167,7 +166,6 @@ export default function App() {
 
             {/* Phase 3: Admin Operations & Management Sub-Pages */}
             <Route path="/admin/schedule-classes" element={<AdminSchedulePage />} />
-            <Route path="/admin/content-repository" element={<AdminContentRepoPage />} />
             <Route path="/admin/packages" element={<AdminPackagesPage />} />
             <Route path="/admin/faculty" element={<AdminFacultyPage />} />
             <Route path="/admin/students" element={<AdminStudentsPage />} />

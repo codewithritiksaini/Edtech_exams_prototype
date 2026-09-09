@@ -9,7 +9,6 @@ import {
   Package, 
   Users, 
   GraduationCap, 
-  UploadCloud, 
   Video, 
   FileText, 
   BarChart3, 
@@ -69,7 +68,6 @@ export default function AdminSidebar({
     packages: '/admin/packages',
     faculty: '/admin/faculty',
     students: '/admin/students',
-    content: '/admin/content-repository',
     live: '/admin/live-sessions',
     tests: '/admin/tests',
     analytics: '/admin/analytics',
@@ -85,7 +83,6 @@ export default function AdminSidebar({
     if (tabId === 'packages') return p.startsWith('/admin/packages');
     if (tabId === 'faculty') return p.startsWith('/admin/faculty');
     if (tabId === 'students') return p.startsWith('/admin/students');
-    if (tabId === 'content') return p.startsWith('/admin/content-repository');
     if (tabId === 'live') return p.startsWith('/admin/live-sessions');
     if (tabId === 'tests') return p.startsWith('/admin/tests');
     if (tabId === 'analytics') return p.startsWith('/admin/analytics');
@@ -423,32 +420,6 @@ export default function AdminSidebar({
 
             {(!collapsedSections.contentSchedule || !isExpanded) && (
               <div className="space-y-1">
-                {/* Content Management - Admin Only (Faculty uses Study Schedule instead) */}
-                {isAdmin && (
-                  <button
-                    onClick={() => handleTabClick('content')}
-                    title={!isExpanded ? 'Day-Wise Content Management' : undefined}
-                    className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                      isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
-                    } ${
-                      isTabActive('content')
-                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                      }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                      <UploadCloud className={`w-4 h-4 shrink-0 ${isTabActive('content') ? 'text-indigo-600' : 'text-slate-400'}`} />
-                      {isExpanded && (
-                        <span className="whitespace-nowrap shrink-0">Content Management</span>
-                      )}
-                    </div>
-                    {isExpanded && (
-                      <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
-                        Drip Feed
-                      </span>
-                    )}
-                  </button>
-                )}
 
                 {/* Live Sessions */}
                 <button
