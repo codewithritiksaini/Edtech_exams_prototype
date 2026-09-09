@@ -427,105 +427,144 @@ export default function AdminExamsPage() {
         </div>
       )}
 
-      {/* Slide-over / Modal for Add & Edit Exam */}
+      {/* Slide-over Drawer for Add & Edit Exam */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h2 className="text-lg font-black text-slate-900">
-                {editingExam ? 'Edit Exam Track' : 'Create New Exam Track'}
-              </h2>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            onClick={() => setIsModalOpen(false)}
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+          />
 
-            <form onSubmit={handleSaveExam} className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Exam Title / Program Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. AMC (Australian Medical Council)"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
+          {/* Slide-over Drawer Panel */}
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-12 pointer-events-none">
+            <div className="w-screen max-w-lg sm:max-w-xl bg-white shadow-2xl flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Country / Region</label>
-                  <select
-                    value={formCountry}
-                    onChange={(e) => {
-                      const item = AVAILABLE_FLAGS.find(f => f.country === e.target.value);
-                      if (item) {
-                        setFormCountry(item.country);
-                        setFormFlag(item.flag);
-                      }
-                    }}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
-                  >
-                    {AVAILABLE_FLAGS.map(f => (
-                      <option key={f.country} value={f.country}>{f.flag} {f.country}</option>
-                    ))}
-                  </select>
+              {/* Drawer Header */}
+              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/80 shrink-0">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                    <h2 className="text-base sm:text-lg font-black text-slate-900">
+                      {editingExam ? 'Edit Exam Track' : 'Create New Exam Track'}
+                    </h2>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Fill in the details below to {editingExam ? 'update' : 'create'} this medical licensing track.
+                  </p>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Duration (Weeks)</label>
-                  <input
-                    type="number"
-                    min="4"
-                    max="52"
-                    value={formWeeks}
-                    onChange={(e) => setFormWeeks(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Accreditation / Tag</label>
-                <input
-                  type="text"
-                  value={formTag}
-                  onChange={(e) => setFormTag(e.target.value)}
-                  placeholder="e.g. National Board Aligned"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-medium text-slate-800"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Description</label>
-                <textarea
-                  rows={3}
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-medium text-slate-800"
-                />
-              </div>
-
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                  title="Close Drawer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Drawer Scrollable Body */}
+              <form onSubmit={handleSaveExam} id="exam-drawer-form" className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">Exam Title / Program Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. AMC (Australian Medical Council)"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Country / Region</label>
+                    <select
+                      value={formCountry}
+                      onChange={(e) => {
+                        const item = AVAILABLE_FLAGS.find(f => f.country === e.target.value);
+                        if (item) {
+                          setFormCountry(item.country);
+                          setFormFlag(item.flag);
+                        }
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    >
+                      {AVAILABLE_FLAGS.map(f => (
+                        <option key={f.country} value={f.country}>{f.flag} {f.country}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Status</label>
+                    <select
+                      value={formStatus}
+                      onChange={(e) => setFormStatus(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Duration (Weeks)</label>
+                    <input
+                      type="number"
+                      min="4"
+                      max="52"
+                      value={formWeeks}
+                      onChange={(e) => setFormWeeks(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Accreditation / Tag</label>
+                    <input
+                      type="text"
+                      value={formTag}
+                      onChange={(e) => setFormTag(e.target.value)}
+                      placeholder="e.g. National Board Aligned"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">Description</label>
+                  <textarea
+                    rows={4}
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    placeholder="Provide curriculum overview, learning goals, target candidates..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+                  />
+                </div>
+              </form>
+
+              {/* Drawer Footer */}
+              <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-200/60 transition-colors cursor-pointer text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm"
+                  form="exam-drawer-form"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm shadow-indigo-600/20 transition-all cursor-pointer text-xs"
                 >
-                  {editingExam ? 'Save Changes' : 'Create Exam'}
+                  {editingExam ? 'Save Changes' : 'Create Exam Track'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
