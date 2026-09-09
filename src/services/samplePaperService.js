@@ -35,6 +35,8 @@ export const INITIAL_SAMPLE_PAPERS = [
     uploadedByRole: 'faculty',
     uploadedByName: 'Dr. Siddharth V.',
     uploadedByEmail: 'faculty@demo.com',
+    facultyId: 'fac-1',
+    uploadedById: 'fac-1',
     createdAt: '2026-09-08T10:15:00Z',
     status: 'Published',
     downloadsCount: 238
@@ -61,6 +63,8 @@ export const INITIAL_SAMPLE_PAPERS = [
     uploadedByRole: 'faculty',
     uploadedByName: 'Dr. Siddharth V.',
     uploadedByEmail: 'faculty@demo.com',
+    facultyId: 'fac-1',
+    uploadedById: 'fac-1',
     createdAt: '2026-09-08T14:30:00Z',
     status: 'Published',
     downloadsCount: 175
@@ -87,6 +91,8 @@ export const INITIAL_SAMPLE_PAPERS = [
     uploadedByRole: 'admin',
     uploadedByName: 'Academic Editorial Board',
     uploadedByEmail: 'admin@demo.com',
+    facultyId: null,
+    uploadedById: 'admin-1',
     createdAt: '2026-09-07T11:00:00Z',
     status: 'Published',
     downloadsCount: 312
@@ -113,6 +119,8 @@ export const INITIAL_SAMPLE_PAPERS = [
     uploadedByRole: 'faculty',
     uploadedByName: 'Dr. Siddharth V.',
     uploadedByEmail: 'faculty@demo.com',
+    facultyId: 'fac-1',
+    uploadedById: 'fac-1',
     createdAt: '2026-09-06T16:20:00Z',
     status: 'Published',
     downloadsCount: 405
@@ -139,6 +147,8 @@ export const INITIAL_SAMPLE_PAPERS = [
     uploadedByRole: 'faculty',
     uploadedByName: 'Dr. Marcus Vance (MRCP)',
     uploadedByEmail: 'marcus.vance@demo.com',
+    facultyId: 'fac-3',
+    uploadedById: 'fac-3',
     createdAt: '2026-09-05T09:00:00Z',
     status: 'Published',
     downloadsCount: 189
@@ -165,6 +175,8 @@ export const INITIAL_SAMPLE_PAPERS = [
     uploadedByRole: 'faculty',
     uploadedByName: 'Dr. Siddharth V.',
     uploadedByEmail: 'faculty@demo.com',
+    facultyId: 'fac-1',
+    uploadedById: 'fac-1',
     createdAt: '2026-09-04T12:00:00Z',
     status: 'Published',
     downloadsCount: 276
@@ -182,7 +194,21 @@ class SamplePaperService {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.map(p => {
+            // Backfill facultyId and uploadedById if missing
+            if (!p.facultyId && p.uploadedByRole === 'faculty') {
+              const email = (p.uploadedByEmail || '').toLowerCase();
+              const name = p.uploadedByName || '';
+              if (email.includes('faculty') || name.includes('Siddharth')) {
+                return { ...p, facultyId: 'fac-1', uploadedById: 'fac-1' };
+              } else if (email.includes('marcus') || name.includes('Marcus')) {
+                return { ...p, facultyId: 'fac-3', uploadedById: 'fac-3' };
+              } else if (email.includes('ananya') || name.includes('Ananya')) {
+                return { ...p, facultyId: 'fac-2', uploadedById: 'fac-2' };
+              }
+            }
+            return p;
+          });
         }
       }
     } catch (e) {
@@ -208,19 +234,43 @@ class SamplePaperService {
   }
 
   /**
-   * Get all sample papers with optional query filters
+   * Get all sample papers with optional query filters.
+   * If role is 'faculty' (or facultyEmail/facultyId provided), strictly returns only papers authored/uploaded by that faculty!
    */
-  getSamplePapers({ examId = null, subjectId = null, chapterId = null, search = '', role = null, facultyEmail = null } = {}) {
+  getSamplePapers({ examId = null, subjectId = null, chapterId = null, search = '', role = null, facultyEmail = null, facultyId = null } = {}) {
     let list = [...this.papers];
 
-    // If role is faculty, enforce strict course & subject permissions
-    if (role === 'faculty' || (!role && facultyEmail)) {
+    // If role is faculty, enforce strict ownership:
+    // Faculty can ONLY see their own sample papers! Not anyone else's or admin's.
+    if (role === 'faculty' || facultyEmail || facultyId) {
       const faculty = peopleService.getCurrentFacultyProfile();
+      const currentUser = authService.getCurrentUser();
+      const isUserFaculty = currentUser?.role === USER_ROLES.FACULTY;
+
+      const activeEmail = (facultyEmail || (isUserFaculty ? currentUser?.email : null) || faculty?.email || 'faculty@demo.com').toLowerCase().trim();
+      const activeId = facultyId || (isUserFaculty ? currentUser?.id : null) || faculty?.id || 'fac-1';
+      const activeName = ((isUserFaculty ? currentUser?.name : null) || faculty?.name || '').toLowerCase().trim();
+
       const allowedExams = faculty?.assignedExams || [];
       const allowedSubjects = faculty?.assignedSubjects || [];
 
-      // Filter to only papers matching faculty's permitted scope
       list = list.filter(p => {
+        // Exclude papers uploaded by admin
+        if (p.uploadedByRole === 'admin') return false;
+
+        const pEmail = (p.uploadedByEmail || '').toLowerCase().trim();
+        const pName = (p.uploadedByName || '').toLowerCase().trim();
+        const pFacId = p.facultyId || p.uploadedById;
+
+        // Strict ownership check: Must be uploaded by this faculty
+        const emailMatch = activeEmail && pEmail === activeEmail;
+        const idMatch = activeId && pFacId === activeId;
+        const nameMatch = activeName && pName && (pName === activeName || pName.includes(activeName) || activeName.includes(pName));
+
+        const isOwner = Boolean(emailMatch || idMatch || nameMatch);
+        if (!isOwner) return false;
+
+        // Course/Subject scope check
         const examMatch = allowedExams.length === 0 || allowedExams.includes(p.examId);
         const subjectMatch = allowedSubjects.length === 0 || allowedSubjects.includes(p.subjectId);
         return examMatch && subjectMatch;
@@ -255,13 +305,19 @@ class SamplePaperService {
     return this.papers.find(p => p.id === id) || null;
   }
 
-  getSamplePapersByChapter(chapterId) {
+  getSamplePapersByChapter(chapterId, options = {}) {
     if (!chapterId) return [];
+    if (options.role === 'faculty' || options.facultyEmail || options.facultyId) {
+      return this.getSamplePapers({ chapterId, role: 'faculty', ...options });
+    }
     return this.papers.filter(p => p.chapterId === chapterId && p.status === 'Published');
   }
 
-  getSamplePapersCountByChapter(chapterId) {
+  getSamplePapersCountByChapter(chapterId, options = {}) {
     if (!chapterId) return 0;
+    if (options.role === 'faculty' || options.facultyEmail || options.facultyId) {
+      return this.getSamplePapers({ chapterId, role: 'faculty', ...options }).length;
+    }
     return this.papers.filter(p => p.chapterId === chapterId).length;
   }
 
@@ -276,6 +332,8 @@ class SamplePaperService {
       this.papers[existingIndex] = {
         ...this.papers[existingIndex],
         ...data,
+        facultyId: data.facultyId || data.uploadedById || this.papers[existingIndex].facultyId || null,
+        uploadedById: data.uploadedById || data.facultyId || this.papers[existingIndex].uploadedById || null,
         updatedAt: new Date().toISOString()
       };
       updated = this.papers[existingIndex];
@@ -302,6 +360,8 @@ class SamplePaperService {
         uploadedByRole: data.uploadedByRole || 'admin',
         uploadedByName: data.uploadedByName || 'Platform Administrator',
         uploadedByEmail: data.uploadedByEmail || 'admin@demo.com',
+        uploadedById: data.uploadedById || data.facultyId || null,
+        facultyId: data.facultyId || data.uploadedById || null,
         createdAt: data.createdAt || new Date().toISOString(),
         status: data.status || 'Published',
         downloadsCount: data.downloadsCount || 0

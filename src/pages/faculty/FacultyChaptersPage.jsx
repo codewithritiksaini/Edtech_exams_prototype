@@ -175,7 +175,7 @@ export default function FacultyChaptersPage() {
                     title="Manage Chapter Sample Papers"
                   >
                     <FileCheck className="w-3.5 h-3.5 text-purple-600" />
-                    <span>{samplePaperService.getSamplePapersCountByChapter(chap.id) > 0 ? `${samplePaperService.getSamplePapersCountByChapter(chap.id)} Sample Paper${samplePaperService.getSamplePapersCountByChapter(chap.id) > 1 ? 's' : ''}` : '+ Sample Paper'}</span>
+                    <span>{samplePaperService.getSamplePapersCountByChapter(chap.id, { role: 'faculty' }) > 0 ? `${samplePaperService.getSamplePapersCountByChapter(chap.id, { role: 'faculty' })} Sample Paper${samplePaperService.getSamplePapersCountByChapter(chap.id, { role: 'faculty' }) > 1 ? 's' : ''}` : '+ Sample Paper'}</span>
                   </Link>
                 </div>
               </div>

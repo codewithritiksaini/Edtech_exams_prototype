@@ -254,10 +254,16 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
     const sub = curriculumService.getSubjectById(formSubjectId);
 
     const currentUser = authService.getCurrentUser();
+    const currentFacultyProfile = isFaculty ? peopleService.getCurrentFacultyProfile() : null;
     const uploaderName = isFaculty
-      ? (currentFaculty?.name || currentUser?.name || 'Faculty Specialist')
+      ? (currentFacultyProfile?.name || currentUser?.name || 'Faculty Specialist')
       : 'Academic Editorial Board';
-    const uploaderEmail = currentUser?.email || (isFaculty ? currentFaculty?.email : 'admin@demo.com');
+    const uploaderEmail = isFaculty
+      ? (currentFacultyProfile?.email || currentUser?.email || 'faculty@demo.com')
+      : (currentUser?.email || 'admin@demo.com');
+    const uploaderId = isFaculty
+      ? (currentFacultyProfile?.id || currentUser?.id || 'fac-1')
+      : (currentUser?.id || 'admin-1');
 
     const paperData = {
       ...(editingPaper || {}),
@@ -279,6 +285,8 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
       uploadedByRole: isFaculty ? 'faculty' : 'admin',
       uploadedByName: uploaderName,
       uploadedByEmail: uploaderEmail,
+      uploadedById: uploaderId,
+      facultyId: isFaculty ? uploaderId : (editingPaper?.facultyId || null),
       status: formStatus
     };
 
@@ -297,6 +305,24 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
 
   // Filtered List for Display
   const filteredPapers = samplePapers.filter(paper => {
+    // If faculty, strictly ensure this paper belongs to current faculty
+    if (isFaculty) {
+      if (paper.uploadedByRole === 'admin') return false;
+
+      const fEmail = (currentFaculty?.email || 'faculty@demo.com').toLowerCase().trim();
+      const fId = currentFaculty?.id || 'fac-1';
+      const fName = (currentFaculty?.name || '').toLowerCase().trim();
+
+      const pEmail = (paper.uploadedByEmail || '').toLowerCase().trim();
+      const pId = paper.facultyId || paper.uploadedById;
+      const pName = (paper.uploadedByName || '').toLowerCase().trim();
+
+      const isMine = (fEmail && pEmail === fEmail) ||
+                     (fId && pId === fId) ||
+                     (fName && pName && (pName === fName || pName.includes(fName) || fName.includes(pName)));
+      if (!isMine) return false;
+    }
+
     if (selectedExamId !== 'all' && paper.examId !== selectedExamId) return false;
     if (selectedSubjectId !== 'all' && paper.subjectId !== selectedSubjectId) return false;
     if (selectedChapterId !== 'all' && paper.chapterId !== selectedChapterId) return false;
@@ -356,7 +382,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
             <div className="flex items-center gap-1.5 text-xs text-indigo-700 font-bold bg-indigo-50/60 px-3 py-1.5 rounded-xl border border-indigo-100/80 w-fit">
               <ShieldCheck className="w-4 h-4 text-indigo-600" />
               <span>
-                Scope: {facultyAssignedSubjects.length} Subject(s) across {facultyAssignedExams.length} Track(s)
+                Faculty Scope: {currentFaculty?.name || 'Faculty Member'} • Only your sample papers are shown
               </span>
             </div>
           )}
@@ -553,7 +579,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
             const chap = curriculumService.getChapterById(paper.chapterId);
             const sub = curriculumService.getSubjectById(paper.subjectId);
             const exam = catalogService.getExamById(paper.examId);
-            const siblingPapers = samplePaperService.getSamplePapersByChapter(paper.chapterId);
+            const siblingPapers = samplePaperService.getSamplePapersByChapter(paper.chapterId, { role: isFaculty ? 'faculty' : null });
 
             return (
               <div
@@ -584,7 +610,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
                     </span>
                     {siblingPapers.length > 1 && (
                       <span className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                        {siblingPapers.length} Papers in Chapter
+                        {siblingPapers.length} Sample Papers in Chapter
                       </span>
                     )}
                   </div>
