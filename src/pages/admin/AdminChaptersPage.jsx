@@ -208,40 +208,31 @@ export default function AdminChaptersPage() {
       )}
 
       {/* Header Banner */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-3">
+          <div>
             <Link 
               to={effectiveExamId ? `/admin/subjects?exam=${effectiveExamId}` : '/admin/subjects'}
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider flex items-center gap-1"
+              className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider inline-flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Subjects</span>
             </Link>
-            <span className="text-slate-300">•</span>
-            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-              Level 3 • Chapters & Topics
-            </span>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
-              <FolderTree className="w-6 h-6" />
+            <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
+              <FolderTree className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 {subject?.name || 'Subject'} — Chapters & Topics
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-1">
                 Exam Track: <strong className="text-slate-700">{exam?.flag} {exam?.name}</strong> • Subject Code: <strong className="text-slate-700 font-mono">{subject?.code || 'N/A'}</strong>
               </p>
             </div>
           </div>
-
-          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed pt-1">
-            Organize study units and clinical syllabus chapters for <strong>{subject?.name}</strong>. 
-            Drag and drop rows to adjust chapter order, or click <strong>"Manage Topics ➡️"</strong> to author clinical pearls and video lessons.
-          </p>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">

@@ -227,6 +227,8 @@ export default function AdminSubjectsPage() {
     return item ? item.icon : BookOpen;
   };
 
+  const currentExam = exams.find(e => e.id === selectedExamFilter);
+
   return (
     <div className="space-y-6 animate-in fade-in">
       {/* Toast Notification */}
@@ -238,34 +240,41 @@ export default function AdminSubjectsPage() {
       )}
 
       {/* Global Subjects Header Banner */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5" />
-              <span>Curriculum Architecture • Level 2</span>
-            </span>
-            <span className="text-slate-300">•</span>
-            <span className="text-xs font-bold text-slate-400">
-              Master Academic Repository
-            </span>
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-3">
+          <div>
+            {currentExam ? (
+              <Link 
+                to="/admin/exams"
+                className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider inline-flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Exams</span>
+              </Link>
+            ) : (
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                All Exam Tracks
+              </span>
+            )}
           </div>
+
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
-              <Layers className="w-6 h-6" />
+            <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
+              <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Curriculum Subjects & Modules
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Central repository for medical discipline modules across all licensing tracks
+              <p className="text-xs text-slate-500 mt-1">
+                {currentExam ? (
+                  <>Track: <strong className="text-slate-700">{currentExam.flag} {currentExam.name}</strong> • Discipline modules and syllabus</>
+                ) : (
+                  'Central repository for medical discipline modules across all licensing tracks'
+                )}
               </p>
             </div>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed pt-1">
-            Browse and organize subject modules, faculty leads, and syllabus chapters. Click <strong>"Chapters & Topics ➡️"</strong> to drill down into chapter units and clinical topics.
-          </p>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">

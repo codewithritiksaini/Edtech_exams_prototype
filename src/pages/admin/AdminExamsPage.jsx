@@ -189,23 +189,13 @@ export default function AdminExamsPage() {
       )}
 
       {/* Header Banner */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Level 1 • Master Academic Programs
-            </span>
-            <span className="text-slate-300">•</span>
-            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-              {exams.length} Tracks Configured
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
             Exams & Curriculum Tracks
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
-            Select any exam track below to drill down into its <strong>Subjects ➡️ Chapters ➡️ Topics ➡️ Content Studio</strong>. 
-            All changes persist across student, faculty, and testing portals.
+          <p className="text-xs text-slate-500 mt-1">
+            Configure licensing exam programs, syllabus structures, and track settings
           </p>
         </div>
 
