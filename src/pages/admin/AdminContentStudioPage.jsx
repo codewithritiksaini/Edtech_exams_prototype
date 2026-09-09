@@ -266,7 +266,7 @@ export default function AdminContentStudioPage() {
         <h2 className="text-base font-bold text-slate-800">Topic Not Found</h2>
         <p className="text-xs text-slate-500">The requested topic could not be located.</p>
         <Link 
-          to={`/admin/exams/${examId}/subjects/${subjectId}/chapters/${chapterId}/topics`}
+          to={`/admin/subjects/${subjectId}/chapters/${chapterId}/topics`}
           className="inline-flex px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold"
         >
           Back to Topics
@@ -295,7 +295,7 @@ export default function AdminContentStudioPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Link 
-              to={`/admin/exams/${examId}/subjects/${subjectId}/chapters/${chapterId}/topics`}
+              to={`/admin/subjects/${subjectId}/chapters/${chapterId}/topics`}
               className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider flex items-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />

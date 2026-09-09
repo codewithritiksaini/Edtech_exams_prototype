@@ -22,13 +22,14 @@ import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
 
 export default function AdminChaptersPage() {
-  const { examId = 'neet-pg', subjectId } = useParams();
+  const { examId: routeExamId, subjectId } = useParams();
   const navigate = useNavigate();
 
-  const [exam, setExam] = useState(() => catalogService.getExamById(examId) || { id: examId, name: examId.toUpperCase(), flag: '🩺' });
   const [subject, setSubject] = useState(() => curriculumService.getSubjectById(subjectId));
-  const [chapters, setChapters] = useState(() => curriculumService.getChapters(subjectId, examId));
-  const [topics, setTopics] = useState(() => curriculumService.getTopics(null, subjectId, examId));
+  const effectiveExamId = routeExamId || subject?.examId || 'neet-pg';
+  const [exam, setExam] = useState(() => catalogService.getExamById(effectiveExamId) || { id: effectiveExamId, name: effectiveExamId.toUpperCase(), flag: '🩺' });
+  const [chapters, setChapters] = useState(() => curriculumService.getChapters(subjectId, effectiveExamId));
+  const [topics, setTopics] = useState(() => curriculumService.getTopics(null, subjectId, effectiveExamId));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
@@ -43,19 +44,26 @@ export default function AdminChaptersPage() {
 
   useEffect(() => {
     const unsub = curriculumService.subscribeCurriculum(() => {
-      setSubject(curriculumService.getSubjectById(subjectId));
-      setChapters(curriculumService.getChapters(subjectId, examId));
-      setTopics(curriculumService.getTopics(null, subjectId, examId));
+      const sub = curriculumService.getSubjectById(subjectId);
+      setSubject(sub);
+      const exId = routeExamId || sub?.examId || 'neet-pg';
+      setChapters(curriculumService.getChapters(subjectId, exId));
+      setTopics(curriculumService.getTopics(null, subjectId, exId));
     });
     return unsub;
-  }, [subjectId, examId]);
+  }, [subjectId, routeExamId]);
 
   useEffect(() => {
-    const foundExam = catalogService.getExamById(examId);
-    if (foundExam) setExam(foundExam);
-    const foundSub = curriculumService.getSubjectById(subjectId);
-    if (foundSub) setSubject(foundSub);
-  }, [examId, subjectId]);
+    const sub = curriculumService.getSubjectById(subjectId);
+    if (sub) {
+      setSubject(sub);
+      const exId = routeExamId || sub.examId || 'neet-pg';
+      const foundExam = catalogService.getExamById(exId);
+      if (foundExam) setExam(foundExam);
+      setChapters(curriculumService.getChapters(subjectId, exId));
+      setTopics(curriculumService.getTopics(null, subjectId, exId));
+    }
+  }, [subjectId, routeExamId]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -106,7 +114,7 @@ export default function AdminChaptersPage() {
       showToast(`Chapter "${formTitle}" updated successfully!`);
     } else {
       curriculumService.saveChapter({
-        examId,
+        examId: effectiveExamId,
         subjectId,
         title: formTitle.trim(),
         chapterNumber: Number(formNumber),
@@ -144,7 +152,7 @@ export default function AdminChaptersPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Link 
-              to={`/admin/subjects?exam=${examId}`}
+              to={effectiveExamId ? `/admin/subjects?exam=${effectiveExamId}` : '/admin/subjects'}
               className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider flex items-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -152,7 +160,7 @@ export default function AdminChaptersPage() {
             </Link>
             <span className="text-slate-300">•</span>
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-              Level 3 • Syllabus Chapters
+              Level 3 • Chapters & Topics
             </span>
           </div>
 
@@ -162,10 +170,10 @@ export default function AdminChaptersPage() {
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                {subject?.name || 'Subject'} — Chapters
+                {subject?.name || 'Subject'} — Chapters & Topics
               </h1>
               <p className="text-xs text-slate-400">
-                Exam Track: <strong className="text-slate-700">{exam?.name}</strong> • Subject Code: <strong className="text-slate-700">{subject?.code || 'N/A'}</strong>
+                Exam Track: <strong className="text-slate-700">{exam?.flag} {exam?.name}</strong> • Subject Code: <strong className="text-slate-700 font-mono">{subject?.code || 'N/A'}</strong>
               </p>
             </div>
           </div>
@@ -299,7 +307,7 @@ export default function AdminChaptersPage() {
 
                 {/* LEVEL 4 DRILLDOWN ACTION */}
                 <Link
-                  to={`/admin/exams/${examId}/subjects/${subjectId}/chapters/${chap.id}/topics`}
+                  to={`/admin/subjects/${subjectId}/chapters/${chap.id}/topics`}
                   className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                 >
                   <span>Manage Topics</span>

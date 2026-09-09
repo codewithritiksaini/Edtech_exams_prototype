@@ -163,6 +163,45 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
       path: `/${rootSegment}/subjects`,
       icon: Layers
     });
+
+    if (subjectId) {
+      const subject = curriculumService.getSubjectById(subjectId);
+      crumbs.push({
+        label: subject ? subject.name : 'Subject',
+        path: `/${rootSegment}/subjects/${subjectId}/chapters`,
+        icon: Layers
+      });
+
+      if (segments.includes('chapters') || chapterId) {
+        if (chapterId) {
+          const chapter = curriculumService.getChapterById(chapterId);
+          crumbs.push({
+            label: chapter ? chapter.title : 'Chapter',
+            path: `/${rootSegment}/subjects/${subjectId}/chapters/${chapterId}/topics`,
+            icon: FolderTree
+          });
+
+          if (segments.includes('topics') || topicId) {
+            if (topicId) {
+              const topic = curriculumService.getTopicById(topicId);
+              crumbs.push({
+                label: topic ? topic.title : 'Topic',
+                path: `/${rootSegment}/subjects/${subjectId}/chapters/${chapterId}/topics/${topicId}/content`,
+                icon: FileText
+              });
+
+              if (segments.includes('content')) {
+                crumbs.push({
+                  label: 'Content Studio',
+                  path: null,
+                  icon: Sparkles
+                });
+              }
+            }
+          }
+        }
+      }
+    }
   } else if (segments.includes('schedule')) {
     crumbs.push({
       label: 'Study Schedule Planner',

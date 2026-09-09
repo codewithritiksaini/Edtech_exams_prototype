@@ -153,13 +153,16 @@ export default function App() {
             <Route path="/admin/exams/:examId/subjects" element={<AdminSubjectsPage />} />
             <Route path="/admin/subjects" element={<AdminSubjectsPage />} />
 
-            {/* Level 3: Chapters */}
+            {/* Level 3: Chapters & Topics (Subject-based & Exam-based) */}
+            <Route path="/admin/subjects/:subjectId/chapters" element={<AdminChaptersPage />} />
             <Route path="/admin/exams/:examId/subjects/:subjectId/chapters" element={<AdminChaptersPage />} />
 
             {/* Level 4: Topics */}
+            <Route path="/admin/subjects/:subjectId/chapters/:chapterId/topics" element={<AdminTopicsPage />} />
             <Route path="/admin/exams/:examId/subjects/:subjectId/chapters/:chapterId/topics" element={<AdminTopicsPage />} />
 
             {/* Level 5: Topic Content Studio */}
+            <Route path="/admin/subjects/:subjectId/chapters/:chapterId/topics/:topicId/content" element={<AdminContentStudioPage />} />
             <Route path="/admin/exams/:examId/subjects/:subjectId/chapters/:chapterId/topics/:topicId/content" element={<AdminContentStudioPage />} />
 
             {/* Phase 3: Admin Operations & Management Sub-Pages */}

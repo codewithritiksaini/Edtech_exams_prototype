@@ -264,7 +264,7 @@ export default function AdminSubjectsPage() {
             </div>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed pt-1">
-            Browse and organize subject modules, faculty leads, and syllabus chapters. Click <strong>"Manage Chapters ➡️"</strong> to drill down into chapter units and clinical topics.
+            Browse and organize subject modules, faculty leads, and syllabus chapters. Click <strong>"Chapters & Topics ➡️"</strong> to drill down into chapter units and clinical topics.
           </p>
         </div>
 
@@ -465,10 +465,10 @@ export default function AdminSubjectsPage() {
 
                   {/* LEVEL 3 DRILLDOWN ACTION */}
                   <Link
-                    to={`/admin/exams/${targetExamId}/subjects/${subject.id}/chapters`}
+                    to={`/admin/subjects/${subject.id}/chapters`}
                     className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                   >
-                    <span>Manage Chapters</span>
+                    <span>Chapters & Topics</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -526,7 +526,7 @@ export default function AdminSubjectsPage() {
                         </div>
                         <div>
                           <Link
-                            to={`/admin/exams/${targetExamId}/subjects/${subject.id}/chapters`}
+                            to={`/admin/subjects/${subject.id}/chapters`}
                             className="font-extrabold hover:text-indigo-600 transition-colors block text-xs"
                           >
                             {subject.name}
@@ -574,11 +574,11 @@ export default function AdminSubjectsPage() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                         <Link
-                          to={`/admin/exams/${targetExamId}/subjects/${subject.id}/chapters`}
+                          to={`/admin/subjects/${subject.id}/chapters`}
                           className="inline-flex items-center gap-1 ml-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold hover:bg-indigo-100 hover:text-indigo-800 transition-colors text-xs"
-                          title="Manage Chapters"
+                          title="Chapters & Topics"
                         >
-                          <span>Manage Chapters</span>
+                          <span>Chapters & Topics</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </Link>
                       </div>

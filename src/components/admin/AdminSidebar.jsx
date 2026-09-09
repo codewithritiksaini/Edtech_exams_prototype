@@ -65,7 +65,6 @@ export default function AdminSidebar({
     dashboard: '/admin/dashboard',
     exams: '/admin/exams',
     subjects: '/admin/subjects',
-    curriculum: '/admin/exams/neet-pg/subjects/sub-neet-cardio/chapters',
     schedule: '/admin/schedule/neet-pg',
     packages: '/admin/packages',
     faculty: '/admin/faculty',
@@ -81,8 +80,7 @@ export default function AdminSidebar({
     const p = location.pathname;
     if (tabId === 'dashboard') return p === '/admin' || p === '/admin/dashboard';
     if (tabId === 'exams') return p === '/admin/exams' || (p.startsWith('/admin/exams') && !p.includes('/subjects'));
-    if (tabId === 'subjects') return p.includes('/subjects') && !p.includes('/chapters');
-    if (tabId === 'curriculum') return p.includes('/chapters') || p.includes('/topics');
+    if (tabId === 'subjects') return p.includes('/subjects');
     if (tabId === 'schedule') return p.startsWith('/admin/schedule');
     if (tabId === 'packages') return p.startsWith('/admin/packages');
     if (tabId === 'faculty') return p.startsWith('/admin/faculty');
@@ -285,29 +283,6 @@ export default function AdminSidebar({
                   {isExpanded && (
                     <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                       Modules
-                    </span>
-                  )}
-                </button>
-
-                {/* Chapters & Topics (NEW - Level 2 & 3 Hierarchy & Content Hub) */}
-                <button
-                  onClick={() => handleTabClick('curriculum')}
-                  title={!isExpanded ? 'Chapters, Topics & Content' : undefined}
-                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
-                  } ${
-                    isTabActive('curriculum')
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <FolderTree className={`w-4 h-4 shrink-0 ${isTabActive('curriculum') ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {isExpanded && <span className="whitespace-nowrap shrink-0">Chapters & Topics</span>}
-                  </div>
-                  {isExpanded && (
-                    <span className="text-[10px] bg-sky-100 text-sky-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
-                      Content
                     </span>
                   )}
                 </button>

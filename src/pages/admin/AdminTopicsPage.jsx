@@ -27,13 +27,14 @@ import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
 
 export default function AdminTopicsPage() {
-  const { examId = 'neet-pg', subjectId, chapterId } = useParams();
+  const { examId: routeExamId, subjectId, chapterId } = useParams();
   const navigate = useNavigate();
 
-  const [exam, setExam] = useState(() => catalogService.getExamById(examId) || { id: examId, name: examId.toUpperCase() });
   const [subject, setSubject] = useState(() => curriculumService.getSubjectById(subjectId));
+  const effectiveExamId = routeExamId || subject?.examId || 'neet-pg';
+  const [exam, setExam] = useState(() => catalogService.getExamById(effectiveExamId) || { id: effectiveExamId, name: effectiveExamId.toUpperCase() });
   const [chapter, setChapter] = useState(() => curriculumService.getChapterById(chapterId));
-  const [topics, setTopics] = useState(() => curriculumService.getTopics(chapterId, subjectId, examId));
+  const [topics, setTopics] = useState(() => curriculumService.getTopics(chapterId, subjectId, effectiveExamId));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
@@ -50,21 +51,27 @@ export default function AdminTopicsPage() {
 
   useEffect(() => {
     const unsub = curriculumService.subscribeCurriculum(() => {
-      setSubject(curriculumService.getSubjectById(subjectId));
+      const sub = curriculumService.getSubjectById(subjectId);
+      setSubject(sub);
+      const exId = routeExamId || sub?.examId || 'neet-pg';
       setChapter(curriculumService.getChapterById(chapterId));
-      setTopics(curriculumService.getTopics(chapterId, subjectId, examId));
+      setTopics(curriculumService.getTopics(chapterId, subjectId, exId));
     });
     return unsub;
-  }, [chapterId, subjectId, examId]);
+  }, [chapterId, subjectId, routeExamId]);
 
   useEffect(() => {
-    const foundExam = catalogService.getExamById(examId);
-    if (foundExam) setExam(foundExam);
-    const foundSub = curriculumService.getSubjectById(subjectId);
-    if (foundSub) setSubject(foundSub);
+    const sub = curriculumService.getSubjectById(subjectId);
+    if (sub) {
+      setSubject(sub);
+      const exId = routeExamId || sub.examId || 'neet-pg';
+      const foundExam = catalogService.getExamById(exId);
+      if (foundExam) setExam(foundExam);
+      setTopics(curriculumService.getTopics(chapterId, subjectId, exId));
+    }
     const foundChap = curriculumService.getChapterById(chapterId);
     if (foundChap) setChapter(foundChap);
-  }, [examId, subjectId, chapterId]);
+  }, [routeExamId, subjectId, chapterId]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -166,7 +173,7 @@ export default function AdminTopicsPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Link 
-              to={`/admin/exams/${examId}/subjects/${subjectId}/chapters`}
+              to={`/admin/subjects/${subjectId}/chapters`}
               className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider flex items-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -363,7 +370,7 @@ export default function AdminTopicsPage() {
 
                 {/* LEVEL 5 DRILLDOWN ACTION: LAUNCH CONTENT STUDIO */}
                 <Link
-                  to={`/admin/exams/${examId}/subjects/${subjectId}/chapters/${chapterId}/topics/${top.id}/content`}
+                  to={`/admin/subjects/${subjectId}/chapters/${chapterId}/topics/${top.id}/content`}
                   className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
