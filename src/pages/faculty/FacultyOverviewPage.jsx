@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { authService, USER_ROLES } from '../../services/authService';
 import { catalogService } from '../../services/catalogService';
+import { curriculumService } from '../../services/curriculumService';
+import { peopleService } from '../../services/peopleService';
 import { facultyProfileData, dashboardLiveSessions, testService } from '../../data/mockData';
 
 export default function FacultyOverviewPage() {
@@ -37,6 +39,15 @@ export default function FacultyOverviewPage() {
 
   const profile = facultyProfileData;
   const tonightSession = liveSessions.find(s => s.status === 'upcoming') || liveSessions[0];
+
+  const currentFaculty = peopleService.getCurrentFacultyProfile();
+  const assignedSubjectIds = currentFaculty?.assignedSubjects || [];
+  const allSubjects = curriculumService.getSubjects ? curriculumService.getSubjects() : [];
+  const myAssignedSubjects = allSubjects.filter(s => 
+    assignedSubjectIds.includes(s.id) || 
+    (currentFaculty?.email && s.facultyEmail === currentFaculty.email) ||
+    (currentFaculty?.name && s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(currentFaculty.name.toLowerCase().split(' ')[0]))
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -260,70 +271,48 @@ export default function FacultyOverviewPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-          {[
-            {
-              examId: 'neet-pg',
-              examName: 'NEET PG & NExT',
-              subjectId: 'sub-neet-cardio',
-              subjectName: 'Cardiology & Hemodynamics',
-              chapters: 8,
-              topics: 24,
-              flag: '🇮🇳'
-            },
-            {
-              examId: 'usmle-step-1',
-              examName: 'USMLE Step 1',
-              subjectId: 'sub-usmle-cardio',
-              subjectName: 'Cardiovascular System',
-              chapters: 6,
-              topics: 19,
-              flag: '🇺🇸'
-            },
-            {
-              examId: 'plab-1',
-              examName: 'PLAB 1 / UKMLA',
-              subjectId: 'sub-plab-cardio',
-              subjectName: 'Cardiovascular Medicine',
-              chapters: 5,
-              topics: 16,
-              flag: '🇬🇧'
-            }
-          ].map((sub, idx) => (
-            <div
-              key={idx}
-              className="p-5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-indigo-300 hover:bg-white transition-all space-y-3 group"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xl">{sub.flag}</span>
-                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  Lead Specialist
-                </span>
-              </div>
+          {myAssignedSubjects.map((sub) => {
+            const examObj = exams.find(e => e.id === sub.examId);
+            const chaptersCount = curriculumService.getChapters ? curriculumService.getChapters(sub.id, sub.examId).length : 0;
+            const topicsCount = curriculumService.getTopics ? curriculumService.getTopics(null, sub.id, sub.examId).length : 0;
 
-              <div>
-                <span className="text-[11px] font-bold text-slate-400">{sub.examName}</span>
-                <h4 className="text-sm font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
-                  {sub.subjectName}
-                </h4>
-              </div>
+            return (
+              <div
+                key={sub.id}
+                className="p-5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-indigo-300 hover:bg-white transition-all space-y-3 group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xl">{examObj?.flag || '🩺'}</span>
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    Lead Specialist
+                  </span>
+                </div>
 
-              <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold pt-1 border-t border-slate-200/60">
-                <span>{sub.chapters} Chapters</span>
-                <span>•</span>
-                <span>{sub.topics} Topics</span>
-              </div>
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400">{examObj?.name || (sub.examId && sub.examId.toUpperCase())}</span>
+                  <h4 className="text-sm font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    {sub.name}
+                  </h4>
+                </div>
 
-              <div className="pt-2">
-                <Link
-                  to={`/faculty/exams/${sub.examId}/subjects/${sub.subjectId}/chapters`}
-                  className="w-full py-2 rounded-xl bg-white group-hover:bg-indigo-600 text-slate-700 group-hover:text-white border border-slate-200 group-hover:border-indigo-600 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs"
-                >
-                  <span>Manage Chapters</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold pt-1 border-t border-slate-200/60">
+                  <span>{chaptersCount} Chapters</span>
+                  <span>•</span>
+                  <span>{topicsCount} Topics</span>
+                </div>
+
+                <div className="pt-2">
+                  <Link
+                    to={`/faculty/exams/${sub.examId}/subjects/${sub.id}/chapters`}
+                    className="w-full py-2 rounded-xl bg-white group-hover:bg-indigo-600 text-slate-700 group-hover:text-white border border-slate-200 group-hover:border-indigo-600 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                  >
+                    <span>Manage Chapters</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

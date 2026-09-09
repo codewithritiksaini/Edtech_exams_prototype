@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Sparkles, 
@@ -10,7 +10,9 @@ import {
   CheckCircle2, 
   Plus, 
   Trash2, 
-  ArrowLeft, 
+  ArrowLeft,
+  ArrowRight,
+  AlertTriangle,
   Eye, 
   ExternalLink, 
   Clock, 
@@ -21,6 +23,7 @@ import {
 } from 'lucide-react';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
+import { peopleService } from '../../services/peopleService';
 
 export default function FacultyContentStudioPage() {
   const { examId = 'neet-pg', subjectId, chapterId, topicId } = useParams();
@@ -30,6 +33,18 @@ export default function FacultyContentStudioPage() {
   const [subject, setSubject] = useState(() => curriculumService.getSubjectById(subjectId));
   const [chapter, setChapter] = useState(() => curriculumService.getChapterById(chapterId));
   const [topic, setTopic] = useState(() => curriculumService.getTopicById(topicId));
+
+  const currentFaculty = peopleService.getCurrentFacultyProfile();
+  const assignedSubjectIds = currentFaculty?.assignedSubjects || [];
+
+  // Strictly check if current subject is assigned to this faculty
+  const isAssigned = useMemo(() => {
+    if (!subjectId) return false;
+    if (assignedSubjectIds.includes(subjectId)) return true;
+    if (currentFaculty?.email && subject?.facultyEmail === currentFaculty.email) return true;
+    if (currentFaculty?.name && subject?.assignedFacultyName && subject.assignedFacultyName.toLowerCase().includes(currentFaculty.name.toLowerCase().split(' ')[0])) return true;
+    return false;
+  }, [subjectId, assignedSubjectIds, subject, currentFaculty]);
 
   const [activeTab, setActiveTab] = useState('pdf');
   const [toastMessage, setToastMessage] = useState('');
@@ -224,6 +239,30 @@ export default function FacultyContentStudioPage() {
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Topics</span>
         </Link>
+      </div>
+    );
+  }
+
+  // If subject is not assigned to current faculty, restrict studio access
+  if (!isAssigned) {
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Content Studio Access Restricted</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          You do not have assigned permissions for this subject. In the faculty portal, you can only author and publish content for topics belonging to your assigned subjects.
+        </p>
+        <div className="pt-2">
+          <Link
+            to="/faculty/subjects"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <span>Return to My Assigned Subjects</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
     );
   }

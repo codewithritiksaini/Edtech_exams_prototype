@@ -197,15 +197,19 @@ export default function App() {
 
             {/* Level 2: Assigned Subjects */}
             <Route path="/faculty/exams/:examId/subjects" element={<FacultySubjectsPage />} />
+            <Route path="/faculty/subjects" element={<FacultySubjectsPage />} />
 
             {/* Level 3: Chapters & Syllabus */}
             <Route path="/faculty/exams/:examId/subjects/:subjectId/chapters" element={<FacultyChaptersPage />} />
+            <Route path="/faculty/subjects/:subjectId/chapters" element={<FacultyChaptersPage />} />
 
             {/* Level 4: Topics Roster */}
             <Route path="/faculty/exams/:examId/subjects/:subjectId/chapters/:chapterId/topics" element={<FacultyTopicsPage />} />
+            <Route path="/faculty/subjects/:subjectId/chapters/:chapterId/topics" element={<FacultyTopicsPage />} />
 
             {/* Level 5: Topic Content Studio */}
             <Route path="/faculty/exams/:examId/subjects/:subjectId/chapters/:chapterId/topics/:topicId/content" element={<FacultyContentStudioPage />} />
+            <Route path="/faculty/subjects/:subjectId/chapters/:chapterId/topics/:topicId/content" element={<FacultyContentStudioPage />} />
 
             {/* Operational Management Sub-Pages */}
             <Route path="/faculty/schedule" element={<FacultySchedulePage />} />
