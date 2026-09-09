@@ -1475,6 +1475,17 @@ class CurriculumService {
     return this.topics;
   }
 
+  reorderTopics(chapterId, orderedIds) {
+    orderedIds.forEach((id, index) => {
+      const top = this.topics.find(t => t.id === id);
+      if (top) {
+        top.topicNumber = index + 1;
+      }
+    });
+    this.saveTopics();
+    return this.topics;
+  }
+
   // ---------------------------------------------------------------------------
   // 3. TOPICS CRUD
   // ---------------------------------------------------------------------------

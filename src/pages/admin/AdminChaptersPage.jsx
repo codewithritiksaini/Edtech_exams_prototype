@@ -331,7 +331,6 @@ export default function AdminChaptersPage() {
                 <th className="py-3 px-4">Syllabus Chapter & Overview</th>
                 <th className="py-3 px-4 text-center">Topics</th>
                 <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-center w-24">Reorder</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -423,28 +422,6 @@ export default function AdminChaptersPage() {
                       </span>
                     </td>
 
-                    {/* Order Up/Down buttons */}
-                    <td className="py-3.5 px-4 text-center">
-                      <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5">
-                        <button
-                          onClick={() => handleMoveOrder(chap.id, 'up')}
-                          disabled={idx === 0}
-                          className="p-1 text-slate-400 hover:text-slate-800 disabled:opacity-30 cursor-pointer"
-                          title="Move Unit Up"
-                        >
-                          <ArrowUp className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => handleMoveOrder(chap.id, 'down')}
-                          disabled={idx === filteredChapters.length - 1}
-                          className="p-1 text-slate-400 hover:text-slate-800 disabled:opacity-30 cursor-pointer"
-                          title="Move Unit Down"
-                        >
-                          <ArrowDown className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </td>
-
                     {/* Actions */}
                     <td className="py-3.5 px-4 text-right">
                       <div className="inline-flex items-center justify-end gap-1.5">
@@ -478,7 +455,7 @@ export default function AdminChaptersPage() {
 
               {filteredChapters.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
                     <div className="max-w-xs mx-auto space-y-2">
                       <FolderTree className="w-8 h-8 text-slate-300 mx-auto" />
                       <p className="font-bold text-xs text-slate-600">No chapters found</p>
