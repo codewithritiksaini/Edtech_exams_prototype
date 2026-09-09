@@ -14,10 +14,12 @@ import {
   Edit3, 
   Trash2, 
   X,
-  GraduationCap
+  GraduationCap,
+  FileCheck
 } from 'lucide-react';
 import { catalogService } from '../../services/catalogService';
 import { curriculumService } from '../../services/curriculumService';
+import { samplePaperService } from '../../services/samplePaperService';
 
 export default function FacultyChaptersPage() {
   const { examId = 'neet-pg', subjectId = 'sub-neet-cardio' } = useParams();
@@ -162,15 +164,19 @@ export default function FacultyChaptersPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-slate-600">
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-semibold text-slate-600">
                   <span className="px-2.5 py-1 rounded-xl bg-slate-100 border border-slate-200/60 flex items-center gap-1">
                     <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
                     <span>{topics.length || chap.topicsCount || 3} Topics</span>
                   </span>
-                  <span className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Authored</span>
-                  </span>
+                  <Link
+                    to={`/faculty/sample-papers?examId=${examId}&subjectId=${subjectId}&chapterId=${chap.id}`}
+                    className="px-2.5 py-1 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1 transition-colors"
+                    title="Manage Chapter Sample Papers"
+                  >
+                    <FileCheck className="w-3.5 h-3.5 text-purple-600" />
+                    <span>{samplePaperService.getSamplePapersCountByChapter(chap.id) > 0 ? `${samplePaperService.getSamplePapersCountByChapter(chap.id)} Sample Paper${samplePaperService.getSamplePapersCountByChapter(chap.id) > 1 ? 's' : ''}` : '+ Sample Paper'}</span>
+                  </Link>
                 </div>
               </div>
 

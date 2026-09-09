@@ -11,6 +11,7 @@ import {
   GraduationCap, 
   Video, 
   FileText, 
+  FileCheck,
   BarChart3, 
   ChevronDown, 
   ChevronRight, 
@@ -70,6 +71,7 @@ export default function AdminSidebar({
     students: '/admin/students',
     live: '/admin/live-sessions',
     tests: '/admin/tests',
+    samplePapers: '/admin/sample-papers',
     analytics: '/admin/analytics',
   };
 
@@ -85,6 +87,7 @@ export default function AdminSidebar({
     if (tabId === 'students') return p.startsWith('/admin/students');
     if (tabId === 'live') return p.startsWith('/admin/live-sessions');
     if (tabId === 'tests') return p.startsWith('/admin/tests');
+    if (tabId === 'samplePapers') return p.startsWith('/admin/sample-papers');
     if (tabId === 'analytics') return p.startsWith('/admin/analytics');
     return false;
   };
@@ -463,6 +466,29 @@ export default function AdminSidebar({
                   {isExpanded && (
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
                       CBT Engine
+                    </span>
+                  )}
+                </button>
+
+                {/* Sample Papers (Chapter-Level Practice PDFs) */}
+                <button
+                  onClick={() => handleTabClick('samplePapers')}
+                  title={!isExpanded ? 'Chapter-Level Sample Papers & PDFs' : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
+                    isTabActive('samplePapers')
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+                    <FileCheck className={`w-4 h-4 shrink-0 ${isTabActive('samplePapers') ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Sample Papers</span>}
+                  </div>
+                  {isExpanded && (
+                    <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
+                      PDFs
                     </span>
                   )}
                 </button>

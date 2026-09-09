@@ -20,10 +20,12 @@ import {
   GripVertical,
   AlertTriangle,
   LayoutGrid,
-  Table as TableIcon
+  Table as TableIcon,
+  FileCheck
 } from 'lucide-react';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
+import { samplePaperService } from '../../services/samplePaperService';
 
 export default function AdminChaptersPage() {
   const { examId: routeExamId, subjectId } = useParams();
@@ -394,12 +396,22 @@ export default function AdminChaptersPage() {
                       </div>
                     </td>
 
-                    {/* Topics Count */}
+                    {/* Topics & Sample Papers Count */}
                     <td className="py-3.5 px-4 text-center">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>{chapTopics.length} Topics</span>
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>{chapTopics.length} Topics</span>
+                        </span>
+                        <Link
+                          to={`/admin/sample-papers?examId=${effectiveExamId}&subjectId=${subjectId}&chapterId=${chap.id}`}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors"
+                          title="Manage Chapter Sample Papers"
+                        >
+                          <FileCheck className="w-3 h-3 text-purple-600" />
+                          <span>{samplePaperService.getSamplePapersCountByChapter(chap.id) > 0 ? `${samplePaperService.getSamplePapersCountByChapter(chap.id)} Papers` : '+ Paper'}</span>
+                        </Link>
+                      </div>
                     </td>
 
                     {/* Status */}
@@ -520,6 +532,14 @@ export default function AdminChaptersPage() {
                       <FileText className="w-3.5 h-3.5" />
                       <span>{chapTopics.length} Topics</span>
                     </span>
+                    <Link
+                      to={`/admin/sample-papers?examId=${effectiveExamId}&subjectId=${subjectId}&chapterId=${chap.id}`}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors"
+                      title="Manage Chapter Sample Papers"
+                    >
+                      <FileCheck className="w-3 h-3 text-purple-600" />
+                      <span>{samplePaperService.getSamplePapersCountByChapter(chap.id) > 0 ? `${samplePaperService.getSamplePapersCountByChapter(chap.id)} Papers` : '+ Paper'}</span>
+                    </Link>
                   </div>
                 </div>
 

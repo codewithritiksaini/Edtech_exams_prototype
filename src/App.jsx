@@ -27,8 +27,10 @@ import AdminStudentsPage from './pages/admin/AdminStudentsPage';
 import AdminTestsPage from './pages/admin/AdminTestsPage';
 import AdminLiveSessionsPage from './pages/admin/AdminLiveSessionsPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
+import AdminSamplePapersPage from './pages/admin/AdminSamplePapersPage';
 import FacultyOverviewPage from './pages/faculty/FacultyOverviewPage';
 import FacultyExamsPage from './pages/faculty/FacultyExamsPage';
+import FacultySamplePapersPage from './pages/faculty/FacultySamplePapersPage';
 import FacultySubjectsPage from './pages/faculty/FacultySubjectsPage';
 import FacultyChaptersPage from './pages/faculty/FacultyChaptersPage';
 import FacultyTopicsPage from './pages/faculty/FacultyTopicsPage';
@@ -170,6 +172,7 @@ export default function App() {
             <Route path="/admin/faculty" element={<AdminFacultyPage />} />
             <Route path="/admin/students" element={<AdminStudentsPage />} />
             <Route path="/admin/tests" element={<AdminTestsPage />} />
+            <Route path="/admin/sample-papers" element={<AdminSamplePapersPage />} />
             <Route path="/admin/live-sessions" element={<AdminLiveSessionsPage />} />
             <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
           </Route>
@@ -210,6 +213,7 @@ export default function App() {
             <Route path="/faculty/upload" element={<FacultyDirectUploadPage />} />
             <Route path="/faculty/live-sessions" element={<FacultyLiveSessionsPage />} />
             <Route path="/faculty/tests" element={<FacultyTestsPage />} />
+            <Route path="/faculty/sample-papers" element={<FacultySamplePapersPage />} />
             <Route path="/faculty/tests/:testId/questions" element={<FacultyQuestionAuthoringPage />} />
             <Route path="/faculty/tests/:testId/results" element={<FacultyTestResultsPage />} />
             <Route path="/faculty/students" element={<FacultyStudentsPage />} />
