@@ -166,8 +166,7 @@ export default function App() {
             <Route path="/admin/exams/:examId/subjects/:subjectId/chapters/:chapterId/topics/:topicId/content" element={<AdminContentStudioPage />} />
 
             {/* Phase 3: Admin Operations & Management Sub-Pages */}
-            <Route path="/admin/schedule" element={<AdminSchedulePage />} />
-            <Route path="/admin/schedule/:examId" element={<AdminSchedulePage />} />
+            <Route path="/admin/schedule-classes" element={<AdminSchedulePage />} />
             <Route path="/admin/content-repository" element={<AdminContentRepoPage />} />
             <Route path="/admin/packages" element={<AdminPackagesPage />} />
             <Route path="/admin/faculty" element={<AdminFacultyPage />} />

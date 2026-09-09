@@ -65,7 +65,7 @@ export default function AdminSidebar({
     dashboard: '/admin/dashboard',
     exams: '/admin/exams',
     subjects: '/admin/subjects',
-    schedule: '/admin/schedule/neet-pg',
+    schedule: '/admin/schedule-classes',
     packages: '/admin/packages',
     faculty: '/admin/faculty',
     students: '/admin/students',

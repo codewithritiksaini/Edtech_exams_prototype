@@ -187,7 +187,7 @@ export default function AdminOverviewPage() {
           </Link>
 
           <Link
-            to="/admin/schedule/neet-pg"
+            to="/admin/schedule-classes"
             className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all flex flex-col justify-between group cursor-pointer"
           >
             <div className="space-y-2">

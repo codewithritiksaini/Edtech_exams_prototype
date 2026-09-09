@@ -733,152 +733,174 @@ export default function AdminSubjectsPage() {
         </div>
       )}
 
-      {/* Add / Edit Subject Modal */}
+      {/* Add / Edit Subject Drawer */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h2 className="text-lg font-black text-slate-900">
-                {editingSubject ? 'Edit Subject Module' : 'Add New Subject Module'}
-              </h2>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            onClick={() => setIsModalOpen(false)}
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+          />
 
-            <form onSubmit={handleSaveSubject} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Exam Track *</label>
-                  <select
-                    value={formExamId}
-                    onChange={(e) => setFormExamId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  >
-                    {exams.map(e => (
-                      <option key={e.id} value={e.id}>
-                        {e.flag} {e.name}
-                      </option>
-                    ))}
-                  </select>
+          {/* Slide-over Drawer Panel */}
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-12 pointer-events-none">
+            <div className="w-screen max-w-lg sm:max-w-xl bg-white shadow-2xl flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
+
+              {/* Drawer Header */}
+              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/80 shrink-0">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                    <h2 className="text-base sm:text-lg font-black text-slate-900">
+                      {editingSubject ? 'Edit Subject Module' : 'Add New Subject Module'}
+                    </h2>
+                  </div>
+                  <p className="text-xs text-slate-500">Fill in the details below to {editingSubject ? 'update' : 'create'} this subject.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                  title="Close Drawer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Drawer Scrollable Body */}
+              <form onSubmit={handleSaveSubject} id="subject-drawer-form" className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Exam Track *</label>
+                    <select
+                      value={formExamId}
+                      onChange={(e) => setFormExamId(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    >
+                      {exams.map(e => (
+                        <option key={e.id} value={e.id}>
+                          {e.flag} {e.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Status</label>
+                    <select
+                      value={formStatus}
+                      onChange={(e) => setFormStatus(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Draft">Draft</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Status</label>
-                  <select
-                    value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Draft">Draft</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Subject Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Cardiology & Hemodynamics"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Subject Code</label>
+                  <label className="font-bold text-slate-700">Subject Name *</label>
                   <input
                     type="text"
-                    value={formCode}
-                    onChange={(e) => setFormCode(e.target.value)}
-                    placeholder="e.g. CARD-101"
+                    required
+                    placeholder="e.g. Cardiology & Hemodynamics"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Subject Code</label>
+                    <input
+                      type="text"
+                      value={formCode}
+                      onChange={(e) => setFormCode(e.target.value)}
+                      placeholder="e.g. CARD-101"
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Color Theme</label>
+                    <select
+                      value={formColor}
+                      onChange={(e) => setFormColor(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
+                    >
+                      {AVAILABLE_COLORS.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">Icon Representative</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {AVAILABLE_ICONS.map(i => {
+                      const IconComp = i.icon;
+                      const isSelected = formIcon === i.name;
+                      return (
+                        <button
+                          key={i.name}
+                          type="button"
+                          onClick={() => setFormIcon(i.name)}
+                          className={`p-2 rounded-xl border flex items-center gap-2 transition-all text-left cursor-pointer ${
+                            isSelected
+                              ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold ring-2 ring-indigo-500/10'
+                              : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          <IconComp className="w-4 h-4 shrink-0" />
+                          <span className="text-[10px] truncate">{i.label.split('/')[0]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">Assigned Faculty Specialist</label>
+                  <input
+                    type="text"
+                    value={formFacultyName}
+                    onChange={(e) => setFormFacultyName(e.target.value)}
+                    placeholder="e.g. Dr. Siddharth V. (AIIMS)"
                     className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Color Theme</label>
-                  <select
-                    value={formColor}
-                    onChange={(e) => setFormColor(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
-                  >
-                    {AVAILABLE_COLORS.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                  <label className="font-bold text-slate-700">Description</label>
+                  <textarea
+                    rows={3}
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-medium text-slate-800"
+                  />
                 </div>
-              </div>
+              </form>
 
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Icon Representative</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {AVAILABLE_ICONS.map(i => {
-                    const IconComp = i.icon;
-                    const isSelected = formIcon === i.name;
-                    return (
-                      <button
-                        key={i.name}
-                        type="button"
-                        onClick={() => setFormIcon(i.name)}
-                        className={`p-2 rounded-xl border flex items-center gap-2 transition-all text-left cursor-pointer ${
-                          isSelected 
-                            ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold ring-2 ring-indigo-500/10' 
-                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        <IconComp className="w-4 h-4 shrink-0" />
-                        <span className="text-[10px] truncate">{i.label.split('/')[0]}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Assigned Faculty Specialist</label>
-                <input
-                  type="text"
-                  value={formFacultyName}
-                  onChange={(e) => setFormFacultyName(e.target.value)}
-                  placeholder="e.g. Dr. Siddharth V. (AIIMS)"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Description</label>
-                <textarea
-                  rows={2}
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-medium text-slate-800"
-                />
-              </div>
-
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+              {/* Drawer Footer */}
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 cursor-pointer text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm cursor-pointer"
+                  form="subject-drawer-form"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm cursor-pointer text-xs"
                 >
                   {editingSubject ? 'Save Changes' : 'Create Subject'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

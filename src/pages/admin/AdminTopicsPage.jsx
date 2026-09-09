@@ -700,116 +700,138 @@ export default function AdminTopicsPage() {
         </div>
       )}
 
-      {/* Add / Edit Topic Modal */}
+      {/* Add / Edit Topic Drawer */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h2 className="text-lg font-black text-slate-900">
-                {editingTopic ? 'Edit Topic Meta' : `Add Topic to Unit ${chapter?.chapterNumber || 1}`}
-              </h2>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            onClick={() => setIsModalOpen(false)}
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
+          />
 
-            <form onSubmit={handleSaveTopic} className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Topic Title / Clinical Presentation</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Aortic Stenosis & Regurgitation Auscultation Pearls"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
+          {/* Slide-over Drawer Panel */}
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-12 pointer-events-none">
+            <div className="w-screen max-w-lg sm:max-w-xl bg-white shadow-2xl flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Topic Order #</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={formNumber}
-                    onChange={(e) => setFormNumber(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-bold text-slate-900 text-center"
-                  />
+              {/* Drawer Header */}
+              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/80 shrink-0">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                    <h2 className="text-base sm:text-lg font-black text-slate-900">
+                      {editingTopic ? 'Edit Topic Meta' : `Add Topic to Unit ${chapter?.chapterNumber || 1}`}
+                    </h2>
+                  </div>
+                  <p className="text-xs text-slate-500">Fill in the details to {editingTopic ? 'update' : 'create'} this topic.</p>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Estimated Duration</label>
-                  <input
-                    type="text"
-                    value={formDuration}
-                    onChange={(e) => setFormDuration(e.target.value)}
-                    placeholder="45 mins"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Yield / Level</label>
-                  <select
-                    value={formDifficulty}
-                    onChange={(e) => setFormDifficulty(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
-                  >
-                    <option value="High-Yield">High-Yield</option>
-                    <option value="Core Clinical">Core Clinical</option>
-                    <option value="Advanced">Advanced</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Publishing Status</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setFormStatus('Published')}
-                    className={`py-2 px-3 rounded-xl border font-bold text-center cursor-pointer transition-all ${
-                      formStatus === 'Published'
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-2xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    Published
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormStatus('Draft')}
-                    className={`py-2 px-3 rounded-xl border font-bold text-center cursor-pointer transition-all ${
-                      formStatus === 'Draft'
-                        ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-2xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    Draft
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                  title="Close Drawer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Drawer Scrollable Body */}
+              <form onSubmit={handleSaveTopic} id="topic-drawer-form" className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">Topic Title / Clinical Presentation</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Aortic Stenosis & Regurgitation Auscultation Pearls"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Topic Order #</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formNumber}
+                      onChange={(e) => setFormNumber(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-bold text-slate-900 text-center"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Estimated Duration</label>
+                    <input
+                      type="text"
+                      value={formDuration}
+                      onChange={(e) => setFormDuration(e.target.value)}
+                      placeholder="45 mins"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Yield / Level</label>
+                    <select
+                      value={formDifficulty}
+                      onChange={(e) => setFormDifficulty(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800"
+                    >
+                      <option value="High-Yield">High-Yield</option>
+                      <option value="Core Clinical">Core Clinical</option>
+                      <option value="Advanced">Advanced</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">Publishing Status</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormStatus('Published')}
+                      className={`py-2.5 px-3 rounded-xl border font-bold text-center cursor-pointer transition-all ${
+                        formStatus === 'Published'
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-2xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      Published
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormStatus('Draft')}
+                      className={`py-2.5 px-3 rounded-xl border font-bold text-center cursor-pointer transition-all ${
+                        formStatus === 'Draft'
+                          ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-2xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      Draft
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {/* Drawer Footer */}
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 cursor-pointer text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm cursor-pointer"
+                  form="topic-drawer-form"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm cursor-pointer text-xs"
                 >
                   {editingTopic ? 'Save Changes' : 'Create Topic'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
