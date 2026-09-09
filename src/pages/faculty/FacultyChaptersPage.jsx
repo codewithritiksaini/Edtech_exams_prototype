@@ -45,9 +45,10 @@ export default function FacultyChaptersPage() {
   // Strictly check if current subject is assigned to this faculty
   const isAssigned = useMemo(() => {
     if (!subjectId) return false;
+    const cleanFacultyName = currentFaculty?.name ? currentFaculty.name.replace(/^Dr\.\s*/i, '').toLowerCase().trim() : '';
     if (assignedSubjectIds.includes(subjectId)) return true;
-    if (currentFaculty?.email && subject?.facultyEmail === currentFaculty.email) return true;
-    if (currentFaculty?.name && subject?.assignedFacultyName && subject.assignedFacultyName.toLowerCase().includes(currentFaculty.name.toLowerCase().split(' ')[0])) return true;
+    if (currentFaculty?.email && subject?.facultyEmail && subject.facultyEmail.toLowerCase() === currentFaculty.email.toLowerCase()) return true;
+    if (cleanFacultyName && subject?.assignedFacultyName && subject.assignedFacultyName.toLowerCase().includes(cleanFacultyName)) return true;
     return false;
   }, [subjectId, assignedSubjectIds, subject, currentFaculty]);
 

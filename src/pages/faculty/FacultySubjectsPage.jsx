@@ -73,10 +73,11 @@ export default function FacultySubjectsPage() {
   // Helper: Strictly check if a subject is assigned to current faculty
   const isSubjectAssigned = (s) => {
     if (!s) return false;
+    const cleanFacultyName = currentFaculty?.name ? currentFaculty.name.replace(/^Dr\.\s*/i, '').toLowerCase().trim() : '';
     return (
       facultyAssignedSubjectIds.includes(s.id) ||
-      (currentFaculty?.email && s.facultyEmail === currentFaculty.email) ||
-      (currentFaculty?.name && s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(currentFaculty.name.toLowerCase().split(' ')[0]))
+      (currentFaculty?.email && s.facultyEmail && s.facultyEmail.toLowerCase() === currentFaculty.email.toLowerCase()) ||
+      (cleanFacultyName && s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(cleanFacultyName))
     );
   };
 
@@ -89,22 +90,22 @@ export default function FacultySubjectsPage() {
     });
   }, [exams, subjects, assignedExamsList, facultyAssignedSubjectIds, currentFaculty]);
 
-  // Selected exam filter from URL route or query param
-  const activeExamId = routeExamId || searchParams.get('exam') || 'all';
-  const [selectedExamFilter, setSelectedExamFilter] = useState(activeExamId);
+  // Selected exam filter: default to 'all' as requested by user
+  const initialExamFilter = searchParams.get('exam') || 'all';
+  const [selectedExamFilter, setSelectedExamFilter] = useState(initialExamFilter);
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('all');
 
+  // If accessed via /faculty/exams/:examId/subjects, normalize cleanly to /faculty/subjects
   useEffect(() => {
     if (routeExamId) {
-      setSelectedExamFilter(routeExamId);
-    } else {
-      setSelectedExamFilter(searchParams.get('exam') || 'all');
+      navigate('/faculty/subjects', { replace: true });
     }
-  }, [routeExamId, searchParams]);
+  }, [routeExamId, navigate]);
 
-  // If selectedExamFilter is neither 'all' nor in assignedExams, reset to 'all' or first assigned exam
+  // If selectedExamFilter is neither 'all' nor in assignedExams, reset to 'all'
   useEffect(() => {
     if (selectedExamFilter !== 'all' && assignedExams.length > 0 && !assignedExams.some(e => e.id === selectedExamFilter)) {
-      setSelectedExamFilter(assignedExams[0]?.id || 'all');
+      setSelectedExamFilter('all');
     }
   }, [selectedExamFilter, assignedExams]);
 
@@ -120,7 +121,7 @@ export default function FacultySubjectsPage() {
   const [deletingSubject, setDeletingSubject] = useState(null);
 
   // Form State
-  const [formExamId, setFormExamId] = useState(routeExamId || assignedExams[0]?.id || 'neet-pg');
+  const [formExamId, setFormExamId] = useState(assignedExams[0]?.id || 'neet-pg');
   const [formName, setFormName] = useState('');
   const [formCode, setFormCode] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -151,12 +152,27 @@ export default function FacultySubjectsPage() {
 
   const handleExamFilterChange = (newExamId) => {
     setSelectedExamFilter(newExamId);
-    if (newExamId === 'all') {
-      navigate('/faculty/subjects');
-    } else {
-      navigate(`/faculty/exams/${newExamId}/subjects`);
-    }
+    setSelectedSubjectFilter('all');
   };
+
+  // Available subjects for subject filter dropdown (relative to chosen exam filter)
+  const availableSubjectsForFilter = useMemo(() => {
+    return subjects.filter(s => {
+      if (!isSubjectAssigned(s)) return false;
+      if (selectedExamFilter !== 'all' && s.examId !== selectedExamFilter) return false;
+      return true;
+    });
+  }, [subjects, selectedExamFilter, facultyAssignedSubjectIds, currentFaculty]);
+
+  // Reset subject filter if it's no longer in the filtered exam
+  useEffect(() => {
+    if (selectedSubjectFilter !== 'all') {
+      const exists = availableSubjectsForFilter.some(s => s.id === selectedSubjectFilter);
+      if (!exists) {
+        setSelectedSubjectFilter('all');
+      }
+    }
+  }, [availableSubjectsForFilter, selectedSubjectFilter]);
 
   // Filtered Subjects: STRICTLY scoped to assigned subjects only
   const filteredSubjects = useMemo(() => {
@@ -165,7 +181,13 @@ export default function FacultySubjectsPage() {
         // Must be assigned to this faculty
         if (!isSubjectAssigned(s)) return false;
 
+        // Filter by Exam Track
         if (selectedExamFilter !== 'all' && s.examId !== selectedExamFilter) return false;
+
+        // Filter by Subject
+        if (selectedSubjectFilter !== 'all' && s.id !== selectedSubjectFilter) return false;
+
+        // Filter by Status
         if (statusFilter !== 'all' && s.status !== statusFilter) return false;
         
         if (!searchQuery.trim()) return true;
@@ -182,13 +204,14 @@ export default function FacultySubjectsPage() {
         );
       })
       .sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [subjects, selectedExamFilter, statusFilter, searchQuery, exams, facultyAssignedSubjectIds, currentFaculty]);
+  }, [subjects, selectedExamFilter, selectedSubjectFilter, statusFilter, searchQuery, exams, facultyAssignedSubjectIds, currentFaculty]);
 
   // Overall Statistics for current assigned scope
   const stats = useMemo(() => {
     const currentSubjects = subjects.filter(s => {
       if (!isSubjectAssigned(s)) return false;
       if (selectedExamFilter !== 'all' && s.examId !== selectedExamFilter) return false;
+      if (selectedSubjectFilter !== 'all' && s.id !== selectedSubjectFilter) return false;
       return true;
     });
     const currentSubjectIds = currentSubjects.map(s => s.id);
@@ -202,7 +225,20 @@ export default function FacultySubjectsPage() {
       totalTopics: currentTopics.length,
       assignedCount: currentSubjects.length
     };
-  }, [subjects, chapters, topics, selectedExamFilter, facultyAssignedSubjectIds, currentFaculty]);
+  }, [subjects, chapters, topics, selectedExamFilter, selectedSubjectFilter, facultyAssignedSubjectIds, currentFaculty]);
+
+  const totalAssignedSubjectsCount = useMemo(() => {
+    return subjects.filter(isSubjectAssigned).length;
+  }, [subjects, facultyAssignedSubjectIds, currentFaculty]);
+
+  const hasActiveFilters = searchQuery.trim() !== '' || selectedExamFilter !== 'all' || selectedSubjectFilter !== 'all' || statusFilter !== 'all';
+
+  const resetAllFilters = () => {
+    setSearchQuery('');
+    setSelectedExamFilter('all');
+    setSelectedSubjectFilter('all');
+    setStatusFilter('all');
+  };
 
   const handleOpenCreateModal = () => {
     setEditingSubject(null);
@@ -301,44 +337,6 @@ export default function FacultySubjectsPage() {
         </div>
       )}
 
-      {/* Top Navigation: Exam Switcher Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        <button
-          onClick={() => handleExamFilterChange('all')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer border ${
-            selectedExamFilter === 'all'
-              ? 'bg-white text-indigo-700 border-indigo-300 shadow-sm ring-2 ring-indigo-500/10'
-              : 'bg-white/60 text-slate-600 border-slate-200/80 hover:bg-white hover:text-slate-900'
-          }`}
-        >
-          <span>🌐</span>
-          <span>All Assigned Programs ({assignedExams.length})</span>
-        </button>
-
-        {assignedExams.map((ex) => {
-          const isCurrent = ex.id === selectedExamFilter;
-          const subCount = subjects.filter(s => s.examId === ex.id && isSubjectAssigned(s)).length;
-          return (
-            <button
-              key={ex.id}
-              onClick={() => handleExamFilterChange(ex.id)}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer border ${
-                isCurrent
-                  ? 'bg-white text-indigo-700 border-indigo-300 shadow-sm ring-2 ring-indigo-500/10'
-                  : 'bg-white/60 text-slate-600 border-slate-200/80 hover:bg-white hover:text-slate-900'
-              }`}
-            >
-              <span className="text-base">{ex.flag}</span>
-              <span>{ex.name}</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                isCurrent ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-500'
-              }`}>
-                {subCount}
-              </span>
-            </button>
-          );
-        })}
-      </div>
 
       {/* Header Banner */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-5">
@@ -411,59 +409,129 @@ export default function FacultySubjectsPage() {
         </div>
       </div>
 
-      {/* Filter & View Mode Toolbar */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto flex-1">
-          {/* Search Box */}
-          <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+      {/* Toolbar: Search, Exam Dropdown Filter, Subject Filter, Status Filter, View Toggle */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full lg:w-auto flex-wrap">
+          {/* Search bar */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search subjects, codes, or overview..."
+              placeholder="Search subjects, codes, overview..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="w-4 h-4 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center"
+                title="Clear search text"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* Scope Indicator Badge */}
-          <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0">
-            <Shield className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Assigned Subjects ({filteredSubjects.length})</span>
-          </div>
-
-          {/* Status Filter */}
-          <div className="relative w-full sm:w-36">
+          {/* Exam Program Filter Dropdown */}
+          <div className="relative w-full sm:w-auto">
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+              value={selectedExamFilter}
+              onChange={(e) => handleExamFilterChange(e.target.value)}
+              className={`w-full sm:w-auto pl-3.5 pr-8 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer appearance-none transition-all ${
+                selectedExamFilter !== 'all'
+                  ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 font-bold'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
             >
-              <option value="all">All Status</option>
-              <option value="Active">Active</option>
-              <option value="Draft">Draft</option>
+              <option value="all">🌐 All Assigned Programs ({totalAssignedSubjectsCount})</option>
+              {assignedExams.map((exam) => {
+                const count = subjects.filter(s => s.examId === exam.id && isSubjectAssigned(s)).length;
+                return (
+                  <option key={exam.id} value={exam.id}>
+                    {exam.flag} {exam.name} ({count})
+                  </option>
+                );
+              })}
             </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
+
+          {/* Subject Filter Dropdown */}
+          <div className="relative w-full sm:w-auto">
+            <select
+              value={selectedSubjectFilter}
+              onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+              className={`w-full sm:w-auto pl-3.5 pr-8 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer appearance-none transition-all ${
+                selectedSubjectFilter !== 'all'
+                  ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 font-bold'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <option value="all">📚 All Subjects ({availableSubjectsForFilter.length})</option>
+              {availableSubjectsForFilter.map((sub) => (
+                <option key={sub.id} value={sub.id}>
+                  {sub.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="text-xs font-bold text-slate-500 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+              title="Reset all filters"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Reset</span>
+            </button>
+          )}
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs shrink-0 self-end sm:self-auto">
-          <button
-            onClick={() => setViewMode('table')}
-            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${
-              viewMode === 'table' ? 'bg-white text-indigo-600 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Table
-          </button>
-          <button
-            onClick={() => setViewMode('cards')}
-            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${
-              viewMode === 'cards' ? 'bg-white text-indigo-600 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Cards
-          </button>
+        <div className="flex items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
+          {/* Status Filters */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
+            {['all', 'Active', 'Draft'].map((st) => (
+              <button
+                key={st}
+                onClick={() => setStatusFilter(st)}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer text-[11px] ${
+                  statusFilter === st
+                    ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                {st === 'all' ? 'All' : st}
+              </button>
+            ))}
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                viewMode === 'table' ? 'bg-white text-indigo-600 shadow-2xs' : 'text-slate-400'
+              }`}
+              title="Table View"
+            >
+              <TableIcon className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                viewMode === 'cards' ? 'bg-white text-indigo-600 shadow-2xs' : 'text-slate-400'
+              }`}
+              title="Cards View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 

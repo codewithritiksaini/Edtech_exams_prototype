@@ -42,11 +42,12 @@ export default function FacultyOverviewPage() {
 
   const currentFaculty = peopleService.getCurrentFacultyProfile();
   const assignedSubjectIds = currentFaculty?.assignedSubjects || [];
+  const cleanFacultyName = currentFaculty?.name ? currentFaculty.name.replace(/^Dr\.\s*/i, '').toLowerCase().trim() : '';
   const allSubjects = curriculumService.getSubjects ? curriculumService.getSubjects() : [];
   const myAssignedSubjects = allSubjects.filter(s => 
     assignedSubjectIds.includes(s.id) || 
-    (currentFaculty?.email && s.facultyEmail === currentFaculty.email) ||
-    (currentFaculty?.name && s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(currentFaculty.name.toLowerCase().split(' ')[0]))
+    (currentFaculty?.email && s.facultyEmail && s.facultyEmail.toLowerCase() === currentFaculty.email.toLowerCase()) ||
+    (cleanFacultyName && s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(cleanFacultyName))
   );
 
   return (

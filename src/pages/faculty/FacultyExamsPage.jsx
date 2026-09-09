@@ -255,10 +255,11 @@ export default function FacultyExamsPage() {
     if (!exam) return false;
     if (assignedExamsList.includes(exam.id)) return true;
     const subjects = curriculumService.getSubjects(exam.id) || [];
+    const cleanFacultyName = currentFaculty?.name ? currentFaculty.name.replace(/^Dr\.\s*/i, '').toLowerCase().trim() : '';
     return subjects.some(s => 
       assignedSubjectIds.includes(s.id) || 
-      (currentFaculty?.email && s.facultyEmail === currentFaculty.email) ||
-      (currentFaculty?.name && s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(currentFaculty.name.toLowerCase().split(' ')[0]))
+      (currentFaculty?.email && s.facultyEmail && s.facultyEmail.toLowerCase() === currentFaculty.email.toLowerCase()) ||
+      (cleanFacultyName && s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(cleanFacultyName))
     );
   };
 
@@ -405,24 +406,13 @@ export default function FacultyExamsPage() {
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredExams.map((exam) => {
-            const allExamSubjects = curriculumService.getSubjects(exam.id) || [];
-            const assignedSubjectsInExam = allExamSubjects.filter(s => 
-              assignedSubjectIds.includes(s.id) || 
-              (currentFaculty?.email && s.facultyEmail === currentFaculty.email) ||
-              (currentFaculty?.name && s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(currentFaculty.name.toLowerCase().split(' ')[0]))
-            );
-            const assignedSubjectIdsInExam = assignedSubjectsInExam.map(s => s.id);
-            const assignedChaptersCount = curriculumService.getChapters(null, exam.id)
-              .filter(c => assignedSubjectIdsInExam.includes(c.subjectId)).length;
-            const difficultyCls = getDifficultyBadge(exam.difficulty);
-
             return (
               <div
                 key={exam.id}
                 className="bg-white rounded-2xl border shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group border-indigo-200 ring-1 ring-indigo-50 hover:border-indigo-400"
               >
                 <div className="p-5 space-y-3.5">
-                  {/* Top Bar: Country, Assigned Badge & Status */}
+                  {/* Top Bar: Country & Assigned Badge */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200/60">
@@ -432,16 +422,6 @@ export default function FacultyExamsPage() {
                         Assigned Track
                       </span>
                     </div>
-                    <button
-                      onClick={() => handleToggleStatus(exam.id)}
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold cursor-pointer transition-colors ${
-                        exam.status === 'Active'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-slate-100 text-slate-500 border border-slate-200'
-                      }`}
-                    >
-                      {exam.status}
-                    </button>
                   </div>
 
                   {/* Title & Authority */}
@@ -463,25 +443,6 @@ export default function FacultyExamsPage() {
                     </p>
                   )}
 
-                  {/* Key Parameter Badges: Difficulty, Fee, Stages */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    {exam.difficulty && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${difficultyCls}`}>
-                        {exam.difficulty}
-                      </span>
-                    )}
-                    {(exam.feeAmount !== undefined && exam.feeAmount !== null && exam.feeAmount !== '') && (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                        Fee: {exam.feeCurrency} {Number(exam.feeAmount).toLocaleString()}
-                      </span>
-                    )}
-                    {exam.stages && (
-                      <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                        {exam.stages} Stages
-                      </span>
-                    )}
-                  </div>
-
                   {/* For: Target Audience */}
                   {Array.isArray(exam.forAudience) && exam.forAudience.length > 0 && (
                     <div className="pt-2 border-t border-slate-100">
@@ -500,42 +461,13 @@ export default function FacultyExamsPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Metrics Badges: Assigned Subjects & Chapters */}
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
-                    <div className="bg-slate-50 p-2 rounded-xl">
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Assigned Subjects</span>
-                      <span className="text-xs font-extrabold text-indigo-600">{assignedSubjectsInExam.length} Modules</span>
-                    </div>
-                    <div className="bg-slate-50 p-2 rounded-xl">
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Chapters</span>
-                      <span className="text-xs font-extrabold text-slate-800">{assignedChaptersCount} Units</span>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Card Action Footer */}
-                <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleOpenEditModal(exam)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
-                      title="Edit Exam Metadata"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleOpenDeleteModal(exam)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
-                      title="Delete Exam Program"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
+                <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex items-center justify-end gap-2">
                   <Link
-                    to={`/faculty/exams/${exam.id}/subjects`}
-                    className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                    to="/faculty/subjects"
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
                   >
                     <span>Explore Subjects</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -553,31 +485,18 @@ export default function FacultyExamsPage() {
               <tr>
                 <th className="py-3 px-4">Exam Track & Authority</th>
                 <th className="py-3 px-4">Country</th>
-                <th className="py-3 px-4 text-center">My Subjects</th>
-                <th className="py-3 px-4 text-center">Stages</th>
-                <th className="py-3 px-4">Difficulty</th>
-                <th className="py-3 px-4">2026 Starting Fee</th>
-                <th className="py-3 px-4 text-center">Status</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredExams.map((exam) => {
-                const allExamSubjects = curriculumService.getSubjects(exam.id) || [];
-                const assignedSubjectsInExam = allExamSubjects.filter(s => 
-                  assignedSubjectIds.includes(s.id) || 
-                  (currentFaculty?.email && s.facultyEmail === currentFaculty.email) ||
-                  (currentFaculty?.name && s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(currentFaculty.name.toLowerCase().split(' ')[0]))
-                );
-                const difficultyCls = getDifficultyBadge(exam.difficulty);
-
                 return (
                   <tr key={exam.id} className="hover:bg-indigo-50/30 transition-colors">
                     <td className="py-3.5 px-4 font-bold text-slate-900">
                       <div>
                         <div className="flex items-center gap-2">
                           <Link 
-                            to={`/faculty/exams/${exam.id}/subjects`}
+                            to="/faculty/subjects"
                             className="font-extrabold text-slate-900 hover:text-indigo-600 transition-colors text-xs"
                           >
                             {exam.fullName || exam.name}
@@ -591,76 +510,20 @@ export default function FacultyExamsPage() {
                     </td>
 
                     <td className="py-3.5 px-4 text-slate-700 font-semibold">
-                      <span className="bg-slate-100 px-2 py-0.5 rounded-md text-[11px] text-slate-700 border border-slate-200/60">
-                        {exam.country || 'International'}
+                      <span className="bg-slate-100 px-2.5 py-1 rounded-lg text-xs text-slate-700 border border-slate-200/60 font-semibold inline-flex items-center gap-1.5">
+                        <span>{exam.flag || '🌐'}</span>
+                        <span>{exam.country || 'International'}</span>
                       </span>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-center font-bold">
-                      <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-extrabold text-[11px] border border-indigo-100">
-                        {assignedSubjectsInExam.length} Modules
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-center font-bold text-slate-700">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[11px]">
-                        {exam.stages || 1} Stages
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      {exam.difficulty ? (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${difficultyCls}`}>
-                          {exam.difficulty}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
-
-                    <td className="py-3.5 px-4 font-bold text-emerald-700">
-                      {(exam.feeAmount !== undefined && exam.feeAmount !== null && exam.feeAmount !== '') ? (
-                        <span>{exam.feeCurrency} {Number(exam.feeAmount).toLocaleString()}</span>
-                      ) : (
-                        <span className="text-slate-400 font-normal">N/A</span>
-                      )}
-                    </td>
-
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => handleToggleStatus(exam.id)}
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold cursor-pointer transition-colors ${
-                          exam.status === 'Active'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-slate-100 text-slate-500 border border-slate-200'
-                        }`}
-                      >
-                        {exam.status}
-                      </button>
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
                       <div className="inline-flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => handleOpenEditModal(exam)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                          title="Edit Exam"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenDeleteModal(exam)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Delete Exam"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
                         <Link
-                          to={`/faculty/exams/${exam.id}/subjects`}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white font-bold text-[11px] transition-colors ml-1 inline-flex items-center gap-1"
+                          to="/faculty/subjects"
+                          className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors inline-flex items-center gap-1.5 shadow-xs"
                         >
-                          <span>Subjects</span>
-                          <ArrowRight className="w-3 h-3" />
+                          <span>Explore Subjects</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </Link>
                       </div>
                     </td>
