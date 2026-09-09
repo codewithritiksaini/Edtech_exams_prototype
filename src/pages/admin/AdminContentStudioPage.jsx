@@ -44,6 +44,7 @@ export default function AdminContentStudioPage() {
 
   // Filters & State
   const [activeTypeFilter, setActiveTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
@@ -362,28 +363,86 @@ export default function AdminContentStudioPage() {
     setExpandedRowIds(new Set());
   };
 
-  // Filtered Assets
-  const filteredAssets = useMemo(() => {
-    return unifiedAssets.filter(item => {
-      if (activeTypeFilter !== 'all' && item.type !== activeTypeFilter) return false;
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        item.title.toLowerCase().includes(q) ||
-        (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
-        (item.author && item.author.toLowerCase().includes(q))
-      );
-    });
-  }, [unifiedAssets, activeTypeFilter, searchQuery]);
+  // 1. Assets matching Search Query
+  const searchFilteredAssets = useMemo(() => {
+    if (!searchQuery.trim()) return unifiedAssets;
+    const q = searchQuery.toLowerCase().trim();
+    return unifiedAssets.filter(item => (
+      item.title.toLowerCase().includes(q) ||
+      (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
+      (item.author && item.author.toLowerCase().includes(q)) ||
+      (item.specs && item.specs.toLowerCase().includes(q))
+    ));
+  }, [unifiedAssets, searchQuery]);
 
-  // Counts by type
-  const counts = useMemo(() => {
-    const c = { all: unifiedAssets.length, pdf: 0, ppt: 0, image: 0, video: 0, flashcard: 0, live: 0, notes: 0 };
-    unifiedAssets.forEach(a => {
+  // 2. Relative Content Type Counts (computed from Search + Status)
+  const relativeTypeCounts = useMemo(() => {
+    const base = searchFilteredAssets.filter(item => {
+      if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+      return true;
+    });
+
+    const c = { all: base.length, pdf: 0, ppt: 0, image: 0, video: 0, flashcard: 0, live: 0, notes: 0 };
+    base.forEach(a => {
       if (c[a.type] !== undefined) c[a.type]++;
     });
     return c;
-  }, [unifiedAssets]);
+  }, [searchFilteredAssets, statusFilter]);
+
+  // 3. Relative Status Counts (computed from Search + Content Type)
+  const relativeStatusCounts = useMemo(() => {
+    const base = searchFilteredAssets.filter(item => {
+      if (activeTypeFilter !== 'all' && item.type !== activeTypeFilter) return false;
+      return true;
+    });
+
+    const c = { all: base.length, Published: 0, Active: 0, Scheduled: 0, Draft: 0 };
+    base.forEach(a => {
+      if (c[a.status] !== undefined) {
+        c[a.status]++;
+      } else {
+        c[a.status] = 1;
+      }
+    });
+    return c;
+  }, [searchFilteredAssets, activeTypeFilter]);
+
+  // 4. Final Filtered Assets matching all active criteria simultaneously
+  const filteredAssets = useMemo(() => {
+    return searchFilteredAssets.filter(item => {
+      if (activeTypeFilter !== 'all' && item.type !== activeTypeFilter) return false;
+      if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+      return true;
+    });
+  }, [searchFilteredAssets, activeTypeFilter, statusFilter]);
+
+  // Dynamic search placeholder based on active filters
+  const searchPlaceholder = useMemo(() => {
+    if (activeTypeFilter !== 'all') {
+      const typeNames = {
+        pdf: 'PDF Guides',
+        ppt: 'PPT Slides',
+        image: 'Diagrams & ECG',
+        video: 'Video Lectures',
+        flashcard: 'Flashcards',
+        live: 'Live Sessions',
+        notes: 'Clinical Pearls'
+      };
+      return `Search within ${typeNames[activeTypeFilter] || 'selected type'}...`;
+    }
+    if (statusFilter !== 'all') {
+      return `Search ${statusFilter} assets...`;
+    }
+    return 'Search content by title, file or author...';
+  }, [activeTypeFilter, statusFilter]);
+
+  const hasActiveFilters = Boolean(searchQuery.trim() || activeTypeFilter !== 'all' || statusFilter !== 'all');
+
+  const resetAllFilters = () => {
+    setSearchQuery('');
+    setActiveTypeFilter('all');
+    setStatusFilter('all');
+  };
 
   // Open Modal to Add New Asset
   const handleOpenAddModal = (defaultType = 'pdf') => {
@@ -800,42 +859,89 @@ export default function AdminContentStudioPage() {
         </div>
       </div>
 
-      {/* Toolbar: Search, Content Type Dropdown & Expand/Collapse Toggle */}
+      {/* Toolbar: Search, Content Type Dropdown, Status Dropdown & Expand/Collapse Toggle */}
       <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 shadow-2xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Left: Search Bar & Content Type Dropdown */}
-          <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full lg:w-auto">
+          {/* Left: Search Bar & Relative Filter Dropdowns */}
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full lg:w-auto flex-wrap">
             {/* Search Bar */}
-            <div className="relative w-full sm:w-72">
+            <div className="relative w-full sm:w-64">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search content by title, file or author..."
+                placeholder={searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="w-4 h-4 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center"
+                  title="Clear search text"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            {/* Content Type Filter Dropdown */}
-            <div className="relative w-full sm:w-56">
-              <Filter className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            {/* Content Type Filter Dropdown (Relative) */}
+            <div className="relative w-full sm:w-52">
+              <Filter className={`w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${activeTypeFilter !== 'all' ? 'text-indigo-600' : 'text-slate-400'}`} />
               <select
                 value={activeTypeFilter}
                 onChange={(e) => setActiveTypeFilter(e.target.value)}
-                className="w-full pl-8 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer appearance-none"
+                className={`w-full pl-8 pr-8 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer appearance-none transition-all ${
+                  activeTypeFilter !== 'all'
+                    ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 font-bold'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}
               >
-                <option value="all">All Content Types ({counts.all})</option>
-                <option value="pdf">PDF Guides ({counts.pdf})</option>
-                <option value="ppt">PPT Slides ({counts.ppt})</option>
-                <option value="image">Diagrams & ECG ({counts.image})</option>
-                <option value="video">Video Lectures ({counts.video})</option>
-                <option value="flashcard">Flashcards ({counts.flashcard})</option>
-                <option value="live">Live Sessions ({counts.live})</option>
-                <option value="notes">Clinical Pearls ({counts.notes})</option>
+                <option value="all">All Content Types ({relativeTypeCounts.all})</option>
+                <option value="pdf">PDF Guides ({relativeTypeCounts.pdf})</option>
+                <option value="ppt">PPT Slides ({relativeTypeCounts.ppt})</option>
+                <option value="image">Diagrams & ECG ({relativeTypeCounts.image})</option>
+                <option value="video">Video Lectures ({relativeTypeCounts.video})</option>
+                <option value="flashcard">Flashcards ({relativeTypeCounts.flashcard})</option>
+                <option value="live">Live Sessions ({relativeTypeCounts.live})</option>
+                <option value="notes">Clinical Pearls ({relativeTypeCounts.notes})</option>
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
+
+            {/* Status Filter Dropdown (Relative) */}
+            <div className="relative w-full sm:w-44">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className={`w-full pl-3.5 pr-8 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer appearance-none transition-all ${
+                  statusFilter !== 'all'
+                    ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 font-bold'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}
+              >
+                <option value="all">All Status ({relativeStatusCounts.all})</option>
+                <option value="Published">Published ({relativeStatusCounts.Published || 0})</option>
+                <option value="Active">Active ({relativeStatusCounts.Active || 0})</option>
+                <option value="Scheduled">Scheduled ({relativeStatusCounts.Scheduled || 0})</option>
+                <option value="Draft">Draft ({relativeStatusCounts.Draft || 0})</option>
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Clear All Active Filters Button */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="text-xs font-bold text-slate-500 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                title="Reset all filters"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
 
           {/* Right: Quick Stats & Expand/Collapse All */}
@@ -1232,14 +1338,32 @@ export default function AdminContentStudioPage() {
                 <td colSpan={6} className="py-12 text-center text-slate-400">
                   <div className="max-w-xs mx-auto space-y-2">
                     <UploadCloud className="w-8 h-8 text-slate-300 mx-auto" />
-                    <p className="font-bold text-xs text-slate-600">No content assets found</p>
-                    <p className="text-[11px] text-slate-400">Upload notes, images, videos or flashcards for this topic.</p>
-                    <button
-                      onClick={() => handleOpenAddModal('pdf')}
-                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
-                    >
-                      + Add Content Asset
-                    </button>
+                    <p className="font-bold text-xs text-slate-600">
+                      {hasActiveFilters ? 'No matching content assets' : 'No content assets found'}
+                    </p>
+                    {hasActiveFilters ? (
+                      <div className="space-y-2 pt-1">
+                        <p className="text-[11px] text-slate-400">No assets match your current filter combination.</p>
+                        <button
+                          type="button"
+                          onClick={resetAllFilters}
+                          className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer inline-flex items-center gap-1.5"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Clear Active Filters</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-[11px] text-slate-400">Upload notes, images, videos or flashcards for this topic.</p>
+                        <button
+                          onClick={() => handleOpenAddModal('pdf')}
+                          className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
+                        >
+                          + Add Content Asset
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

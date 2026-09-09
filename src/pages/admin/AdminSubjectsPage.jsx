@@ -135,27 +135,82 @@ export default function AdminSubjectsPage() {
     }
   };
 
-  // Filter subjects globally or by selected exam
+  // 1. Subjects matching Search Query
+  const searchFilteredSubjects = useMemo(() => {
+    if (!searchQuery.trim()) return subjects;
+    const q = searchQuery.toLowerCase().trim();
+    return subjects.filter(s => {
+      const examObj = exams.find(e => e.id === s.examId);
+      const examName = examObj?.name?.toLowerCase() || '';
+      return (
+        s.name.toLowerCase().includes(q) || 
+        (s.code && s.code.toLowerCase().includes(q)) ||
+        examName.includes(q) ||
+        (s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(q)) ||
+        (s.description && s.description.toLowerCase().includes(q))
+      );
+    });
+  }, [subjects, searchQuery, exams]);
+
+  // 2. Relative Exam Counts (dynamically computed from search query + status)
+  const relativeExamCounts = useMemo(() => {
+    const base = searchFilteredSubjects.filter(s => {
+      if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+      return true;
+    });
+
+    const map = { all: base.length };
+    exams.forEach(ex => {
+      map[ex.id] = base.filter(s => s.examId === ex.id).length;
+    });
+    return map;
+  }, [searchFilteredSubjects, statusFilter, exams]);
+
+  // 3. Relative Status Counts (dynamically computed from search query + selected exam)
+  const relativeStatusCounts = useMemo(() => {
+    const base = searchFilteredSubjects.filter(s => {
+      if (selectedExamFilter !== 'all' && s.examId !== selectedExamFilter) return false;
+      return true;
+    });
+
+    const map = { all: base.length, Active: 0, Draft: 0 };
+    base.forEach(s => {
+      if (map[s.status] !== undefined) {
+        map[s.status]++;
+      } else {
+        map[s.status] = 1;
+      }
+    });
+    return map;
+  }, [searchFilteredSubjects, selectedExamFilter]);
+
+  // 4. Final Filtered Subjects (Search + Exam + Status)
   const filteredSubjects = useMemo(() => {
-    return subjects
+    return searchFilteredSubjects
       .filter(s => {
         if (selectedExamFilter !== 'all' && s.examId !== selectedExamFilter) return false;
         if (statusFilter !== 'all' && s.status !== statusFilter) return false;
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const examObj = exams.find(e => e.id === s.examId);
-          const examName = examObj?.name?.toLowerCase() || '';
-          return (
-            s.name.toLowerCase().includes(q) || 
-            (s.code && s.code.toLowerCase().includes(q)) ||
-            examName.includes(q) ||
-            (s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(q))
-          );
-        }
         return true;
       })
       .sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [subjects, selectedExamFilter, statusFilter, searchQuery, exams]);
+  }, [searchFilteredSubjects, selectedExamFilter, statusFilter]);
+
+  // Dynamic search placeholder based on active exam filter
+  const searchPlaceholder = useMemo(() => {
+    if (selectedExamFilter !== 'all') {
+      const activeExam = exams.find(e => e.id === selectedExamFilter);
+      return `Search within ${activeExam?.name || 'selected track'}...`;
+    }
+    return 'Search subjects, codes, faculty...';
+  }, [selectedExamFilter, exams]);
+
+  const hasActiveFilters = Boolean(searchQuery.trim() || selectedExamFilter !== 'all' || statusFilter !== 'all');
+
+  const resetAllFilters = () => {
+    setSearchQuery('');
+    handleExamFilterChange('all');
+    setStatusFilter('all');
+  };
 
   const handleOpenCreateModal = () => {
     setEditingSubject(null);
@@ -290,29 +345,43 @@ export default function AdminSubjectsPage() {
 
       {/* Toolbar: Search, Exam Dropdown Filter, Status Filter, View Toggle */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full lg:w-auto flex-wrap">
           {/* Search bar */}
           <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search subjects, codes, faculty..."
+              placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="w-4 h-4 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer flex items-center justify-center"
+                title="Clear search text"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* Exam Dropdown Filter */}
+          {/* Exam Dropdown Filter (Relative) */}
           <div className="relative w-full sm:w-auto">
             <select
               value={selectedExamFilter}
               onChange={(e) => handleExamFilterChange(e.target.value)}
-              className="w-full sm:w-auto pl-3 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer appearance-none transition-colors"
+              className={`w-full sm:w-auto pl-3.5 pr-8 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer appearance-none transition-all ${
+                selectedExamFilter !== 'all'
+                  ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 font-bold'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
             >
-              <option value="all">🌐 All Exam Tracks ({subjects.length})</option>
+              <option value="all">🌐 All Exam Tracks ({relativeExamCounts.all || 0})</option>
               {exams.map(exam => {
-                const count = subjects.filter(s => s.examId === exam.id).length;
+                const count = relativeExamCounts[exam.id] || 0;
                 return (
                   <option key={exam.id} value={exam.id}>
                     {exam.flag} {exam.name} ({count})
@@ -322,24 +391,40 @@ export default function AdminSubjectsPage() {
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="text-xs font-bold text-slate-500 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+              title="Reset all filters"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Reset</span>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
-          {/* Status Filters */}
+          {/* Status Filters (Relative) */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
-            {['all', 'Active', 'Draft'].map((st) => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer text-[11px] ${
-                  statusFilter === st
-                    ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                {st === 'all' ? 'All Status' : st}
-              </button>
-            ))}
+            {['all', 'Active', 'Draft'].map((st) => {
+              const count = st === 'all' ? (relativeStatusCounts.all || 0) : (relativeStatusCounts[st] || 0);
+              return (
+                <button
+                  key={st}
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer text-[11px] ${
+                    statusFilter === st
+                      ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  {st === 'all' ? `All (${count})` : `${st} (${count})`}
+                </button>
+              );
+            })}
           </div>
 
           {/* View Mode Toggle */}
@@ -489,17 +574,32 @@ export default function AdminSubjectsPage() {
             <div className="col-span-full bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-4">
               <Layers className="w-12 h-12 text-slate-300 mx-auto" />
               <div className="space-y-1">
-                <h3 className="text-base font-bold text-slate-800">No Subject Modules Found</h3>
+                <h3 className="text-base font-bold text-slate-800">
+                  {hasActiveFilters ? 'No Matching Subjects' : 'No Subject Modules Found'}
+                </h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  No subjects match your selected filters. Try changing your search query or exam track.
+                  {hasActiveFilters 
+                    ? 'No subjects match your current search and filter combination.'
+                    : 'No subjects configured yet for this track.'}
                 </p>
               </div>
-              <button
-                onClick={handleOpenCreateModal}
-                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold cursor-pointer"
-              >
-                + Add Subject Module
-              </button>
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Clear Active Filters</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleOpenCreateModal}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold cursor-pointer"
+                >
+                  + Add Subject Module
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -601,13 +701,29 @@ export default function AdminSubjectsPage() {
                   <td colSpan={7} className="py-12 text-center text-slate-400">
                     <div className="max-w-xs mx-auto space-y-2">
                       <Layers className="w-8 h-8 text-slate-300 mx-auto" />
-                      <p className="font-bold text-xs text-slate-600">No subjects found matching filters</p>
-                      <button
-                        onClick={handleOpenCreateModal}
-                        className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
-                      >
-                        + Add Subject Module
-                      </button>
+                      <p className="font-bold text-xs text-slate-600">
+                        {hasActiveFilters ? 'No matching subjects found' : 'No subjects configured yet'}
+                      </p>
+                      {hasActiveFilters ? (
+                        <div className="space-y-2 pt-1">
+                          <p className="text-[11px] text-slate-400">No subjects match your current search and filter combination.</p>
+                          <button
+                            type="button"
+                            onClick={resetAllFilters}
+                            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Clear Active Filters</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={handleOpenCreateModal}
+                          className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
+                        >
+                          + Add Subject Module
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
