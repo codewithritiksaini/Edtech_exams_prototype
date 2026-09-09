@@ -11,13 +11,22 @@ export const INITIAL_EXAMS = [
   {
     id: 'neet-pg',
     name: 'NEET PG & NExT',
+    fullName: 'National Eligibility cum Entrance Test for Postgraduate (NEET PG & NExT)',
     country: 'India',
-    flag: '🇮🇳',
-    regionCode: 'IN',
-    currency: '₹',
-    tag: 'National Board of Examinations',
-    description: 'Targeted clinical revision and grand test series structured for Indian postgraduate residency.',
-    weeks: 28,
+    authority: 'National Board of Examinations (NBE) / NMC',
+    forAudience: ['Medical Students', 'Interns', 'MBBS Graduates'],
+    purpose: 'Admission to MD/MS/DNB postgraduate residency programs in India',
+    stages: 1,
+    examStructure: 'Single comprehensive Computer-Based Test (200 clinical MCQs across 3 sections)',
+    step1: 'Clinical Pre & Para-Clinical Specialties (Anatomy, Physio, Biochem, Path, Pharma, Micro, FMT)',
+    step2: 'Clinical Specialties (Medicine, Surgery, OBGY, Peds, ENT, Ophtha, Ortho, Psych, Derma, Radio, Anes)',
+    finalStep: 'All-India Merit Ranking & MCC Postgraduate Seat Allocation',
+    englishRequirement: 'Exam administered in English; separate language score not required',
+    feeAmount: 4250,
+    feeCurrency: 'INR',
+    careerPath: 'MBBS → NEET PG Rank → MD/MS Residency (3 Years) → Senior Residency / Specialist',
+    difficulty: 'Very High',
+    bestFor: 'Indian MBBS doctors & licensed practitioners targeting top-tier residency programs',
     packagesCount: 3,
     enrolledStudents: 680,
     status: 'Active',
@@ -26,14 +35,23 @@ export const INITIAL_EXAMS = [
   },
   {
     id: 'usmle',
-    name: 'USMLE Step 1 & Step 2 CK',
+    name: 'USMLE (United States Medical Licensing Examination)',
+    fullName: 'United States Medical Licensing Examination (USMLE)',
     country: 'United States',
-    flag: '🇺🇸',
-    regionCode: 'US',
-    currency: '$',
-    tag: 'ECFMG / FSMB Aligned',
-    description: 'Organ-system integrated modules and clinical reasoning aligned with USMLE exam standards.',
-    weeks: 24,
+    authority: 'USMLE / FSMB / ECFMG',
+    forAudience: ['Medical Students', 'IMGs (International Medical Graduates)'],
+    purpose: 'U.S. Medical Licensing & Residency Match (NRMP)',
+    stages: 3,
+    examStructure: 'Step 1 → Step 2 CK → Step 3',
+    step1: 'Basic Medical Sciences (Anatomy, Physio, Path, Micro, Pharma - Pass/Fail CBT)',
+    step2: 'Clinical Knowledge (Integrated 9-hour scored examination on diagnostic reasoning & patient management)',
+    finalStep: 'Step 3: Two-day assessment of independent clinical practice competency & Computer-based Case Simulations (CCS)',
+    englishRequirement: 'OET (Occupational English Test) Medicine Grade B in all sub-tests for ECFMG Certification',
+    feeAmount: 695,
+    feeCurrency: 'USD',
+    careerPath: 'ECFMG Certification → US Clinical Experience (USCE) → ERAS Application → Residency Match → Independent Practice',
+    difficulty: 'Very High',
+    bestFor: 'Doctors targeting USA residency match and long-term US medical practice',
     packagesCount: 3,
     enrolledStudents: 420,
     status: 'Active',
@@ -43,13 +61,22 @@ export const INITIAL_EXAMS = [
   {
     id: 'plab',
     name: 'PLAB 1 & 2 / UKMLA',
+    fullName: 'Professional and Linguistic Assessments Board / UK Medical Licensing Assessment',
     country: 'United Kingdom',
-    flag: '🇬🇧',
-    regionCode: 'UK',
-    currency: '£',
-    tag: 'General Medical Council (GMC)',
-    description: 'Targeted NHS clinical guidelines, communication skills, and high-yield OSCE station drills.',
-    weeks: 16,
+    authority: 'General Medical Council (GMC)',
+    forAudience: ['IMGs (International Medical Graduates)', 'Overseas Doctors'],
+    purpose: 'GMC Registration with a licence to practise medicine in the United Kingdom',
+    stages: 2,
+    examStructure: 'PLAB 1 (Applied Knowledge Test) → PLAB 2 (Clinical & Professional Skills Assessment)',
+    step1: 'PLAB 1: 3-hour exam with 180 single best answer (SBA) clinical scenario questions',
+    step2: 'PLAB 2: 16-station objective structured clinical exam (OSCE) in Manchester, UK',
+    finalStep: 'GMC Identity Check & Granting of Full GMC Registration with License to Practise',
+    englishRequirement: 'IELTS Academic (min 7.5 overall, 7.0 in each skill) or OET Medicine (min Grade B in each subtest)',
+    feeAmount: 268,
+    feeCurrency: 'GBP',
+    careerPath: 'PLAB 1 & 2 → GMC Registration → NHS Junior Doctor (FY2/ST1/CT1) → Specialty Training → CCT Specialist',
+    difficulty: 'Moderate–High',
+    bestFor: 'International medical graduates seeking rapid clinical entry into the UK NHS system',
     packagesCount: 3,
     enrolledStudents: 320,
     status: 'Active',
@@ -58,14 +85,23 @@ export const INITIAL_EXAMS = [
   },
   {
     id: 'europe',
-    name: 'Europe Medical Licensing',
-    country: 'Europe',
-    flag: '🇪🇺',
-    regionCode: 'EU',
-    currency: '€',
-    tag: 'Germany (FSP/KP), Italy & EU',
-    description: 'Navigate language medical terminology, Approbation exam prep, and clinical hospital pathways.',
-    weeks: 12,
+    name: 'Europe Medical Licensing & Approbation',
+    fullName: 'German Approbation & European Medical Licensure',
+    country: 'Germany',
+    authority: 'State Medical Licensing Boards (Landesprüfungsamt) / EU Health Chambers',
+    forAudience: ['IMGs', 'EU/Non-EU Medical Graduates'],
+    purpose: 'National Medical Licence (Approbation) & Residency Specialization in Germany & Europe',
+    stages: 2,
+    examStructure: 'Fachsprachprüfung (FSP) → Kenntnisprüfung (KP)',
+    step1: 'Fachsprachprüfung (FSP): C1 Medical Terminology, Physician-Patient Simulation & Medical Documentation',
+    step2: 'Kenntnisprüfung (KP): Oral-practical examination covering Internal Medicine, Surgery, Pharmacology & Emergency',
+    finalStep: 'Full German Approbation (Unrestricted lifetime licence to practise medicine in Germany & EU)',
+    englishRequirement: 'B2 General German + C1 Medical German (English not accepted for state licensing)',
+    feeAmount: 450,
+    feeCurrency: 'EUR',
+    careerPath: 'German Language (B2/C1) → FSP Exam → Berufserlaubnis → KP Exam → Approbation → Assistenzarzt Residency',
+    difficulty: 'High',
+    bestFor: 'Doctors targeting tuition-free paid medical residency and permanent career in Germany & Europe',
     packagesCount: 3,
     enrolledStudents: 195,
     status: 'Active',
@@ -320,7 +356,11 @@ export const catalogService = {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_EXAMS);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        return parsed.map(exam => {
+          const fallback = INITIAL_EXAMS.find(ie => ie.id === exam.id);
+          return fallback ? { ...fallback, ...exam } : exam;
+        });
       }
     } catch (e) {
       console.warn('Catalog storage read error (exams):', e);
@@ -340,11 +380,20 @@ export const catalogService = {
   getCurrencyForExam: (examId) => {
     const exam = catalogService.getExamById(examId);
     if (!exam) return '₹';
+    if (exam.feeCurrency) return exam.feeCurrency;
     if (exam.currency) return exam.currency;
-    if (exam.regionCode === 'US' || exam.country.includes('United States')) return '$';
-    if (exam.regionCode === 'UK' || exam.country.includes('United Kingdom')) return '£';
-    if (exam.regionCode === 'EU' || exam.country.includes('Europe')) return '€';
+    if (exam.country && exam.country.includes('United States')) return '$';
+    if (exam.country && exam.country.includes('United Kingdom')) return '£';
+    if (exam.country && exam.country.includes('Germany')) return '€';
     return '₹';
+  },
+
+  createExam: (examData) => {
+    return catalogService.saveExam(examData);
+  },
+
+  updateExam: (id, examData) => {
+    return catalogService.saveExam({ id, ...examData });
   },
 
   saveExam: (examData) => {
@@ -356,25 +405,36 @@ export const catalogService = {
       updated = [...exams];
       updated[existingIndex] = {
         ...updated[existingIndex],
-        ...examData
+        ...examData,
+        name: examData.fullName || examData.name || updated[existingIndex].name,
+        fullName: examData.fullName || examData.name || updated[existingIndex].fullName
       };
     } else {
-      const newId = examData.id || examData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const newId = examData.id || (examData.fullName || examData.name || 'exam').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const newExam = {
         id: newId,
-        name: examData.name,
-        country: examData.country || 'Global',
-        flag: examData.flag || '🌐',
-        regionCode: examData.regionCode || 'GL',
-        currency: examData.currency || '₹',
-        tag: examData.tag || 'Medical Council Aligned',
-        description: examData.description || 'Comprehensive clinical modules and licensing assessment preparation.',
-        weeks: examData.weeks || 24,
+        name: examData.fullName || examData.name,
+        fullName: examData.fullName || examData.name,
+        country: examData.country || 'India',
+        authority: examData.authority || '',
+        forAudience: examData.forAudience || [],
+        purpose: examData.purpose || '',
+        stages: Number(examData.stages) || 1,
+        examStructure: examData.examStructure || '',
+        step1: examData.step1 || '',
+        step2: examData.step2 || '',
+        finalStep: examData.finalStep || '',
+        englishRequirement: examData.englishRequirement || '',
+        feeAmount: Number(examData.feeAmount) || 0,
+        feeCurrency: examData.feeCurrency || 'USD',
+        careerPath: examData.careerPath || '',
+        difficulty: examData.difficulty || 'Moderate',
+        bestFor: examData.bestFor || '',
         packagesCount: 0,
         enrolledStudents: 0,
         status: examData.status || 'Active',
-        startingPrice: examData.startingPrice || '₹14,999',
-        popular: Boolean(examData.popular)
+        startingPrice: examData.feeCurrency && examData.feeAmount ? `${examData.feeCurrency} ${examData.feeAmount}` : 'Free',
+        popular: false
       };
       updated = [newExam, ...exams];
     }
