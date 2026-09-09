@@ -322,7 +322,7 @@ export default function AdminChaptersPage() {
               <tr>
                 <th className="py-3 px-4 w-20 text-center">Unit #</th>
                 <th className="py-3 px-4">Syllabus Chapter & Overview</th>
-                <th className="py-3 px-4 text-center">Topics</th>
+                <th className="py-3 px-4 text-center">Topics & Sample Papers</th>
                 <th className="py-3 px-4 text-center">Status</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
@@ -409,7 +409,7 @@ export default function AdminChaptersPage() {
                           title="Manage Chapter Sample Papers"
                         >
                           <FileCheck className="w-3 h-3 text-purple-600" />
-                          <span>{samplePaperService.getSamplePapersCountByChapter(chap.id) > 0 ? `${samplePaperService.getSamplePapersCountByChapter(chap.id)} Papers` : '+ Paper'}</span>
+                          <span>{samplePaperService.getSamplePapersCountByChapter(chap.id) > 0 ? `${samplePaperService.getSamplePapersCountByChapter(chap.id)} Sample Paper${samplePaperService.getSamplePapersCountByChapter(chap.id) > 1 ? 's' : ''}` : '+ Sample Paper'}</span>
                         </Link>
                       </div>
                     </td>
@@ -538,7 +538,7 @@ export default function AdminChaptersPage() {
                       title="Manage Chapter Sample Papers"
                     >
                       <FileCheck className="w-3 h-3 text-purple-600" />
-                      <span>{samplePaperService.getSamplePapersCountByChapter(chap.id) > 0 ? `${samplePaperService.getSamplePapersCountByChapter(chap.id)} Papers` : '+ Paper'}</span>
+                      <span>{samplePaperService.getSamplePapersCountByChapter(chap.id) > 0 ? `${samplePaperService.getSamplePapersCountByChapter(chap.id)} Sample Paper${samplePaperService.getSamplePapersCountByChapter(chap.id) > 1 ? 's' : ''}` : '+ Sample Paper'}</span>
                     </Link>
                   </div>
                 </div>
