@@ -1,25 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  FileText, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  CheckCircle2, 
-  X, 
-  ArrowRight, 
+import {
+  FileText,
+  Plus,
+  Search,
+  Edit3,
+  Trash2,
+  CheckCircle2,
+  X,
+  ArrowRight,
   ArrowLeft,
   ArrowUp,
   ArrowDown,
-  Clock, 
-  Sparkles, 
-  FolderTree, 
+  Clock,
+  Sparkles,
+  FolderTree,
   Layers,
-  Video, 
-  Image as ImageIcon, 
-  Brain, 
-  Radio, 
+  Video,
+  Image as ImageIcon,
+  Brain,
+  Radio,
   GripVertical,
   AlertTriangle,
   LayoutGrid,
@@ -28,15 +28,15 @@ import {
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
 
-export default function AdminTopicsPage() {
-  const { examId: routeExamId, subjectId, chapterId } = useParams();
+export default function AdminLecturesPage() {
+  const { examId: routeExamId, subjectId, moduleId } = useParams();
   const navigate = useNavigate();
 
   const [subject, setSubject] = useState(() => curriculumService.getSubjectById(subjectId));
   const effectiveExamId = routeExamId || subject?.examId || 'neet-pg';
   const [exam, setExam] = useState(() => catalogService.getExamById(effectiveExamId) || { id: effectiveExamId, name: effectiveExamId.toUpperCase(), flag: '🩺' });
-  const [chapter, setChapter] = useState(() => curriculumService.getChapterById(chapterId));
-  const [topics, setTopics] = useState(() => curriculumService.getTopics(chapterId, subjectId, effectiveExamId));
+  const [module, setModule] = useState(() => curriculumService.getModuleById(moduleId));
+  const [lectures, setLectures] = useState(() => curriculumService.getLectures(moduleId, subjectId, effectiveExamId));
 
   // View Mode & Filters
   const [viewMode, setViewMode] = useState('table');
@@ -51,8 +51,8 @@ export default function AdminTopicsPage() {
 
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTopic, setEditingTopic] = useState(null);
-  const [deletingTopic, setDeletingTopic] = useState(null);
+  const [editingLecture, setEditingLecture] = useState(null);
+  const [deletingLecture, setDeletingLecture] = useState(null);
 
   // Form State
   const [formTitle, setFormTitle] = useState('');
@@ -66,11 +66,11 @@ export default function AdminTopicsPage() {
       const sub = curriculumService.getSubjectById(subjectId);
       setSubject(sub);
       const exId = routeExamId || sub?.examId || 'neet-pg';
-      setChapter(curriculumService.getChapterById(chapterId));
-      setTopics(curriculumService.getTopics(chapterId, subjectId, exId));
+      setModule(curriculumService.getModuleById(moduleId));
+      setLectures(curriculumService.getLectures(moduleId, subjectId, exId));
     });
     return unsub;
-  }, [chapterId, subjectId, routeExamId]);
+  }, [moduleId, subjectId, routeExamId]);
 
   useEffect(() => {
     const sub = curriculumService.getSubjectById(subjectId);
@@ -79,29 +79,29 @@ export default function AdminTopicsPage() {
       const exId = routeExamId || sub.examId || 'neet-pg';
       const foundExam = catalogService.getExamById(exId);
       if (foundExam) setExam(foundExam);
-      setTopics(curriculumService.getTopics(chapterId, subjectId, exId));
+      setLectures(curriculumService.getLectures(moduleId, subjectId, exId));
     }
-    const foundChap = curriculumService.getChapterById(chapterId);
-    if (foundChap) setChapter(foundChap);
-  }, [routeExamId, subjectId, chapterId]);
+    const foundModule = curriculumService.getModuleById(moduleId);
+    if (foundModule) setModule(foundModule);
+  }, [routeExamId, subjectId, moduleId]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  // Filtered and sorted topics
-  const filteredTopics = useMemo(() => {
-    return topics
-      .filter(t => {
-        if (difficultyFilter !== 'all' && t.difficulty !== difficultyFilter) return false;
-        if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+  // Filtered and sorted lectures
+  const filteredLectures = useMemo(() => {
+    return lectures
+      .filter(l => {
+        if (difficultyFilter !== 'all' && l.difficulty !== difficultyFilter) return false;
+        if (statusFilter !== 'all' && l.status !== statusFilter) return false;
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase();
-        return t.title.toLowerCase().includes(q);
+        return l.title.toLowerCase().includes(q);
       })
-      .sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
-  }, [topics, difficultyFilter, statusFilter, searchQuery]);
+      .sort((a, b) => (a.lectureNumber || 0) - (b.lectureNumber || 0));
+  }, [lectures, difficultyFilter, statusFilter, searchQuery]);
 
   // Drag & Drop Handlers
   const handleDragStart = (e, index) => {
@@ -126,13 +126,13 @@ export default function AdminTopicsPage() {
       return;
     }
 
-    const reordered = [...filteredTopics];
+    const reordered = [...filteredLectures];
     const [draggedItem] = reordered.splice(draggedIndex, 1);
     reordered.splice(targetIndex, 0, draggedItem);
 
-    const orderedIds = reordered.map(t => t.id);
-    curriculumService.reorderTopics(chapterId, orderedIds);
-    showToast(`Topic #${targetIndex + 1}: "${draggedItem.title}" reordered.`);
+    const orderedIds = reordered.map(l => l.id);
+    curriculumService.reorderLectures(moduleId, orderedIds);
+    showToast(`Lecture #${targetIndex + 1}: "${draggedItem.title}" reordered.`);
 
     setDraggedIndex(null);
     setDragOverIndex(null);
@@ -144,46 +144,46 @@ export default function AdminTopicsPage() {
   };
 
   const handleOpenCreateModal = () => {
-    setEditingTopic(null);
+    setEditingLecture(null);
     setFormTitle('');
-    setFormNumber(topics.length + 1);
+    setFormNumber(lectures.length + 1);
     setFormDuration('45 mins');
     setFormDifficulty('High-Yield');
     setFormStatus('Published');
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (top) => {
-    setEditingTopic(top);
-    setFormTitle(top.title);
-    setFormNumber(top.topicNumber || 1);
-    setFormDuration(top.duration || '45 mins');
-    setFormDifficulty(top.difficulty || 'High-Yield');
-    setFormStatus(top.status || 'Published');
+  const handleOpenEditModal = (lec) => {
+    setEditingLecture(lec);
+    setFormTitle(lec.title);
+    setFormNumber(lec.lectureNumber || 1);
+    setFormDuration(lec.duration || '45 mins');
+    setFormDifficulty(lec.difficulty || 'High-Yield');
+    setFormStatus(lec.status || 'Published');
     setIsModalOpen(true);
   };
 
-  const handleSaveTopic = (e) => {
+  const handleSaveLecture = (e) => {
     e.preventDefault();
     if (!formTitle.trim()) return;
 
-    if (editingTopic) {
-      curriculumService.saveTopic({
-        ...editingTopic,
+    if (editingLecture) {
+      curriculumService.saveLecture({
+        ...editingLecture,
         title: formTitle.trim(),
-        topicNumber: Number(formNumber),
+        lectureNumber: Number(formNumber),
         duration: formDuration,
         difficulty: formDifficulty,
         status: formStatus
       });
-      showToast(`Topic "${formTitle}" updated successfully!`);
+      showToast(`Lecture "${formTitle}" updated successfully!`);
     } else {
-      curriculumService.saveTopic({
+      curriculumService.saveLecture({
         examId: effectiveExamId,
         subjectId,
-        chapterId,
+        moduleId,
         title: formTitle.trim(),
-        topicNumber: Number(formNumber),
+        lectureNumber: Number(formNumber),
         duration: formDuration,
         difficulty: formDifficulty,
         status: formStatus,
@@ -193,38 +193,39 @@ export default function AdminTopicsPage() {
           video: null,
           flashcards: [],
           liveClasses: [],
+          topics: [],
           clinicalNotes: ''
         }
       });
-      showToast(`New topic "${formTitle}" created successfully!`);
+      showToast(`New lecture "${formTitle}" created successfully!`);
     }
     setIsModalOpen(false);
   };
 
-  const handleDeleteClick = (top) => {
-    setDeletingTopic(top);
+  const handleDeleteClick = (lec) => {
+    setDeletingLecture(lec);
   };
 
   const handleConfirmDelete = () => {
-    if (!deletingTopic) return;
-    curriculumService.deleteTopic(deletingTopic.id);
-    showToast(`Topic "${deletingTopic.title}" deleted.`);
-    setDeletingTopic(null);
+    if (!deletingLecture) return;
+    curriculumService.deleteLecture(deletingLecture.id);
+    showToast(`Lecture "${deletingLecture.title}" deleted.`);
+    setDeletingLecture(null);
   };
 
-  const handleMoveOrder = (topId, direction) => {
-    curriculumService.moveTopicOrder(topId, direction);
+  const handleMoveOrder = (lecId, direction) => {
+    curriculumService.moveLectureOrder(lecId, direction);
   };
 
-  const getContentStudioUrl = (topicId) => {
+  const getContentStudioUrl = (lectureId) => {
     return routeExamId
-      ? `/admin/exams/${effectiveExamId}/subjects/${subjectId}/chapters/${chapterId}/topics/${topicId}/content`
-      : `/admin/subjects/${subjectId}/chapters/${chapterId}/topics/${topicId}/content`;
+      ? `/admin/exams/${effectiveExamId}/subjects/${subjectId}/modules/${moduleId}/lectures/${lectureId}/content`
+      : `/admin/subjects/${subjectId}/modules/${moduleId}/lectures/${lectureId}/content`;
   };
 
-  const backChaptersUrl = routeExamId
-    ? `/admin/exams/${effectiveExamId}/subjects/${subjectId}/chapters`
-    : `/admin/subjects/${subjectId}/chapters`;
+  const backModulesUrl = routeExamId
+    ? `/admin/exams/${effectiveExamId}/subjects/${subjectId}/modules`
+    : `/admin/subjects/${subjectId}/modules`;
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -240,12 +241,12 @@ export default function AdminTopicsPage() {
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="space-y-3">
           <div>
-            <Link 
-              to={backChaptersUrl}
+            <Link
+              to={backModulesUrl}
               className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider inline-flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Chapters</span>
+              <span>Back to Modules</span>
             </Link>
           </div>
 
@@ -255,10 +256,10 @@ export default function AdminTopicsPage() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                {chapter?.title || 'Chapter'} — Topics
+                {module?.title || 'Module'} — Lectures
               </h1>
               <p className="text-xs text-slate-500 mt-1">
-                Subject: <strong className="text-slate-700">{subject?.name}</strong> • Unit #{chapter?.chapterNumber || 1} • Track: <strong className="text-slate-700">{exam?.flag} {exam?.name}</strong>
+                Subject: <strong className="text-slate-700">{subject?.name}</strong> • Unit #{module?.moduleNumber || 1} • Track: <strong className="text-slate-700">{exam?.flag} {exam?.name}</strong>
               </p>
             </div>
           </div>
@@ -269,7 +270,7 @@ export default function AdminTopicsPage() {
           className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Topic</span>
+          <span>Add Lecture</span>
         </button>
       </div>
 
@@ -280,7 +281,7 @@ export default function AdminTopicsPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search topics by title..."
+              placeholder="Search lectures by title..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
@@ -308,7 +309,7 @@ export default function AdminTopicsPage() {
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
             <span className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700">
-              {filteredTopics.length} Topics
+              {filteredLectures.length} Lectures
             </span>
           </div>
 
@@ -336,14 +337,14 @@ export default function AdminTopicsPage() {
         </div>
       </div>
 
-      {/* TOPICS TABLE VIEW (DEFAULT LIST) */}
+      {/* LECTURES TABLE VIEW (DEFAULT LIST) */}
       {viewMode === 'table' ? (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
               <tr>
-                <th className="py-3 px-4 w-20 text-center">Topic #</th>
-                <th className="py-3 px-4">Topic Title & Clinical Assets</th>
+                <th className="py-3 px-4 w-20 text-center">Lecture #</th>
+                <th className="py-3 px-4">Lecture Title & Clinical Assets</th>
                 <th className="py-3 px-4 text-center">Yield / Level</th>
                 <th className="py-3 px-4 text-center">Duration</th>
                 <th className="py-3 px-4 text-center">Status</th>
@@ -351,56 +352,56 @@ export default function AdminTopicsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredTopics.map((top, idx) => {
-                const pdfCount = top.content?.pdfList?.length || (top.content?.pdf ? 1 : 0);
-                const imgCount = top.content?.images?.length || 0;
-                const hasVideo = Boolean(top.content?.video);
-                const flashcardCount = top.content?.flashcards?.length || 0;
-                const hasLive = (top.content?.liveClasses?.length || 0) > 0;
+              {filteredLectures.map((lec, idx) => {
+                const pdfCount = lec.content?.pdfList?.length || (lec.content?.pdf ? 1 : 0);
+                const imgCount = lec.content?.images?.length || 0;
+                const hasVideo = Boolean(lec.content?.video);
+                const flashcardCount = lec.content?.flashcards?.length || 0;
+                const hasLive = (lec.content?.liveClasses?.length || 0) > 0;
                 const isDragging = draggedIndex === idx;
                 const isDragOver = dragOverIndex === idx;
-                const contentUrl = getContentStudioUrl(top.id);
+                const contentUrl = getContentStudioUrl(lec.id);
 
                 return (
                   <tr
-                    key={top.id}
+                    key={lec.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDrop={(e) => handleDrop(e, idx)}
                     onDragEnd={handleDragEnd}
                     className={`transition-all ${
-                      isDragging 
-                        ? 'opacity-40 bg-slate-100' 
+                      isDragging
+                        ? 'opacity-40 bg-slate-100'
                         : isDragOver
                           ? 'bg-indigo-50/70 border-t-2 border-indigo-500'
                           : 'hover:bg-indigo-50/30'
                     }`}
                   >
-                    {/* Drag Handle & Topic # */}
+                    {/* Drag Handle & Lecture # */}
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           type="button"
                           className="text-slate-300 hover:text-indigo-600 cursor-grab active:cursor-grabbing p-1 rounded hover:bg-slate-100 transition-colors"
-                          title="Drag to reorder topic"
+                          title="Drag to reorder lecture"
                         >
                           <GripVertical className="w-4 h-4" />
                         </button>
                         <span className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs flex items-center justify-center border border-indigo-100 shadow-2xs shrink-0">
-                          {top.topicNumber || idx + 1}
+                          {lec.lectureNumber || idx + 1}
                         </span>
                       </div>
                     </td>
 
-                    {/* Topic Title & Content Assets */}
+                    {/* Lecture Title & Content Assets */}
                     <td className="py-3.5 px-4">
                       <div className="space-y-1.5">
                         <Link
                           to={contentUrl}
                           className="font-extrabold text-slate-900 hover:text-indigo-600 transition-colors text-xs block"
                         >
-                          {top.title}
+                          {lec.title}
                         </Link>
 
                         {/* Content Asset Indicators Row */}
@@ -452,13 +453,13 @@ export default function AdminTopicsPage() {
                     {/* Yield / Difficulty */}
                     <td className="py-3.5 px-4 text-center">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-bold border ${
-                        top.difficulty === 'High-Yield'
+                        lec.difficulty === 'High-Yield'
                           ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : top.difficulty === 'Advanced'
+                          : lec.difficulty === 'Advanced'
                             ? 'bg-purple-50 text-purple-700 border-purple-200'
                             : 'bg-slate-100 text-slate-700 border-slate-200'
                       }`}>
-                        {top.difficulty || 'High-Yield'}
+                        {lec.difficulty || 'High-Yield'}
                       </span>
                     </td>
 
@@ -466,18 +467,18 @@ export default function AdminTopicsPage() {
                     <td className="py-3.5 px-4 text-center">
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg">
                         <Clock className="w-3 h-3 text-slate-400" />
-                        <span>{top.duration || '45 mins'}</span>
+                        <span>{lec.duration || '45 mins'}</span>
                       </span>
                     </td>
 
                     {/* Status */}
                     <td className="py-3.5 px-4 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        top.status === 'Draft'
+                        lec.status === 'Draft'
                           ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
                           : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                       }`}>
-                        {top.status || 'Published'}
+                        {lec.status || 'Published'}
                       </span>
                     </td>
 
@@ -485,20 +486,20 @@ export default function AdminTopicsPage() {
                     <td className="py-3.5 px-4 text-right">
                       <div className="inline-flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => handleOpenEditModal(top)}
+                          onClick={() => handleOpenEditModal(lec)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                          title="Edit Topic Meta"
+                          title="Edit Lecture Meta"
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteClick(top)}
+                          onClick={() => handleDeleteClick(lec)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Delete Topic"
+                          title="Delete Lecture"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                        
+
                         {/* MANAGE CONTENT BUTTON (Replaced Launch Content Studio) */}
                         <Link
                           to={contentUrl}
@@ -515,17 +516,17 @@ export default function AdminTopicsPage() {
                 );
               })}
 
-              {filteredTopics.length === 0 && (
+              {filteredLectures.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <div className="max-w-xs mx-auto space-y-2">
                       <FileText className="w-8 h-8 text-slate-300 mx-auto" />
-                      <p className="font-bold text-xs text-slate-600">No topics found</p>
+                      <p className="font-bold text-xs text-slate-600">No lectures found</p>
                       <button
                         onClick={handleOpenCreateModal}
                         className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
                       >
-                        + Add Topic
+                        + Add Lecture
                       </button>
                     </div>
                   </td>
@@ -537,43 +538,43 @@ export default function AdminTopicsPage() {
       ) : (
         /* Grid (Cards) View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredTopics.map((top, idx) => {
-            const pdfCount = top.content?.pdfList?.length || (top.content?.pdf ? 1 : 0);
-            const imgCount = top.content?.images?.length || 0;
-            const hasVideo = Boolean(top.content?.video);
-            const flashcardCount = top.content?.flashcards?.length || 0;
-            const hasLive = (top.content?.liveClasses?.length || 0) > 0;
-            const contentUrl = getContentStudioUrl(top.id);
+          {filteredLectures.map((lec, idx) => {
+            const pdfCount = lec.content?.pdfList?.length || (lec.content?.pdf ? 1 : 0);
+            const imgCount = lec.content?.images?.length || 0;
+            const hasVideo = Boolean(lec.content?.video);
+            const flashcardCount = lec.content?.flashcards?.length || 0;
+            const hasLive = (lec.content?.liveClasses?.length || 0) > 0;
+            const contentUrl = getContentStudioUrl(lec.id);
 
             return (
               <div
-                key={top.id}
+                key={lec.id}
                 className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all p-5 flex flex-col justify-between gap-4 group"
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 font-black text-xs flex items-center justify-center border border-indigo-100 shadow-2xs">
-                        #{top.topicNumber || idx + 1}
+                        #{lec.lectureNumber || idx + 1}
                       </span>
                       <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full border ${
-                        top.difficulty === 'High-Yield'
+                        lec.difficulty === 'High-Yield'
                           ? 'bg-amber-50 text-amber-800 border-amber-200'
                           : 'bg-slate-100 text-slate-700 border-slate-200'
                       }`}>
-                        {top.difficulty || 'High-Yield'}
+                        {lec.difficulty || 'High-Yield'}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => handleOpenEditModal(top)}
+                        onClick={() => handleOpenEditModal(lec)}
                         className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDeleteClick(top)}
+                        onClick={() => handleDeleteClick(lec)}
                         className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -583,12 +584,12 @@ export default function AdminTopicsPage() {
 
                   <div>
                     <h3 className="text-sm font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                      {top.title}
+                      {lec.title}
                     </h3>
                     <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3 text-slate-400" />
-                        <span>{top.duration || '45 mins'}</span>
+                        <span>{lec.duration || '45 mins'}</span>
                       </span>
                     </div>
                   </div>
@@ -635,15 +636,15 @@ export default function AdminTopicsPage() {
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                   <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5">
                     <button
-                      onClick={() => handleMoveOrder(top.id, 'up')}
+                      onClick={() => handleMoveOrder(lec.id, 'up')}
                       disabled={idx === 0}
                       className="p-1 text-slate-400 hover:text-slate-800 disabled:opacity-30 cursor-pointer"
                     >
                       <ArrowUp className="w-3 h-3" />
                     </button>
                     <button
-                      onClick={() => handleMoveOrder(top.id, 'down')}
-                      disabled={idx === filteredTopics.length - 1}
+                      onClick={() => handleMoveOrder(lec.id, 'down')}
+                      disabled={idx === filteredLectures.length - 1}
                       className="p-1 text-slate-400 hover:text-slate-800 disabled:opacity-30 cursor-pointer"
                     >
                       <ArrowDown className="w-3 h-3" />
@@ -666,7 +667,7 @@ export default function AdminTopicsPage() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {deletingTopic && (
+      {deletingLecture && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100">
@@ -674,16 +675,16 @@ export default function AdminTopicsPage() {
             </div>
 
             <div className="text-center space-y-2">
-              <h3 className="text-lg font-black text-slate-900">Delete Topic?</h3>
+              <h3 className="text-lg font-black text-slate-900">Delete Lecture?</h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Are you sure you want to delete topic <strong className="text-slate-800">"{deletingTopic.title}"</strong>? All uploaded PDFs, diagram assets, and flashcards associated with this topic will be removed.
+                Are you sure you want to delete lecture <strong className="text-slate-800">"{deletingLecture.title}"</strong>? All uploaded PDFs, diagram assets, and flashcards associated with this lecture will be removed.
               </p>
             </div>
 
             <div className="pt-2 flex items-center justify-center gap-3">
               <button
                 type="button"
-                onClick={() => setDeletingTopic(null)}
+                onClick={() => setDeletingLecture(null)}
                 className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
               >
                 Cancel
@@ -693,14 +694,14 @@ export default function AdminTopicsPage() {
                 onClick={handleConfirmDelete}
                 className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 transition-all cursor-pointer"
               >
-                Yes, Delete Topic
+                Yes, Delete Lecture
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add / Edit Topic Drawer */}
+      {/* Add / Edit Lecture Drawer */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
           {/* Backdrop */}
@@ -719,10 +720,10 @@ export default function AdminTopicsPage() {
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
                     <h2 className="text-base sm:text-lg font-black text-slate-900">
-                      {editingTopic ? 'Edit Topic Meta' : `Add Topic to Unit ${chapter?.chapterNumber || 1}`}
+                      {editingLecture ? 'Edit Lecture Meta' : `Add Lecture to Unit ${module?.moduleNumber || 1}`}
                     </h2>
                   </div>
-                  <p className="text-xs text-slate-500">Fill in the details to {editingTopic ? 'update' : 'create'} this topic.</p>
+                  <p className="text-xs text-slate-500">Fill in the details to {editingLecture ? 'update' : 'create'} this lecture.</p>
                 </div>
                 <button
                   type="button"
@@ -735,9 +736,9 @@ export default function AdminTopicsPage() {
               </div>
 
               {/* Drawer Scrollable Body */}
-              <form onSubmit={handleSaveTopic} id="topic-drawer-form" className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+              <form onSubmit={handleSaveLecture} id="lecture-drawer-form" className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Topic Title / Clinical Presentation</label>
+                  <label className="font-bold text-slate-700">Lecture Title / Clinical Presentation</label>
                   <input
                     type="text"
                     required
@@ -750,7 +751,7 @@ export default function AdminTopicsPage() {
 
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700">Topic Order #</label>
+                    <label className="font-bold text-slate-700">Lecture Order #</label>
                     <input
                       type="number"
                       min="1"
@@ -825,10 +826,10 @@ export default function AdminTopicsPage() {
                 </button>
                 <button
                   type="submit"
-                  form="topic-drawer-form"
+                  form="lecture-drawer-form"
                   className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm cursor-pointer text-xs"
                 >
-                  {editingTopic ? 'Save Changes' : 'Create Topic'}
+                  {editingLecture ? 'Save Changes' : 'Create Lecture'}
                 </button>
               </div>
             </div>

@@ -20,14 +20,14 @@ import {
 import { catalogService } from '../../services/catalogService';
 import { curriculumService } from '../../services/curriculumService';
 
-export default function StudentTopicsPage() {
-  const { examId = 'neet-pg', subjectId = 'sub-neet-cardio', chapterId } = useParams();
+export default function StudentLecturesPage() {
+  const { examId = 'neet-pg', subjectId = 'sub-neet-cardio', moduleId } = useParams();
   const navigate = useNavigate();
 
   const [exam, setExam] = useState(() => catalogService.getExamById(examId) || { id: examId, name: examId.toUpperCase() });
   const [subject, setSubject] = useState(() => curriculumService.getSubjectById(subjectId));
-  const [chapter, setChapter] = useState(() => curriculumService.getChapterById(chapterId));
-  const [topics, setTopics] = useState(() => curriculumService.getTopicsByChapter(chapterId));
+  const [module, setModule] = useState(() => curriculumService.getModuleById(moduleId));
+  const [lectures, setLectures] = useState(() => curriculumService.getLecturesByModule(moduleId));
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -35,13 +35,13 @@ export default function StudentTopicsPage() {
     if (foundExam) setExam(foundExam);
     const foundSubject = curriculumService.getSubjectById(subjectId);
     if (foundSubject) setSubject(foundSubject);
-    const foundChapter = curriculumService.getChapterById(chapterId);
-    if (foundChapter) setChapter(foundChapter);
-    const topicList = curriculumService.getTopicsByChapter(chapterId);
-    setTopics(topicList || []);
-  }, [examId, subjectId, chapterId]);
+    const foundModule = curriculumService.getModuleById(moduleId);
+    if (foundModule) setModule(foundModule);
+    const lectureList = curriculumService.getLecturesByModule(moduleId);
+    setLectures(lectureList || []);
+  }, [examId, subjectId, moduleId]);
 
-  const filteredTopics = topics.filter(t => 
+  const filteredLectures = lectures.filter(t => 
     t.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -52,29 +52,29 @@ export default function StudentTopicsPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Link 
-              to={`/student/courses/${examId}/subjects/${subjectId}/chapters`}
+              to={`/student/courses/${examId}/subjects/${subjectId}/modules`}
               className="text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors uppercase tracking-wider flex items-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Chapters</span>
+              <span>Back to Modules</span>
             </Link>
             <span className="text-slate-300">•</span>
             <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-100">
-              Level 4 • Topic Modules
+              Level 4 • Lecture Modules
             </span>
           </div>
 
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-brand-600 uppercase">
-                {exam.name} ➡️ {subject?.name} ➡️ Unit #{chapter?.chapterNumber || 1}: {chapter?.title}
+                {exam.name} ➡️ {subject?.name} ➡️ Unit #{module?.moduleNumber || 1}: {module?.title}
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-1">
-              Select Study Topic
+              Select Study Lecture
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 max-w-2xl mt-1">
-              Every topic features a dedicated multi-channel Study Room containing high-yield notes, ECG lightboxes, video masterclasses, and flashcard recall tests.
+              Every lecture features a dedicated multi-channel Study Room containing high-yield notes, ECG lightboxes, video masterclasses, and flashcard recall tests.
             </p>
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function StudentTopicsPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search topics..."
+              placeholder="Search lectures..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 w-44 sm:w-56"
@@ -94,9 +94,9 @@ export default function StudentTopicsPage() {
         </div>
       </div>
 
-      {/* Topics List */}
+      {/* Lectures List */}
       <div className="space-y-4">
-        {filteredTopics.map((top, idx) => {
+        {filteredLectures.map((top, idx) => {
           const pdfCount = top.content?.pdfList?.length || (top.content?.pdf ? 1 : 0);
           const imgCount = top.content?.images?.length || 0;
           const hasVideo = Boolean(top.content?.video);
@@ -151,10 +151,10 @@ export default function StudentTopicsPage() {
                 </div>
               </div>
 
-              {/* Action Button: Enter Topic Study Room */}
+              {/* Action Button: Enter Lecture Study Room */}
               <div className="shrink-0">
                 <Link
-                  to={`/student/courses/${examId}/subjects/${subjectId}/chapters/${chapterId}/topics/${top.id}`}
+                  to={`/student/courses/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures/${top.id}`}
                   className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-brand-600/20 transition-all cursor-pointer group/btn"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />

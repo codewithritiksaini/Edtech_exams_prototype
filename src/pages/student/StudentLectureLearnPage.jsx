@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  FileText, 
-  Video, 
-  Image as ImageIcon, 
-  Brain, 
-  Radio, 
-  Sparkles, 
-  CheckCircle2, 
-  Download, 
-  Clock, 
-  ZoomIn, 
-  X, 
-  RotateCw, 
-  Check, 
-  ChevronRight, 
-  Share2, 
+import {
+  ArrowLeft,
+  ArrowRight,
+  FileText,
+  Video,
+  Image as ImageIcon,
+  Brain,
+  Radio,
+  Sparkles,
+  CheckCircle2,
+  Download,
+  Clock,
+  ZoomIn,
+  X,
+  RotateCw,
+  Check,
+  ChevronRight,
+  Share2,
   Bookmark,
   Play,
   Award
@@ -25,14 +25,14 @@ import {
 import { catalogService } from '../../services/catalogService';
 import { curriculumService } from '../../services/curriculumService';
 
-export default function StudentTopicLearnPage() {
-  const { examId = 'neet-pg', subjectId, chapterId, topicId } = useParams();
+export default function StudentLectureLearnPage() {
+  const { examId = 'neet-pg', subjectId, moduleId, lectureId } = useParams();
   const navigate = useNavigate();
 
   const [exam, setExam] = useState(() => catalogService.getExamById(examId) || { id: examId, name: examId.toUpperCase() });
   const [subject, setSubject] = useState(() => curriculumService.getSubjectById(subjectId));
-  const [chapter, setChapter] = useState(() => curriculumService.getChapterById(chapterId));
-  const [topic, setTopic] = useState(() => curriculumService.getTopicById(topicId));
+  const [module, setModule] = useState(() => curriculumService.getModuleById(moduleId));
+  const [lecture, setLecture] = useState(() => curriculumService.getLectureById(lectureId));
 
   // Channel Tabs: 'video' | 'pdf' | 'images' | 'flashcards' | 'live' | 'pearls'
   const [activeChannel, setActiveChannel] = useState('video');
@@ -50,11 +50,11 @@ export default function StudentTopicLearnPage() {
     if (foundExam) setExam(foundExam);
     const foundSub = curriculumService.getSubjectById(subjectId);
     if (foundSub) setSubject(foundSub);
-    const foundChap = curriculumService.getChapterById(chapterId);
-    if (foundChap) setChapter(foundChap);
-    const foundTopic = curriculumService.getTopicById(topicId);
-    if (foundTopic) setTopic(foundTopic);
-  }, [examId, subjectId, chapterId, topicId]);
+    const foundModule = curriculumService.getModuleById(moduleId);
+    if (foundModule) setModule(foundModule);
+    const foundLecture = curriculumService.getLectureById(lectureId);
+    if (foundLecture) setLecture(foundLecture);
+  }, [examId, subjectId, moduleId, lectureId]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -65,35 +65,35 @@ export default function StudentTopicLearnPage() {
     const nextState = !isCompleted;
     setIsCompleted(nextState);
     if (nextState) {
-      showToast('🎉 Topic marked as completed! Progress updated.');
+      showToast('🎉 Lecture marked as completed! Progress updated.');
     } else {
-      showToast('Topic marked as in-progress.');
+      showToast('Lecture marked as in-progress.');
     }
   };
 
-  if (!topic) {
+  if (!lecture) {
     return (
       <div className="bg-white rounded-3xl p-12 text-center space-y-4 max-w-2xl mx-auto">
-        <h2 className="text-xl font-black text-slate-800">Topic Study Room Not Found</h2>
+        <h2 className="text-xl font-black text-slate-800">Lecture Study Room Not Found</h2>
         <Link
-          to={`/student/courses/${examId}/subjects/${subjectId}/chapters/${chapterId}/topics`}
+          to={`/student/courses/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures`}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-xs"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Topics</span>
+          <span>Back to Lectures</span>
         </Link>
       </div>
     );
   }
 
-  const pdfList = topic.content?.pdfList || (topic.content?.pdf ? [topic.content.pdf] : []);
-  const imagesList = topic.content?.images || [];
-  const flashcards = topic.content?.flashcards || [
+  const pdfList = lecture.content?.pdfList || (lecture.content?.pdf ? [lecture.content.pdf] : []);
+  const imagesList = lecture.content?.images || [];
+  const flashcards = lecture.content?.flashcards || [
     { question: 'What is the hallmark finding of AV dissociation in Ventricular Tachycardia?', answer: 'Independent sinus P waves marching across wide QRS complexes with capture & fusion beats.' },
     { question: 'What is the initial emergency drug of choice for hemodynamically stable monomorphic VT?', answer: 'Intravenous Amiodarone (150 mg over 10 mins) or Procainamide.' }
   ];
-  const videoData = topic.content?.video || {
-    title: topic.title,
+  const videoData = lecture.content?.video || {
+    title: lecture.title,
     url: 'https://vimeo.com/medpreppro/cardio-day03-wct',
     duration: '38:40',
     instructor: 'Dr. Sarah Jenkins (Cardiology Lead, MD DM)',
@@ -121,33 +121,33 @@ export default function StudentTopicLearnPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Link
-              to={`/student/courses/${examId}/subjects/${subjectId}/chapters/${chapterId}/topics`}
+              to={`/student/courses/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures`}
               className="text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors uppercase tracking-wider flex items-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Topics</span>
+              <span>Back to Lectures</span>
             </Link>
             <span className="text-slate-300">•</span>
             <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-100">
-              Level 5 • Topic Study Room
+              Level 5 • Lecture Study Room
             </span>
           </div>
 
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                {topic.title}
+                {lecture.title}
               </h1>
               <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                {topic.difficulty || 'High-Yield'}
+                {lecture.difficulty || 'High-Yield'}
               </span>
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
                 <Clock className="w-3 h-3 text-slate-400" />
-                <span>{topic.duration || '45 mins'}</span>
+                <span>{lecture.duration || '45 mins'}</span>
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              {exam?.name} ➡️ {subject?.name} ➡️ Unit #{chapter?.chapterNumber || 1}: {chapter?.title}
+              {exam?.name} ➡️ {subject?.name} ➡️ Unit #{module?.moduleNumber || 1}: {module?.title}
             </p>
           </div>
         </div>
@@ -163,7 +163,7 @@ export default function StudentTopicLearnPage() {
             }`}
           >
             <CheckCircle2 className={`w-4 h-4 ${isCompleted ? 'text-white' : 'text-slate-400'}`} />
-            <span>{isCompleted ? 'Topic Completed' : 'Mark as Mastered'}</span>
+            <span>{isCompleted ? 'Lecture Completed' : 'Mark as Mastered'}</span>
           </button>
         </div>
       </div>
@@ -215,7 +215,7 @@ export default function StudentTopicLearnPage() {
                 className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              
+
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-16 h-16 rounded-full bg-brand-600 group-hover:bg-brand-500 text-white flex items-center justify-center shadow-xl shadow-brand-600/40 group-hover:scale-110 transition-transform">
                   <Play className="w-7 h-7 fill-current ml-1" />
@@ -306,7 +306,7 @@ export default function StudentTopicLearnPage() {
               <span className="text-[10px] font-extrabold uppercase text-brand-600 tracking-wider">
                 MedPrep Pro Clinical Notes Series • 2026 Edition
               </span>
-              <h2 className="text-xl font-black text-slate-900">{topic.title}</h2>
+              <h2 className="text-xl font-black text-slate-900">{lecture.title}</h2>
               <p className="text-xs text-slate-400">Authored by Dr. Sarah Jenkins (Cardiology Lead)</p>
             </div>
 

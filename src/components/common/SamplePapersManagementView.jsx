@@ -56,12 +56,12 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
   // Filter States
   const paramExamId = searchParams.get('examId');
   const paramSubjectId = searchParams.get('subjectId');
-  const paramChapterId = searchParams.get('chapterId');
+  const paramModuleId = searchParams.get('moduleId');
 
   const defaultExamId = paramExamId || (availableExams.length > 0 ? availableExams[0].id : 'all');
   const [selectedExamId, setSelectedExamId] = useState(defaultExamId);
   const [selectedSubjectId, setSelectedSubjectId] = useState(paramSubjectId || 'all');
-  const [selectedChapterId, setSelectedChapterId] = useState(paramChapterId || 'all');
+  const [selectedModuleId, setSelectedModuleId] = useState(paramModuleId || 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
   const [toastMessage, setToastMessage] = useState('');
@@ -94,7 +94,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
   // Form Fields
   const [formExamId, setFormExamId] = useState(availableExams.length > 0 ? availableExams[0].id : 'neet-pg');
   const [formSubjectId, setFormSubjectId] = useState('');
-  const [formChapterId, setFormChapterId] = useState('');
+  const [formModuleId, setFormModuleId] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formFileName, setFormFileName] = useState('');
@@ -146,10 +146,10 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
     return subs;
   })();
 
-  // Derived available chapters for the selected subject in the filter
-  const filterAvailableChapters = (() => {
+  // Derived available modules for the selected subject in the filter
+  const filterAvailableModules = (() => {
     if (selectedSubjectId === 'all') return [];
-    return curriculumService.getChapters(selectedSubjectId, selectedExamId !== 'all' ? selectedExamId : null);
+    return curriculumService.getModules(selectedSubjectId, selectedExamId !== 'all' ? selectedExamId : null);
   })();
 
   // Form Cascading Options
@@ -161,9 +161,9 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
     return subs;
   })();
 
-  const formChapters = (() => {
+  const formModules = (() => {
     if (!formSubjectId) return [];
-    return curriculumService.getChapters(formSubjectId, formExamId);
+    return curriculumService.getModules(formSubjectId, formExamId);
   })();
 
   // Automatically update form cascading defaults when formExamId changes
@@ -177,14 +177,14 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
     }
   }, [formExamId]);
 
-  // Automatically update form chapter default when formSubjectId changes
+  // Automatically update form module default when formSubjectId changes
   useEffect(() => {
-    if (formChapters.length > 0) {
-      if (!formChapters.some(c => c.id === formChapterId)) {
-        setFormChapterId(formChapters[0].id);
+    if (formModules.length > 0) {
+      if (!formModules.some(c => c.id === formModuleId)) {
+        setFormModuleId(formModules[0].id);
       }
     } else {
-      setFormChapterId('');
+      setFormModuleId('');
     }
   }, [formSubjectId]);
 
@@ -193,7 +193,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  const handleOpenCreateDrawer = (presetChapterId = null) => {
+  const handleOpenCreateDrawer = (presetModuleId = null) => {
     setEditingPaper(null);
     const initialExam = availableExams.length > 0 ? availableExams[0].id : 'neet-pg';
     setFormExamId(initialExam);
@@ -206,9 +206,9 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
     const initialSubId = validSubs.length > 0 ? validSubs[0].id : '';
     setFormSubjectId(initialSubId);
 
-    const initialChaps = initialSubId ? curriculumService.getChapters(initialSubId, initialExam) : [];
-    const targetChapId = presetChapterId || (initialChaps.length > 0 ? initialChaps[0].id : '');
-    setFormChapterId(targetChapId);
+    const initialChaps = initialSubId ? curriculumService.getModules(initialSubId, initialExam) : [];
+    const targetChapId = presetModuleId || (initialChaps.length > 0 ? initialChaps[0].id : '');
+    setFormModuleId(targetChapId);
 
     setFormTitle('');
     setFormDescription('');
@@ -226,7 +226,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
     setEditingPaper(paper);
     setFormExamId(paper.examId);
     setFormSubjectId(paper.subjectId);
-    setFormChapterId(paper.chapterId);
+    setFormModuleId(paper.moduleId);
     setFormTitle(paper.title);
     setFormDescription(paper.description || '');
     setFormFileName(paper.fileName);
@@ -241,8 +241,8 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
 
   const handleSavePaper = (e) => {
     e.preventDefault();
-    if (!formChapterId) {
-      alert('Please select a target Chapter for this sample paper.');
+    if (!formModuleId) {
+      alert('Please select a target Module for this sample paper.');
       return;
     }
     if (!formFileName.trim()) {
@@ -250,7 +250,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
       return;
     }
 
-    const chap = curriculumService.getChapterById(formChapterId);
+    const chap = curriculumService.getModuleById(formModuleId);
     const sub = curriculumService.getSubjectById(formSubjectId);
 
     const currentUser = authService.getCurrentUser();
@@ -269,8 +269,8 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
       ...(editingPaper || {}),
       examId: formExamId,
       subjectId: formSubjectId,
-      chapterId: formChapterId,
-      title: formTitle.trim() || `${chap?.title || 'Chapter'} Comprehensive Practice Paper`,
+      moduleId: formModuleId,
+      title: formTitle.trim() || `${chap?.title || 'Module'} Comprehensive Practice Paper`,
       description: formDescription.trim(),
       fileName: formFileName.trim() || 'Medical_Sample_Paper.pdf',
       fileSize: formFileSize,
@@ -293,7 +293,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
     samplePaperService.saveSamplePaper(paperData);
     setSamplePapers(samplePaperService.getSamplePapers({ role: isFaculty ? 'faculty' : 'admin' }));
     setIsDrawerOpen(false);
-    showToast(editingPaper ? 'Sample Paper updated successfully!' : 'New Sample Paper published for this chapter!');
+    showToast(editingPaper ? 'Sample Paper updated successfully!' : 'New Sample Paper published for this module!');
   };
 
   const handleDeletePaper = (paperId) => {
@@ -325,13 +325,13 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
 
     if (selectedExamId !== 'all' && paper.examId !== selectedExamId) return false;
     if (selectedSubjectId !== 'all' && paper.subjectId !== selectedSubjectId) return false;
-    if (selectedChapterId !== 'all' && paper.chapterId !== selectedChapterId) return false;
+    if (selectedModuleId !== 'all' && paper.moduleId !== selectedModuleId) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchTitle = paper.title.toLowerCase().includes(q);
       const matchDesc = paper.description && paper.description.toLowerCase().includes(q);
       const matchFile = paper.fileName.toLowerCase().includes(q);
-      const chap = curriculumService.getChapterById(paper.chapterId);
+      const chap = curriculumService.getModuleById(paper.moduleId);
       const matchChap = chap?.title?.toLowerCase().includes(q);
       if (!matchTitle && !matchDesc && !matchFile && !matchChap) return false;
     }
@@ -363,19 +363,19 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
                 ? 'text-indigo-700 bg-indigo-50 border-indigo-200' 
                 : 'text-purple-700 bg-purple-50 border-purple-200'
             }`}>
-              {isFaculty ? 'Assigned Courses & Chapters' : 'Platform-Wide Repository'}
+              {isFaculty ? 'Assigned Courses & Modules' : 'Platform-Wide Repository'}
             </span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
             <FileCheck className="w-7 h-7 text-indigo-600" />
-            <span>Chapter Sample Papers & PDFs</span>
+            <span>Module Sample Papers & PDFs</span>
           </h1>
 
           <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
             {isFaculty 
-              ? 'Upload, manage, and release chapter-specific practice PDFs and mock tests under your authorized teaching subjects.'
-              : 'Upload and configure chapter-level sample question papers and explanatory solutions across all exam tracks and subjects.'}
+              ? 'Upload, manage, and release module-specific practice PDFs and mock tests under your authorized teaching subjects.'
+              : 'Upload and configure module-level sample question papers and explanatory solutions across all exam tracks and subjects.'}
           </p>
 
           {isFaculty && (
@@ -408,15 +408,15 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
             <FileText className="w-4 h-4 text-indigo-600" />
           </div>
           <div className="text-2xl font-black text-slate-900">{stats.totalPapers}</div>
-          <div className="text-[10px] text-slate-500 font-medium">Single or multiple per chapter</div>
+          <div className="text-[10px] text-slate-500 font-medium">Single or multiple per module</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-bold uppercase">Chapters Covered</span>
+            <span className="text-[11px] font-bold uppercase">Modules Covered</span>
             <FolderTree className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900">{stats.chaptersCovered}</div>
+          <div className="text-2xl font-black text-slate-900">{stats.modulesCovered}</div>
           <div className="text-[10px] text-slate-500 font-medium">Mapped to curriculum units</div>
         </div>
 
@@ -441,7 +441,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
               onChange={(e) => {
                 setSelectedExamId(e.target.value);
                 setSelectedSubjectId('all');
-                setSelectedChapterId('all');
+                setSelectedModuleId('all');
               }}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             >
@@ -459,7 +459,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
               value={selectedSubjectId}
               onChange={(e) => {
                 setSelectedSubjectId(e.target.value);
-                setSelectedChapterId('all');
+                setSelectedModuleId('all');
               }}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             >
@@ -470,12 +470,12 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
             </select>
           </div>
 
-          {/* Chapter Filter */}
+          {/* Module Filter */}
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Filter by Chapter</label>
+            <label className="font-bold text-slate-700 block mb-1">Filter by Module</label>
             <select
-              value={selectedChapterId}
-              onChange={(e) => setSelectedChapterId(e.target.value)}
+              value={selectedModuleId}
+              onChange={(e) => setSelectedModuleId(e.target.value)}
               disabled={selectedSubjectId === 'all'}
               className={`w-full px-3 py-2 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
                 selectedSubjectId === 'all'
@@ -484,10 +484,10 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
               }`}
             >
               <option value="all">
-                {selectedSubjectId === 'all' ? 'Select a Subject first...' : `All Chapters in Subject (${filterAvailableChapters.length})`}
+                {selectedSubjectId === 'all' ? 'Select a Subject first...' : `All Modules in Subject (${filterAvailableModules.length})`}
               </option>
-              {filterAvailableChapters.map(chap => (
-                <option key={chap.id} value={chap.id}>Ch {chap.chapterNumber || '•'}: {chap.title}</option>
+              {filterAvailableModules.map(chap => (
+                <option key={chap.id} value={chap.id}>Ch {chap.moduleNumber || '•'}: {chap.title}</option>
               ))}
             </select>
           </div>
@@ -499,7 +499,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search title, chapter, or PDF..."
+                placeholder="Search title, module, or PDF..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -513,13 +513,13 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
           <div className="flex items-center gap-2 text-slate-500">
             <span className="font-bold text-slate-700">{filteredPapers.length}</span>
             <span>Sample Papers match current filters</span>
-            {(selectedExamId !== 'all' || selectedSubjectId !== 'all' || selectedChapterId !== 'all' || searchQuery) && (
+            {(selectedExamId !== 'all' || selectedSubjectId !== 'all' || selectedModuleId !== 'all' || searchQuery) && (
               <button
                 type="button"
                 onClick={() => {
                   setSelectedExamId('all');
                   setSelectedSubjectId('all');
-                  setSelectedChapterId('all');
+                  setSelectedModuleId('all');
                   setSearchQuery('');
                 }}
                 className="text-indigo-600 font-bold hover:underline ml-2 cursor-pointer"
@@ -561,7 +561,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
           <h3 className="text-base font-bold text-slate-900">No Sample Papers Found</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
             {isFaculty 
-              ? 'No sample papers currently match your filter or search under your assigned subjects. Click the button below to upload the first sample paper for a chapter.'
+              ? 'No sample papers currently match your filter or search under your assigned subjects. Click the button below to upload the first sample paper for a module.'
               : 'No sample papers found for the selected criteria. Upload a PDF sample paper to get started.'}
           </p>
           <button
@@ -576,10 +576,10 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
         /* Cards Grid View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredPapers.map((paper) => {
-            const chap = curriculumService.getChapterById(paper.chapterId);
+            const chap = curriculumService.getModuleById(paper.moduleId);
             const sub = curriculumService.getSubjectById(paper.subjectId);
             const exam = catalogService.getExamById(paper.examId);
-            const siblingPapers = samplePaperService.getSamplePapersByChapter(paper.chapterId, { role: isFaculty ? 'faculty' : null });
+            const siblingPapers = samplePaperService.getSamplePapersByModule(paper.moduleId, { role: isFaculty ? 'faculty' : null });
 
             return (
               <div
@@ -587,12 +587,12 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
                 className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all flex flex-col justify-between group space-y-4"
               >
                 <div className="space-y-3">
-                  {/* Top Bar: Chapter Tag & Exam Flag */}
+                  {/* Top Bar: Module Tag & Exam Flag */}
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200/80 flex items-center gap-1.5 truncate max-w-[200px]">
                       <FolderTree className="w-3 h-3 text-indigo-600 shrink-0" />
                       <span className="truncate">
-                        Ch {chap?.chapterNumber || '•'}: {chap?.title || 'Chapter'}
+                        Ch {chap?.moduleNumber || '•'}: {chap?.title || 'Module'}
                       </span>
                     </span>
 
@@ -610,7 +610,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
                     </span>
                     {siblingPapers.length > 1 && (
                       <span className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                        {siblingPapers.length} Sample Papers in Chapter
+                        {siblingPapers.length} Sample Papers in Module
                       </span>
                     )}
                   </div>
@@ -621,7 +621,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
                       {paper.title}
                     </h3>
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                      {paper.description || 'Chapter clinical question paper with high-yield case vignettes.'}
+                      {paper.description || 'Module clinical question paper with high-yield case vignettes.'}
                     </p>
                     {/* PDF Document Viewer Trigger Box */}
                     <div 
@@ -695,14 +695,14 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] font-bold">
                   <th className="py-3.5 px-4">Sample Paper Title</th>
-                  <th className="py-3.5 px-4">Linked Chapter</th>
+                  <th className="py-3.5 px-4">Linked Module</th>
                   <th className="py-3.5 px-4">Exam Track & Subject</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredPapers.map(paper => {
-                  const chap = curriculumService.getChapterById(paper.chapterId);
+                  const chap = curriculumService.getModuleById(paper.moduleId);
                   const sub = curriculumService.getSubjectById(paper.subjectId);
                   const exam = catalogService.getExamById(paper.examId);
 
@@ -715,7 +715,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
 
                       <td className="py-3.5 px-4">
                         <span className="font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg text-[11px] inline-block">
-                          Ch {chap?.chapterNumber || '•'}: {chap?.title || 'Chapter'}
+                          Ch {chap?.moduleNumber || '•'}: {chap?.title || 'Module'}
                         </span>
                       </td>
 
@@ -760,7 +760,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
       )}
 
       {/* ======================================================================= */}
-      {/* DRAWER: UPLOAD / EDIT CHAPTER SAMPLE PAPER                              */}
+      {/* DRAWER: UPLOAD / EDIT MODULE SAMPLE PAPER                               */}
       {/* ======================================================================= */}
       {isDrawerOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
@@ -777,10 +777,10 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
               <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
                 <div>
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                    {editingPaper ? 'Edit Sample Paper' : 'Upload Chapter Sample Paper'}
+                    {editingPaper ? 'Edit Sample Paper' : 'Upload Module Sample Paper'}
                   </span>
                   <h3 className="text-lg font-black text-slate-900 mt-1">
-                    {editingPaper ? `Edit "${editingPaper.title}"` : 'Chapter Practice Paper Studio'}
+                    {editingPaper ? `Edit "${editingPaper.title}"` : 'Module Practice Paper Studio'}
                   </h3>
                 </div>
                 <button
@@ -795,11 +795,11 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
               <form onSubmit={handleSavePaper} className="flex-1 flex flex-col min-h-0">
                 <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
                   
-                  {/* Step 1: Cascading Hierarchy Selectors (Exam -> Subject -> Chapter) */}
+                  {/* Step 1: Cascading Hierarchy Selectors (Exam -> Subject -> Module) */}
                   <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/80 space-y-3">
                     <div className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
                       <FolderTree className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Step 1: Link to Course, Subject & Chapter *</span>
+                      <span>Step 1: Link to Course, Subject & Module *</span>
                     </div>
 
                     {/* 1. Exam Track */}
@@ -836,24 +836,24 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
                       </select>
                     </div>
 
-                    {/* 3. Chapter (The Anchor!) */}
+                    {/* 3. Module (The Anchor!) */}
                     <div className="space-y-1">
                       <label className="font-bold text-slate-800 flex items-center justify-between">
-                        <span>3. Target Chapter Syllabus Anchor *</span>
-                        <span className="text-[10px] text-indigo-600 font-extrabold">1 or multiple papers per chapter</span>
+                        <span>3. Target Module Syllabus Anchor *</span>
+                        <span className="text-[10px] text-indigo-600 font-extrabold">1 or multiple papers per module</span>
                       </label>
                       <select
-                        value={formChapterId}
-                        onChange={(e) => setFormChapterId(e.target.value)}
+                        value={formModuleId}
+                        onChange={(e) => setFormModuleId(e.target.value)}
                         required
                         className="w-full px-3 py-2 bg-white border-2 border-indigo-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       >
-                        {formChapters.length === 0 ? (
-                          <option value="">No chapters configured in this subject yet</option>
+                        {formModules.length === 0 ? (
+                          <option value="">No modules configured in this subject yet</option>
                         ) : (
-                          formChapters.map(chap => (
+                          formModules.map(chap => (
                             <option key={chap.id} value={chap.id}>
-                              Ch {chap.chapterNumber || '•'}: {chap.title}
+                              Ch {chap.moduleNumber || '•'}: {chap.title}
                             </option>
                           ))
                         )}
@@ -879,7 +879,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
                       <label className="font-bold text-slate-700">Instructions / Clinical Focus</label>
                       <textarea
                         rows={2}
-                        placeholder="Brief summary of high-yield topics, formulas, or cases covered in this paper..."
+                        placeholder="Brief summary of high-yield lectures, formulas, or cases covered in this paper..."
                         value={formDescription}
                         onChange={(e) => setFormDescription(e.target.value)}
                         className="w-full px-3.5 py-2 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
@@ -1088,7 +1088,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
       {/* FULL-PAGE INTERNAL PLATFORM PDF VIEWER (LIGHT THEME & NO TOP GAP)       */}
       {/* ======================================================================= */}
       {viewingPaper && typeof document !== 'undefined' && createPortal((() => {
-        const chap = curriculumService.getChapterById(viewingPaper.chapterId);
+        const chap = curriculumService.getModuleById(viewingPaper.moduleId);
         const sub = curriculumService.getSubjectById(viewingPaper.subjectId);
         const exam = catalogService.getExamById(viewingPaper.examId);
         const totalPages = viewingPaper.pageCount || 12;
@@ -1118,7 +1118,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
                       {viewingPaper.title}
                     </h3>
                     <div className="text-[11px] text-slate-500 font-medium truncate hidden md:block">
-                      {exam?.name} • {sub?.name} • Chapter {chap?.chapterNumber || '•'}: {chap?.title || 'Chapter'}
+                      {exam?.name} • {sub?.name} • Module {chap?.moduleNumber || '•'}: {chap?.title || 'Module'}
                     </div>
                   </div>
                 </div>
@@ -1212,7 +1212,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
                         {exam?.name} — {sub?.name}
                       </h1>
                       <div className="text-sm font-bold text-slate-700">
-                        Unit Assessment: Chapter {chap?.chapterNumber || '•'} — {chap?.title || 'Chapter Practice'}
+                        Unit Assessment: Module {chap?.moduleNumber || '•'} — {chap?.title || 'Module Practice'}
                       </div>
                       <div className="text-xs font-semibold text-slate-500 pt-1">
                         {viewingPaper.title}
@@ -1220,14 +1220,14 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
 
                       <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t border-slate-200 mt-4">
                         <span>Total Questions: {viewingPaper.questionsCount} MCQs</span>
-                        <span className="text-indigo-700 font-black">Chapter Practice Assessment</span>
+                        <span className="text-indigo-700 font-black">Module Practice Assessment</span>
                         <span>Document ID: {viewingPaper.id}</span>
                       </div>
                     </div>
 
                     {/* Candidate Instructions */}
                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl mb-6 text-xs text-slate-600 leading-relaxed">
-                      <strong className="text-slate-800">Instructions:</strong> This chapter test contains high-yield questions based on standard clinical guidelines. Select the single best answer for each question. External references are strictly prohibited.
+                      <strong className="text-slate-800">Instructions:</strong> This module test contains high-yield questions based on standard clinical guidelines. Select the single best answer for each question. External references are strictly prohibited.
                     </div>
 
                     {/* Questions Section - Page 1 */}
@@ -1296,7 +1296,7 @@ export default function SamplePapersManagementView({ mode = 'admin' }) {
                     {/* Header on Page 2 */}
                     <div className="border-b border-slate-300 pb-3 mb-6 flex items-center justify-between text-xs font-bold text-slate-600">
                       <span>{exam?.name} • {viewingPaper.title}</span>
-                      <span>Chapter {chap?.chapterNumber || '•'}: {chap?.title}</span>
+                      <span>Module {chap?.moduleNumber || '•'}: {chap?.title}</span>
                     </div>
 
                     {/* Questions Continued */}

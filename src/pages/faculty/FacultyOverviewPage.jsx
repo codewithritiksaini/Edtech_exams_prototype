@@ -127,7 +127,7 @@ export default function FacultyOverviewPage() {
               </div>
 
               <h2 className="text-xl sm:text-2xl font-black tracking-tight">
-                {tonightSession.topic}
+                {tonightSession.lecture}
               </h2>
 
               <p className="text-xs text-slate-300 flex flex-wrap items-center gap-4">
@@ -178,7 +178,7 @@ export default function FacultyOverviewPage() {
           {[
             {
               title: 'Curriculum & Hierarchy',
-              desc: 'Browse exams, assigned subjects, units and manage chapter syllabus.',
+              desc: 'Browse exams, assigned subjects, units and manage module syllabus.',
               icon: BookOpen,
               route: '/faculty/exams',
               color: 'text-indigo-600 bg-indigo-50 border-indigo-200'
@@ -274,8 +274,8 @@ export default function FacultyOverviewPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
           {myAssignedSubjects.map((sub) => {
             const examObj = exams.find(e => e.id === sub.examId);
-            const chaptersCount = curriculumService.getChapters ? curriculumService.getChapters(sub.id, sub.examId).length : 0;
-            const topicsCount = curriculumService.getTopics ? curriculumService.getTopics(null, sub.id, sub.examId).length : 0;
+            const modulesCount = curriculumService.getModules ? curriculumService.getModules(sub.id, sub.examId).length : 0;
+            const lecturesCount = curriculumService.getLectures ? curriculumService.getLectures(null, sub.id, sub.examId).length : 0;
 
             return (
               <div
@@ -297,17 +297,17 @@ export default function FacultyOverviewPage() {
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold pt-1 border-t border-slate-200/60">
-                  <span>{chaptersCount} Chapters</span>
+                  <span>{modulesCount} Modules</span>
                   <span>•</span>
-                  <span>{topicsCount} Topics</span>
+                  <span>{lecturesCount} Lectures</span>
                 </div>
 
                 <div className="pt-2">
                   <Link
-                    to={`/faculty/exams/${sub.examId}/subjects/${sub.id}/chapters`}
+                    to={`/faculty/exams/${sub.examId}/subjects/${sub.id}/modules`}
                     className="w-full py-2 rounded-xl bg-white group-hover:bg-indigo-600 text-slate-700 group-hover:text-white border border-slate-200 group-hover:border-indigo-600 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                   >
-                    <span>Manage Chapters</span>
+                    <span>Manage Modules</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>

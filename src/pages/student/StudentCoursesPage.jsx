@@ -48,7 +48,7 @@ export default function StudentCoursesPage() {
             My Courses & Medical Licensing Tracks
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
-            Access your 5-level structured curriculum. Select a course track to navigate through subjects, units, chapter syllabus, and topic study rooms.
+            Access your 5-level structured curriculum. Select a course track to navigate through subjects, units, module syllabus, and lecture study rooms.
           </p>
         </div>
 
@@ -131,7 +131,7 @@ export default function StudentCoursesPage() {
                 ) : (
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-center justify-between text-xs">
                     <span className="text-slate-500">Curriculum Structure</span>
-                    <span className="font-bold text-slate-700">{subjects.length || 19} Subjects • 240+ Topics</span>
+                    <span className="font-bold text-slate-700">{subjects.length || 19} Subjects • 240+ Lectures</span>
                   </div>
                 )}
 

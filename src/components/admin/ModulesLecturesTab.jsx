@@ -43,7 +43,7 @@ import {
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
 
-export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSubjectId = null }) {
+export default function ModulesLecturesTab({ initialExamId = 'neet-pg', initialSubjectId = null }) {
   const [exams, setExams] = useState(() => catalogService.getExams());
   const [selectedExamId, setSelectedExamId] = useState(initialExamId || 'neet-pg');
   
@@ -53,25 +53,25 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     return 'all';
   });
 
-  const [chapters, setChapters] = useState(() => curriculumService.getChapters());
-  const [topics, setTopics] = useState(() => curriculumService.getTopics());
+  const [modules, setModules] = useState(() => curriculumService.getModules());
+  const [lectures, setLectures] = useState(() => curriculumService.getLectures());
 
-  // Dedicated Chapter Profile Drill-down View State (Level 2)
-  const [activeChapterProfile, setActiveChapterProfile] = useState(null);
+  // Dedicated Module Profile Drill-down View State (Level 2)
+  const [activeModuleProfile, setActiveModuleProfile] = useState(null);
 
-  // Dedicated Topic Content Studio Page State (Level 3 - In-page full view)
-  const [activeTopicProfile, setActiveTopicProfile] = useState(null);
+  // Dedicated Lecture Content Studio Page State (Level 3 - In-page full view)
+  const [activeLectureProfile, setActiveLectureProfile] = useState(null);
   const [contentActiveTab, setContentActiveTab] = useState('live'); // 'live' | 'pdf' | 'images' | 'video' | 'flashcards' | 'notes'
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all'); // 'all' | 'High-Yield' | 'Core Clinical' | 'Advanced'
-  const [collapsedChapters, setCollapsedChapters] = useState({});
+  const [collapsedModules, setCollapsedModules] = useState({});
   const [toastMessage, setToastMessage] = useState('');
 
-  // Chapter Modal State with Cascading Dropdowns
-  const [isChapterModalOpen, setIsChapterModalOpen] = useState(false);
-  const [editingChapter, setEditingChapter] = useState(null);
+  // Module Modal State with Cascading Dropdowns
+  const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
+  const [editingModule, setEditingModule] = useState(null);
   const [modalExamId, setModalExamId] = useState(initialExamId || 'neet-pg');
   const [modalSubjectId, setModalSubjectId] = useState(() => {
     const subs = curriculumService.getSubjects(initialExamId || 'neet-pg');
@@ -81,14 +81,14 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   const [chapNumber, setChapNumber] = useState(1);
   const [chapDesc, setChapDesc] = useState('');
 
-  // Topic Modal State
-  const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
-  const [editingTopic, setEditingTopic] = useState(null);
-  const [targetChapterForTopic, setTargetChapterForTopic] = useState(null);
-  const [topicTitle, setTopicTitle] = useState('');
-  const [topicNumber, setTopicNumber] = useState(1);
-  const [topicDuration, setTopicDuration] = useState('45 mins');
-  const [topicDifficulty, setTopicDifficulty] = useState('High-Yield');
+  // Lecture Modal State
+  const [isLectureModalOpen, setIsLectureModalOpen] = useState(false);
+  const [editingLecture, setEditingLecture] = useState(null);
+  const [targetModuleForLecture, setTargetModuleForLecture] = useState(null);
+  const [lectureTitle, setLectureTitle] = useState('');
+  const [lectureNumber, setLectureNumber] = useState(1);
+  const [lectureDuration, setLectureDuration] = useState('45 mins');
+  const [lectureDifficulty, setLectureDifficulty] = useState('High-Yield');
 
   // Image Lightbox Modal State
   const [lightboxImage, setLightboxImage] = useState(null);
@@ -134,54 +134,54 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   const [clinicalNotesText, setClinicalNotesText] = useState('');
 
   // Delete Confirmations
-  const [deletingChapter, setDeletingChapter] = useState(null);
-  const [deletingTopic, setDeletingTopic] = useState(null);
+  const [deletingModule, setDeletingModule] = useState(null);
+  const [deletingLecture, setDeletingLecture] = useState(null);
   const [deletingLiveClass, setDeletingLiveClass] = useState(null);
 
   // Sync with service
   useEffect(() => {
     const unsubCurriculum = curriculumService.subscribeCurriculum(() => {
       setSubjects(curriculumService.getSubjects());
-      setChapters(curriculumService.getChapters());
-      const newTopics = curriculumService.getTopics();
-      setTopics(newTopics);
-      if (activeTopicProfile) {
-        const found = newTopics.find(t => t.id === activeTopicProfile.id);
-        if (found) setActiveTopicProfile(found);
+      setModules(curriculumService.getModules());
+      const newLectures = curriculumService.getLectures();
+      setLectures(newLectures);
+      if (activeLectureProfile) {
+        const found = newLectures.find(t => t.id === activeLectureProfile.id);
+        if (found) setActiveLectureProfile(found);
       }
     });
     return () => unsubCurriculum();
-  }, [activeTopicProfile]);
+  }, [activeLectureProfile]);
 
-  // Dedicated Chapter Profile Drill-down View Selectors (must be before Topic Studio selectors)
+  // Dedicated Module Profile Drill-down View Selectors (must be before Lecture Studio selectors)
   const profileSubject = useMemo(() => {
-    if (!activeChapterProfile) return null;
-    return subjects.find(s => s.id === activeChapterProfile.subjectId) || null;
-  }, [subjects, activeChapterProfile]);
+    if (!activeModuleProfile) return null;
+    return subjects.find(s => s.id === activeModuleProfile.subjectId) || null;
+  }, [subjects, activeModuleProfile]);
 
-  // Topic Studio Navigation Selectors
-  const activeTopicChapter = useMemo(() => {
-    if (!activeTopicProfile) return activeChapterProfile;
-    return chapters.find(c => c.id === activeTopicProfile.chapterId) || activeChapterProfile;
-  }, [activeTopicProfile, chapters, activeChapterProfile]);
+  // Lecture Studio Navigation Selectors
+  const activeLectureModule = useMemo(() => {
+    if (!activeLectureProfile) return activeModuleProfile;
+    return modules.find(c => c.id === activeLectureProfile.moduleId) || activeModuleProfile;
+  }, [activeLectureProfile, modules, activeModuleProfile]);
 
-  const activeTopicSubject = useMemo(() => {
-    if (!activeTopicChapter) return profileSubject;
-    return subjects.find(s => s.id === activeTopicChapter.subjectId) || profileSubject;
-  }, [activeTopicChapter, subjects, profileSubject]);
+  const activeLectureSubject = useMemo(() => {
+    if (!activeLectureModule) return profileSubject;
+    return subjects.find(s => s.id === activeLectureModule.subjectId) || profileSubject;
+  }, [activeLectureModule, subjects, profileSubject]);
 
-  const chapterTopics = useMemo(() => {
-    if (!activeTopicChapter) return [];
-    return topics.filter(t => t.chapterId === activeTopicChapter.id).sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
-  }, [topics, activeTopicChapter]);
+  const moduleLectures = useMemo(() => {
+    if (!activeLectureModule) return [];
+    return lectures.filter(t => t.moduleId === activeLectureModule.id).sort((a, b) => (a.lectureNumber || 0) - (b.lectureNumber || 0));
+  }, [lectures, activeLectureModule]);
 
-  const currentTopicIndex = useMemo(() => {
-    if (!activeTopicProfile || !chapterTopics.length) return -1;
-    return chapterTopics.findIndex(t => t.id === activeTopicProfile.id);
-  }, [activeTopicProfile, chapterTopics]);
+  const currentLectureIndex = useMemo(() => {
+    if (!activeLectureProfile || !moduleLectures.length) return -1;
+    return moduleLectures.findIndex(t => t.id === activeLectureProfile.id);
+  }, [activeLectureProfile, moduleLectures]);
 
-  const prevTopic = currentTopicIndex > 0 ? chapterTopics[currentTopicIndex - 1] : null;
-  const nextTopic = currentTopicIndex >= 0 && currentTopicIndex < chapterTopics.length - 1 ? chapterTopics[currentTopicIndex + 1] : null;
+  const prevLecture = currentLectureIndex > 0 ? moduleLectures[currentLectureIndex - 1] : null;
+  const nextLecture = currentLectureIndex >= 0 && currentLectureIndex < moduleLectures.length - 1 ? moduleLectures[currentLectureIndex + 1] : null;
 
   // Sync selectedSubjectId if initialSubjectId prop changes
   useEffect(() => {
@@ -208,9 +208,9 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     return subjects.find(s => s.id === selectedSubjectId) || null;
   }, [subjects, selectedSubjectId]);
 
-  // Clean Chapters List for Main View
-  const displayedChapters = useMemo(() => {
-    return chapters.filter(chap => {
+  // Clean Modules List for Main View
+  const displayedModules = useMemo(() => {
+    return modules.filter(chap => {
       const chapSubject = subjects.find(s => s.id === chap.subjectId);
       const matchesExam = chap.examId === selectedExamId || chapSubject?.examId === selectedExamId;
       if (!matchesExam) return false;
@@ -228,72 +228,72 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       }
 
       return true;
-    }).sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
-  }, [chapters, subjects, selectedExamId, selectedSubjectId, searchQuery]);
+    }).sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
+  }, [modules, subjects, selectedExamId, selectedSubjectId, searchQuery]);
 
-  // Dedicated Chapter Profile Drill-down View Selectors
+  // Dedicated Module Profile Drill-down View Selectors
 
-  const profileTopics = useMemo(() => {
-    if (!activeChapterProfile) return [];
-    return topics
-      .filter(t => t.chapterId === activeChapterProfile.id)
-      .sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
-  }, [topics, activeChapterProfile]);
+  const profileLectures = useMemo(() => {
+    if (!activeModuleProfile) return [];
+    return lectures
+      .filter(t => t.moduleId === activeModuleProfile.id)
+      .sort((a, b) => (a.lectureNumber || 0) - (b.lectureNumber || 0));
+  }, [lectures, activeModuleProfile]);
 
-  const profileFilteredTopics = useMemo(() => {
+  const profileFilteredLectures = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return profileTopics.filter(t => {
+    return profileLectures.filter(t => {
       if (difficultyFilter !== 'all' && t.difficulty !== difficultyFilter) return false;
       if (q) {
         return t.title?.toLowerCase().includes(q);
       }
       return true;
     });
-  }, [profileTopics, difficultyFilter, searchQuery]);
+  }, [profileLectures, difficultyFilter, searchQuery]);
 
   // Reordering handlers
-  const handleMoveChapter = (chap, direction, e) => {
+  const handleMoveModule = (chap, direction, e) => {
     if (e) e.stopPropagation();
-    curriculumService.moveChapterOrder(chap.id, direction);
-    setChapters(curriculumService.getChapters());
-    showToast(`Chapter reordered ${direction}.`);
+    curriculumService.moveModuleOrder(chap.id, direction);
+    setModules(curriculumService.getModules());
+    showToast(`Module reordered ${direction}.`);
   };
 
-  const handleMoveTopic = (top, direction, e) => {
+  const handleMoveLecture = (top, direction, e) => {
     if (e) e.stopPropagation();
-    curriculumService.moveTopicOrder(top.id, direction);
-    setTopics(curriculumService.getTopics());
-    showToast(`Topic reordered ${direction}.`);
+    curriculumService.moveLectureOrder(top.id, direction);
+    setLectures(curriculumService.getLectures());
+    showToast(`Lecture reordered ${direction}.`);
   };
 
-  // Cascading Handlers inside Chapter Modal
+  // Cascading Handlers inside Module Modal
   const handleModalExamChange = (newExamId) => {
     setModalExamId(newExamId);
     const examSubs = curriculumService.getSubjects(newExamId);
     const firstSub = examSubs[0]?.id || '';
     setModalSubjectId(firstSub);
-    const count = chapters.filter(c => c.subjectId === firstSub).length;
+    const count = modules.filter(c => c.subjectId === firstSub).length;
     setChapNumber(count + 1);
   };
 
   const handleModalSubjectChange = (newSubId) => {
     setModalSubjectId(newSubId);
-    const count = chapters.filter(c => c.subjectId === newSubId).length;
+    const count = modules.filter(c => c.subjectId === newSubId).length;
     setChapNumber(count + 1);
   };
 
-  // Open Chapter Modal
-  const handleOpenChapterModal = (chap = null) => {
+  // Open Module Modal
+  const handleOpenModuleModal = (chap = null) => {
     if (chap) {
-      setEditingChapter(chap);
+      setEditingModule(chap);
       const exId = chap.examId || selectedExamId || 'neet-pg';
       setModalExamId(exId);
       setModalSubjectId(chap.subjectId);
       setChapTitle(chap.title);
-      setChapNumber(chap.chapterNumber);
+      setChapNumber(chap.moduleNumber);
       setChapDesc(chap.description || '');
     } else {
-      setEditingChapter(null);
+      setEditingModule(null);
       const exId = selectedExamId || 'neet-pg';
       setModalExamId(exId);
       const examSubs = curriculumService.getSubjects(exId);
@@ -302,111 +302,111 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
         : (examSubs[0]?.id || '');
       setModalSubjectId(defSub);
       setChapTitle('');
-      const count = chapters.filter(c => c.subjectId === defSub).length;
+      const count = modules.filter(c => c.subjectId === defSub).length;
       setChapNumber(count + 1);
       setChapDesc('');
     }
-    setIsChapterModalOpen(true);
+    setIsModuleModalOpen(true);
   };
 
-  const handleSaveChapter = (e) => {
+  const handleSaveModule = (e) => {
     e.preventDefault();
     if (!chapTitle.trim()) {
-      showToast('Please enter a Chapter Name.');
+      showToast('Please enter a Module Name.');
       return;
     }
     if (!modalSubjectId) {
-      showToast('Please select a Subject for this chapter.');
+      showToast('Please select a Subject for this module.');
       return;
     }
 
-    const saved = curriculumService.saveChapter({
-      ...(editingChapter ? { id: editingChapter.id } : {}),
+    const saved = curriculumService.saveModule({
+      ...(editingModule ? { id: editingModule.id } : {}),
       examId: modalExamId,
       subjectId: modalSubjectId,
       title: chapTitle.trim(),
-      chapterNumber: Number(chapNumber),
+      moduleNumber: Number(chapNumber),
       description: chapDesc.trim(),
       status: 'Active'
     });
 
-    setChapters(curriculumService.getChapters());
-    if (activeChapterProfile && editingChapter && activeChapterProfile.id === editingChapter.id) {
-      setActiveChapterProfile(saved);
+    setModules(curriculumService.getModules());
+    if (activeModuleProfile && editingModule && activeModuleProfile.id === editingModule.id) {
+      setActiveModuleProfile(saved);
     }
-    setIsChapterModalOpen(false);
-    showToast(editingChapter ? `Chapter updated successfully!` : `New chapter "${chapTitle}" created!`);
+    setIsModuleModalOpen(false);
+    showToast(editingModule ? `Module updated successfully!` : `New module "${chapTitle}" created!`);
   };
 
-  const handleDeleteChapter = () => {
-    if (!deletingChapter) return;
-    curriculumService.deleteChapter(deletingChapter.id);
-    setChapters(curriculumService.getChapters());
-    setTopics(curriculumService.getTopics());
-    if (activeChapterProfile && activeChapterProfile.id === deletingChapter.id) {
-      setActiveChapterProfile(null);
+  const handleDeleteModule = () => {
+    if (!deletingModule) return;
+    curriculumService.deleteModule(deletingModule.id);
+    setModules(curriculumService.getModules());
+    setLectures(curriculumService.getLectures());
+    if (activeModuleProfile && activeModuleProfile.id === deletingModule.id) {
+      setActiveModuleProfile(null);
     }
-    setDeletingChapter(null);
-    showToast('Chapter and associated topics removed.');
+    setDeletingModule(null);
+    showToast('Module and associated lectures removed.');
   };
 
-  // Open Topic Modal
-  const handleOpenTopicModal = (chapter, topic = null) => {
-    setTargetChapterForTopic(chapter);
-    if (topic) {
-      setEditingTopic(topic);
-      setTopicTitle(topic.title);
-      setTopicNumber(topic.topicNumber);
-      setTopicDuration(topic.duration || '45 mins');
-      setTopicDifficulty(topic.difficulty || 'High-Yield');
+  // Open Lecture Modal
+  const handleOpenLectureModal = (module, lecture = null) => {
+    setTargetModuleForLecture(module);
+    if (lecture) {
+      setEditingLecture(lecture);
+      setLectureTitle(lecture.title);
+      setLectureNumber(lecture.lectureNumber);
+      setLectureDuration(lecture.duration || '45 mins');
+      setLectureDifficulty(lecture.difficulty || 'High-Yield');
     } else {
-      setEditingTopic(null);
-      const chTopics = topics.filter(t => t.chapterId === chapter.id);
-      setTopicTitle('');
-      setTopicNumber(chTopics.length + 1);
-      setTopicDuration('45 mins');
-      setTopicDifficulty('High-Yield');
+      setEditingLecture(null);
+      const chLectures = lectures.filter(t => t.moduleId === module.id);
+      setLectureTitle('');
+      setLectureNumber(chLectures.length + 1);
+      setLectureDuration('45 mins');
+      setLectureDifficulty('High-Yield');
     }
-    setIsTopicModalOpen(true);
+    setIsLectureModalOpen(true);
   };
 
-  const handleSaveTopic = (e) => {
+  const handleSaveLecture = (e) => {
     e.preventDefault();
-    if (!topicTitle.trim() || !targetChapterForTopic) return;
+    if (!lectureTitle.trim() || !targetModuleForLecture) return;
 
-    curriculumService.saveTopic({
-      ...(editingTopic ? { id: editingTopic.id } : {}),
+    curriculumService.saveLecture({
+      ...(editingLecture ? { id: editingLecture.id } : {}),
       examId: selectedExamId,
       subjectId: activeSubject.id,
-      chapterId: targetChapterForTopic.id,
-      title: topicTitle.trim(),
-      topicNumber: Number(topicNumber),
-      duration: topicDuration,
-      difficulty: topicDifficulty,
+      moduleId: targetModuleForLecture.id,
+      title: lectureTitle.trim(),
+      lectureNumber: Number(lectureNumber),
+      duration: lectureDuration,
+      difficulty: lectureDifficulty,
       status: 'Published'
     });
 
-    setTopics(curriculumService.getTopics());
-    setIsTopicModalOpen(false);
-    showToast(editingTopic ? `Topic updated successfully!` : `Topic "${topicTitle}" added to chapter!`);
+    setLectures(curriculumService.getLectures());
+    setIsLectureModalOpen(false);
+    showToast(editingLecture ? `Lecture updated successfully!` : `Lecture "${lectureTitle}" added to module!`);
   };
 
-  const handleDeleteTopic = () => {
-    if (!deletingTopic) return;
-    curriculumService.deleteTopic(deletingTopic.id);
-    setTopics(curriculumService.getTopics());
-    setDeletingTopic(null);
-    showToast('Topic deleted.');
+  const handleDeleteLecture = () => {
+    if (!deletingLecture) return;
+    curriculumService.deleteLecture(deletingLecture.id);
+    setLectures(curriculumService.getLectures());
+    setDeletingLecture(null);
+    showToast('Lecture deleted.');
   };
 
-  // Open Topic Content Studio (Dedicated Full Page View)
-  const handleOpenTopicStudio = (topic) => {
-    setActiveTopicProfile(topic);
+  // Open Lecture Content Studio (Dedicated Full Page View)
+  const handleOpenLectureStudio = (lecture) => {
+    setActiveLectureProfile(lecture);
     setContentActiveTab('live');
-    const content = topic.content || {};
+    const content = lecture.content || {};
     
     // Reset Live Classes Form
-    setNewLiveTitle(`Live Clinical Drill: ${topic.title}`);
+    setNewLiveTitle(`Live Clinical Drill: ${lecture.title}`);
     setNewLiveInstructor('Dr. Rajiv Mehta (MD, DM Cardiology)');
     setNewLiveDate('Tomorrow');
     setNewLiveTime('07:00 PM - 08:15 PM IST');
@@ -420,16 +420,16 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
     setShowAddLiveForm(false);
 
     // Reset forms
-    setNewPdfTitle(`${topic.title} Clinical Summary`);
-    setNewPdfFile(`${topic.title.replace(/[^a-zA-Z0-9]/g, '_')}_Notes.pdf`);
+    setNewPdfTitle(`${lecture.title} Clinical Summary`);
+    setNewPdfFile(`${lecture.title.replace(/[^a-zA-Z0-9]/g, '_')}_Notes.pdf`);
     setNewPdfPages(24);
     setNewPdfAuthor('Dr. Siddharth V.');
 
-    setNewImageTitle(`${topic.title} Clinical Diagram`);
+    setNewImageTitle(`${lecture.title} Clinical Diagram`);
     setNewImageUrl('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80');
     setNewImageCaption('Diagnostic ECG rhythm strip / biopsy specimen with annotations.');
 
-    setVideoTitle(content.video?.title || `${topic.title}: Masterclass`);
+    setVideoTitle(content.video?.title || `${lecture.title}: Masterclass`);
     setVideoUrl(content.video?.url || 'https://www.youtube.com/embed/dQw4w9WgXcQ');
     setVideoDuration(content.video?.duration || '35:00');
     setVideoInstructor(content.video?.instructor || 'Dr. Siddharth V.');
@@ -451,8 +451,8 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   // Live Classes Actions
   const handleAddLiveClass = (e) => {
     e.preventDefault();
-    if (!newLiveTitle || !activeTopicProfile) return;
-    curriculumService.addTopicLiveClass(activeTopicProfile.id, {
+    if (!newLiveTitle || !activeLectureProfile) return;
+    curriculumService.addLectureLiveClass(activeLectureProfile.id, {
       title: newLiveTitle,
       instructor: newLiveInstructor,
       date: newLiveDate,
@@ -465,25 +465,25 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       status: newLiveStatus,
       recordingUrl: newLiveRecordingUrl
     });
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
     setShowAddLiveForm(false);
-    showToast('Live Class scheduled & attached to topic!');
+    showToast('Live Class scheduled & attached to lecture!');
   };
 
   const handleToggleLiveStatus = (liveId, newStatus) => {
-    if (!activeTopicProfile) return;
-    curriculumService.updateTopicLiveClass(activeTopicProfile.id, liveId, { status: newStatus });
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
+    if (!activeLectureProfile) return;
+    curriculumService.updateLectureLiveClass(activeLectureProfile.id, liveId, { status: newStatus });
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
     showToast(`Live Class status updated to "${newStatus}"!`);
   };
 
   const handleDeleteLiveClass = (liveId) => {
-    if (!activeTopicProfile) return;
-    curriculumService.deleteTopicLiveClass(activeTopicProfile.id, liveId);
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
+    if (!activeLectureProfile) return;
+    curriculumService.deleteLectureLiveClass(activeLectureProfile.id, liveId);
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
     setDeletingLiveClass(null);
     showToast('Live Class session removed.');
   };
@@ -491,90 +491,90 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
   // Content Sub-actions
   const handleAddPdf = (e) => {
     e.preventDefault();
-    if (!newPdfTitle || !activeTopicProfile) return;
-    curriculumService.addTopicPdf(activeTopicProfile.id, {
+    if (!newPdfTitle || !activeLectureProfile) return;
+    curriculumService.addLecturePdf(activeLectureProfile.id, {
       title: newPdfTitle,
       fileName: newPdfFile,
       pages: Number(newPdfPages),
       author: newPdfAuthor
     });
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
-    showToast('PDF Notes uploaded to topic!');
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
+    showToast('PDF Notes uploaded to lecture!');
   };
 
   const handleDeletePdf = (pdfId) => {
-    if (!activeTopicProfile) return;
-    curriculumService.deleteTopicPdf(activeTopicProfile.id, pdfId);
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
+    if (!activeLectureProfile) return;
+    curriculumService.deleteLecturePdf(activeLectureProfile.id, pdfId);
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
     showToast('PDF removed.');
   };
 
   const handleAddImage = (e) => {
     e.preventDefault();
-    if (!newImageTitle || !activeTopicProfile) return;
-    curriculumService.addTopicImage(activeTopicProfile.id, {
+    if (!newImageTitle || !activeLectureProfile) return;
+    curriculumService.addLectureImage(activeLectureProfile.id, {
       title: newImageTitle,
       url: newImageUrl,
       caption: newImageCaption
     });
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
-    showToast('Clinical Diagram / Image added to topic!');
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
+    showToast('Clinical Diagram / Image added to lecture!');
   };
 
   const handleDeleteImage = (imgId) => {
-    if (!activeTopicProfile) return;
-    curriculumService.deleteTopicImage(activeTopicProfile.id, imgId);
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
+    if (!activeLectureProfile) return;
+    curriculumService.deleteLectureImage(activeLectureProfile.id, imgId);
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
     showToast('Image removed.');
   };
 
   const handleSaveVideo = (e) => {
     e.preventDefault();
-    if (!activeTopicProfile) return;
-    curriculumService.saveTopicVideo(activeTopicProfile.id, {
+    if (!activeLectureProfile) return;
+    curriculumService.saveLectureVideo(activeLectureProfile.id, {
       title: videoTitle,
       url: videoUrl,
       duration: videoDuration,
       instructor: videoInstructor
     });
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
     showToast('Video Lecture details updated!');
   };
 
   const handleAddFlashcard = (e) => {
     e.preventDefault();
-    if (!newCardQ || !newCardA || !activeTopicProfile) return;
-    curriculumService.addTopicFlashcard(activeTopicProfile.id, {
+    if (!newCardQ || !newCardA || !activeLectureProfile) return;
+    curriculumService.addLectureFlashcard(activeLectureProfile.id, {
       question: newCardQ,
       answer: newCardA
     });
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
     setNewCardQ('');
     setNewCardA('');
-    showToast('Flashcard added to topic!');
+    showToast('Flashcard added to lecture!');
   };
 
   const handleDeleteFlashcard = (cardId) => {
-    if (!activeTopicProfile) return;
-    curriculumService.deleteTopicFlashcard(activeTopicProfile.id, cardId);
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
+    if (!activeLectureProfile) return;
+    curriculumService.deleteLectureFlashcard(activeLectureProfile.id, cardId);
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
     showToast('Flashcard deleted.');
   };
 
   const handleSaveClinicalNotes = () => {
-    if (!activeTopicProfile) return;
-    curriculumService.saveTopicContent(activeTopicProfile.id, {
+    if (!activeLectureProfile) return;
+    curriculumService.saveLectureContent(activeLectureProfile.id, {
       clinicalNotes: clinicalNotesText
     });
-    const updated = curriculumService.getTopicById(activeTopicProfile.id);
-    setActiveTopicProfile(updated);
+    const updated = curriculumService.getLectureById(activeLectureProfile.id);
+    setActiveLectureProfile(updated);
     showToast('Clinical Pearls saved!');
   };
 
@@ -590,112 +590,112 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       )}
 
       {/* ========================================================================= */}
-      {/* 1. DEDICATED TOPIC CONTENT STUDIO (FULL PAGE VIEW - NO MODALS)            */}
+      {/* 1. DEDICATED LECTURE CONTENT STUDIO (FULL PAGE VIEW - NO MODALS)            */}
       {/* ========================================================================= */}
-      {activeTopicProfile ? (
+      {activeLectureProfile ? (
         <div className="space-y-6 animate-in fade-in">
           
-          {/* Breadcrumb & Topic Navigation Bar */}
+          {/* Breadcrumb & Lecture Navigation Bar */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
               <button
-                id="btn-back-to-chapter"
-                onClick={() => setActiveTopicProfile(null)}
+                id="btn-back-to-module"
+                onClick={() => setActiveLectureProfile(null)}
                 className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Chapter {activeTopicChapter?.chapterNumber}</span>
+                <span>Back to Module {activeLectureModule?.moduleNumber}</span>
               </button>
               <span className="text-slate-300">/</span>
-              <span className="text-slate-600">{activeTopicSubject?.name || 'Subject'}</span>
+              <span className="text-slate-600">{activeLectureSubject?.name || 'Subject'}</span>
               <span className="text-slate-300">/</span>
-              <span className="text-slate-600">Chapter {activeTopicChapter?.chapterNumber}: {activeTopicChapter?.title}</span>
+              <span className="text-slate-600">Module {activeLectureModule?.moduleNumber}: {activeLectureModule?.title}</span>
               <span className="text-slate-300">/</span>
               <span className="text-slate-900 font-bold">
-                Topic {activeTopicProfile.topicNumber}: {activeTopicProfile.title}
+                Lecture {activeLectureProfile.lectureNumber}: {activeLectureProfile.title}
               </span>
             </div>
 
             <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">
-              {/* Prev / Next Topic Switchers */}
-              {prevTopic && (
+              {/* Prev / Next Lecture Switchers */}
+              {prevLecture && (
                 <button
-                  id="btn-prev-topic"
-                  onClick={() => handleOpenTopicStudio(prevTopic)}
-                  title={`Previous Topic: ${prevTopic.title}`}
+                  id="btn-prev-lecture"
+                  onClick={() => handleOpenLectureStudio(prevLecture)}
+                  title={`Previous Lecture: ${prevLecture.title}`}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <ArrowLeft className="w-3 h-3 text-slate-400" />
-                  <span>Topic {prevTopic.topicNumber}</span>
+                  <span>Lecture {prevLecture.lectureNumber}</span>
                 </button>
               )}
-              {nextTopic && (
+              {nextLecture && (
                 <button
-                  id="btn-next-topic"
-                  onClick={() => handleOpenTopicStudio(nextTopic)}
-                  title={`Next Topic: ${nextTopic.title}`}
+                  id="btn-next-lecture"
+                  onClick={() => handleOpenLectureStudio(nextLecture)}
+                  title={`Next Lecture: ${nextLecture.title}`}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
                 >
-                  <span>Topic {nextTopic.topicNumber}</span>
+                  <span>Lecture {nextLecture.lectureNumber}</span>
                   <ArrowRight className="w-3 h-3 text-slate-400" />
                 </button>
               )}
               <button
-                onClick={() => handleOpenTopicModal(activeTopicChapter, activeTopicProfile)}
+                onClick={() => handleOpenLectureModal(activeLectureModule, activeLectureProfile)}
                 className="px-3.5 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200/80 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5" />
-                <span>Edit Topic Info</span>
+                <span>Edit Lecture Info</span>
               </button>
             </div>
           </div>
 
-          {/* Topic Profile Banner Card (Light Modern Theme) */}
+          {/* Lecture Profile Banner Card (Light Modern Theme) */}
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 sm:p-8 space-y-5 relative overflow-hidden">
             {/* Ambient corner tint */}
             <div className="absolute top-0 right-0 w-96 h-48 bg-gradient-to-bl from-indigo-50/60 via-sky-50/20 to-transparent rounded-bl-full pointer-events-none" />
 
             <div className="flex flex-wrap items-center gap-2 relative z-10">
               <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-black">
-                Topic {activeTopicProfile.topicNumber} Content Studio
+                Lecture {activeLectureProfile.lectureNumber} Content Studio
               </span>
               <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold">
-                Chapter {activeTopicChapter?.chapterNumber}: {activeTopicChapter?.title}
+                Module {activeLectureModule?.moduleNumber}: {activeLectureModule?.title}
               </span>
               <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold">
-                {activeTopicSubject?.name} ({activeTopicSubject?.code})
+                {activeLectureSubject?.name} ({activeLectureSubject?.code})
               </span>
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                activeTopicProfile.difficulty === 'High-Yield'
+                activeLectureProfile.difficulty === 'High-Yield'
                   ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                  : activeTopicProfile.difficulty === 'Advanced / Super-Specialty'
+                  : activeLectureProfile.difficulty === 'Advanced / Super-Specialty'
                   ? 'bg-purple-50 text-purple-700 border border-purple-200'
                   : 'bg-blue-50 text-blue-700 border border-blue-200'
               }`}>
-                {activeTopicProfile.difficulty}
+                {activeLectureProfile.difficulty}
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">
-                ⏱️ {activeTopicProfile.duration || '45 mins'}
+                ⏱️ {activeLectureProfile.duration || '45 mins'}
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
-                Status: {activeTopicProfile.status || 'Published'}
+                Status: {activeLectureProfile.status || 'Published'}
               </span>
             </div>
 
             <div className="space-y-1.5 max-w-4xl relative z-10">
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-                {activeTopicProfile.title}
+                {activeLectureProfile.title}
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-                {activeTopicProfile.clinicalNotes 
-                  ? activeTopicProfile.clinicalNotes 
-                  : 'Structured sub-topic study module. Manage interactive live classes, attached PDF notes, diagnostic images, high-yield videos, and spaced-repetition flashcards below.'}
+                {activeLectureProfile.clinicalNotes 
+                  ? activeLectureProfile.clinicalNotes 
+                  : 'Structured sub-lecture study module. Manage interactive live classes, attached PDF notes, diagnostic images, high-yield videos, and spaced-repetition flashcards below.'}
               </p>
             </div>
 
             {/* Quick Metrics Bar with 1-click tab jumps */}
             {(() => {
-              const content = activeTopicProfile.content || {};
+              const content = activeLectureProfile.content || {};
               const liveCount = content.liveClasses?.length || 0;
               const hasLiveNow = content.liveClasses?.some(l => l.status === 'Live Now');
               const pdfCount = (content.pdfList?.length || content.pdfs?.length || 0);
@@ -784,7 +784,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
             })()}
           </div>
 
-          {/* Full Page Topic Content Studio Card */}
+          {/* Full Page Lecture Content Studio Card */}
           <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
             
             {/* Studio Navigation Tabs */}
@@ -794,38 +794,38 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   id: 'live', 
                   label: 'Live Classes & Tele-Rounds', 
                   icon: Radio, 
-                  count: activeTopicProfile.content?.liveClasses?.length || 0,
-                  isLive: activeTopicProfile.content?.liveClasses?.some(l => l.status === 'Live Now')
+                  count: activeLectureProfile.content?.liveClasses?.length || 0,
+                  isLive: activeLectureProfile.content?.liveClasses?.some(l => l.status === 'Live Now')
                 },
                 { 
                   id: 'pdf', 
                   label: 'PDF Study Notes', 
                   icon: FileText, 
-                  count: (activeTopicProfile.content?.pdfList?.length || activeTopicProfile.content?.pdfs?.length || 0)
+                  count: (activeLectureProfile.content?.pdfList?.length || activeLectureProfile.content?.pdfs?.length || 0)
                 },
                 { 
                   id: 'images', 
                   label: 'Clinical Images & ECGs', 
                   icon: ImageIcon, 
-                  count: activeTopicProfile.content?.images?.length || 0 
+                  count: activeLectureProfile.content?.images?.length || 0 
                 },
                 { 
                   id: 'video', 
                   label: 'Video Lecture Stream', 
                   icon: Video, 
-                  count: activeTopicProfile.content?.video?.url || activeTopicProfile.content?.video?.title ? 1 : 0 
+                  count: activeLectureProfile.content?.video?.url || activeLectureProfile.content?.video?.title ? 1 : 0 
                 },
                 { 
                   id: 'flashcards', 
                   label: 'Flashcards Deck', 
                   icon: Brain, 
-                  count: activeTopicProfile.content?.flashcards?.length || 0 
+                  count: activeLectureProfile.content?.flashcards?.length || 0 
                 },
                 { 
                   id: 'notes', 
                   label: 'Clinical Pearls & Key High-Yields', 
                   icon: Sparkles, 
-                  count: activeTopicProfile.content?.clinicalNotes ? 'Ready' : 0 
+                  count: activeLectureProfile.content?.clinicalNotes ? 'Ready' : 0 
                 }
               ].map(tab => {
                 const IconC = tab.icon;
@@ -864,10 +864,10 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   <div>
                     <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                       <Radio className="w-5 h-5 text-rose-600" />
-                      <span>Live Classes & Tele-Round Sessions ({activeTopicProfile.content?.liveClasses?.length || 0})</span>
+                      <span>Live Classes & Tele-Round Sessions ({activeLectureProfile.content?.liveClasses?.length || 0})</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Schedule live interactive patient case discussions, ECG telemetry drills, and faculty Q&A sessions for this topic.
+                      Schedule live interactive patient case discussions, ECG telemetry drills, and faculty Q&A sessions for this lecture.
                     </p>
                   </div>
 
@@ -887,7 +887,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                         <Calendar className="w-3.5 h-3.5 text-rose-600" />
                         Schedule New Live Interactive Session
                       </h4>
-                      <span className="text-[11px] font-medium text-slate-400">Linked to Topic {activeTopicProfile.topicNumber}</span>
+                      <span className="text-[11px] font-medium text-slate-400">Linked to Lecture {activeLectureProfile.lectureNumber}</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1048,7 +1048,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
 
                 {/* List of Scheduled / Active Live Classes */}
                 <div className="space-y-4">
-                  {(!activeTopicProfile.content?.liveClasses || activeTopicProfile.content.liveClasses.length === 0) ? (
+                  {(!activeLectureProfile.content?.liveClasses || activeLectureProfile.content.liveClasses.length === 0) ? (
                     <div className="p-8 text-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 space-y-3">
                       <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
                         <Radio className="w-6 h-6" />
@@ -1056,7 +1056,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                       <div className="space-y-1 max-w-sm mx-auto">
                         <h4 className="text-sm font-bold text-slate-800">No Live Classes Scheduled Yet</h4>
                         <p className="text-xs text-slate-500">
-                          Add an interactive tele-round, patient case drill, or live lecture for this topic so students can attend in real time.
+                          Add an interactive tele-round, patient case drill, or live lecture for this lecture so students can attend in real time.
                         </p>
                       </div>
                       <button
@@ -1068,7 +1068,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                       </button>
                     </div>
                   ) : (
-                    activeTopicProfile.content.liveClasses.map((live) => {
+                    activeLectureProfile.content.liveClasses.map((live) => {
                       const isLiveNow = live.status === 'Live Now';
                       const isCompleted = live.status === 'Completed';
 
@@ -1238,7 +1238,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                             </div>
 
                             <span className="text-[11px] text-slate-400 font-medium">
-                              Topic {activeTopicProfile.topicNumber}: <span className="font-bold text-slate-600">{activeTopicProfile.title}</span>
+                              Lecture {activeLectureProfile.lectureNumber}: <span className="font-bold text-slate-600">{activeLectureProfile.title}</span>
                             </span>
                           </div>
                         </div>
@@ -1320,12 +1320,12 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 {/* PDF List */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Attached PDF Documents ({activeTopicProfile.content?.pdfList?.length || activeTopicProfile.content?.pdfs?.length || 0})
+                    Attached PDF Documents ({activeLectureProfile.content?.pdfList?.length || activeLectureProfile.content?.pdfs?.length || 0})
                   </h4>
-                  {(!activeTopicProfile.content?.pdfList || activeTopicProfile.content.pdfList.length === 0) && (!activeTopicProfile.content?.pdfs || activeTopicProfile.content.pdfs.length === 0) ? (
+                  {(!activeLectureProfile.content?.pdfList || activeLectureProfile.content.pdfList.length === 0) && (!activeLectureProfile.content?.pdfs || activeLectureProfile.content.pdfs.length === 0) ? (
                     <p className="text-xs text-slate-400 italic p-4 bg-slate-50 rounded-2xl text-center">No PDF notes attached yet.</p>
                   ) : (
-                    (activeTopicProfile.content.pdfList || activeTopicProfile.content.pdfs || []).map((pdf) => (
+                    (activeLectureProfile.content.pdfList || activeLectureProfile.content.pdfs || []).map((pdf) => (
                       <div
                         key={pdf.id}
                         className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 shadow-2xs hover:border-indigo-200 transition-all"
@@ -1422,13 +1422,13 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 {/* Image Grid */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Attached Diagnostic Images ({activeTopicProfile.content?.images?.length || 0})
+                    Attached Diagnostic Images ({activeLectureProfile.content?.images?.length || 0})
                   </h4>
-                  {(!activeTopicProfile.content?.images || activeTopicProfile.content.images.length === 0) ? (
+                  {(!activeLectureProfile.content?.images || activeLectureProfile.content.images.length === 0) ? (
                     <p className="text-xs text-slate-400 italic p-4 bg-slate-50 rounded-2xl text-center">No images attached yet.</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {activeTopicProfile.content.images.map((img) => (
+                      {activeLectureProfile.content.images.map((img) => (
                         <div
                           key={img.id}
                           className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs space-y-2 group hover:border-sky-300 transition-all"
@@ -1601,13 +1601,13 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 {/* Cards List */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Topic Cards ({activeTopicProfile.content?.flashcards?.length || 0})
+                    Lecture Cards ({activeLectureProfile.content?.flashcards?.length || 0})
                   </h4>
-                  {(!activeTopicProfile.content?.flashcards || activeTopicProfile.content.flashcards.length === 0) ? (
+                  {(!activeLectureProfile.content?.flashcards || activeLectureProfile.content.flashcards.length === 0) ? (
                     <p className="text-xs text-slate-400 italic p-4 bg-slate-50 rounded-2xl text-center">No flashcards in this deck yet.</p>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {activeTopicProfile.content.flashcards.map((card, idx) => (
+                      {activeLectureProfile.content.flashcards.map((card, idx) => (
                         <div
                           key={card.id || idx}
                           className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-2xs relative group hover:border-amber-300 transition-all"
@@ -1668,53 +1668,53 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
           </div>
 
         </div>
-      ) : activeChapterProfile ? (
+      ) : activeModuleProfile ? (
         <div className="space-y-6 animate-in fade-in">
           
           {/* Back Button & Breadcrumbs Navigation Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
               <button
-                onClick={() => setActiveChapterProfile(null)}
+                onClick={() => setActiveModuleProfile(null)}
                 className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Chapters List</span>
+                <span>Back to Modules List</span>
               </button>
               <span className="text-slate-300">/</span>
               <span className="text-slate-600">{profileSubject?.name || 'Subject'}</span>
               <span className="text-slate-300">/</span>
               <span className="text-slate-900 font-bold">
-                Chapter {activeChapterProfile.chapterNumber}: {activeChapterProfile.title}
+                Module {activeModuleProfile.moduleNumber}: {activeModuleProfile.title}
               </span>
             </div>
 
             <div className="flex items-center gap-2 self-start sm:self-auto">
               <button
-                onClick={() => handleOpenChapterModal(activeChapterProfile)}
+                onClick={() => handleOpenModuleModal(activeModuleProfile)}
                 className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                <span>Edit Chapter Profile</span>
+                <span>Edit Module Profile</span>
               </button>
               <button
-                onClick={() => handleOpenTopicModal(activeChapterProfile, null)}
+                onClick={() => handleOpenLectureModal(activeModuleProfile, null)}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Add New Topic</span>
+                <span>+ Add New Lecture</span>
               </button>
             </div>
           </div>
 
-          {/* Chapter Profile Banner Card (Light Modern Theme) */}
+          {/* Module Profile Banner Card (Light Modern Theme) */}
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 sm:p-8 space-y-5 relative overflow-hidden">
             {/* Subtle background ambient corner tint */}
             <div className="absolute top-0 right-0 w-96 h-48 bg-gradient-to-bl from-indigo-50/60 via-sky-50/20 to-transparent rounded-bl-full pointer-events-none" />
 
             <div className="flex flex-wrap items-center gap-2 relative z-10">
               <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-black">
-                Chapter {activeChapterProfile.chapterNumber} Profile
+                Module {activeModuleProfile.moduleNumber} Profile
               </span>
               <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold">
                 {profileSubject?.name} ({profileSubject?.code})
@@ -1726,21 +1726,21 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
 
             <div className="space-y-1.5 max-w-3xl relative z-10">
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-                {activeChapterProfile.title}
+                {activeModuleProfile.title}
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-                {activeChapterProfile.description || 'Structured medical curriculum chapter. Add sub-topics and link high-yield clinical assets below.'}
+                {activeModuleProfile.description || 'Structured medical curriculum module. Add sub-lectures and link high-yield clinical assets below.'}
               </p>
             </div>
 
-            {/* Chapter Metrics Overview */}
+            {/* Module Metrics Overview */}
             {(() => {
               let totalPdfs = 0;
               let totalVideos = 0;
               let totalCards = 0;
               let totalImages = 0;
 
-              profileTopics.forEach(t => {
+              profileLectures.forEach(t => {
                 const c = t.content || {};
                 totalPdfs += (c.pdfs?.length || 0);
                 totalImages += (c.images?.length || 0);
@@ -1751,8 +1751,8 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               return (
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 relative z-10">
                   <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 text-center transition-all hover:bg-slate-100/70">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Topics</span>
-                    <span className="text-xl font-black text-slate-900">{profileTopics.length}</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Lectures</span>
+                    <span className="text-xl font-black text-slate-900">{profileLectures.length}</span>
                   </div>
                   <div className="bg-rose-50/70 border border-rose-100 rounded-2xl p-3 text-center transition-all hover:bg-rose-50">
                     <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">PDF Notes</span>
@@ -1775,29 +1775,29 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
             })()}
           </div>
 
-          {/* Topics in this Chapter Section */}
+          {/* Lectures in this Module Section */}
           <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div>
                 <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-indigo-600" />
-                  <span>Topics in this Chapter ({profileTopics.length})</span>
+                  <span>Lectures in this Module ({profileLectures.length})</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Sub-topics, clinical competencies, and high-yield study assets inside Chapter {activeChapterProfile.chapterNumber}.
+                  Sub-lectures, clinical competencies, and high-yield study assets inside Module {activeModuleProfile.moduleNumber}.
                 </p>
               </div>
 
               <button
-                onClick={() => handleOpenTopicModal(activeChapterProfile, null)}
+                onClick={() => handleOpenLectureModal(activeModuleProfile, null)}
                 className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer self-start sm:self-auto"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Add New Topic</span>
+                <span>+ Add New Lecture</span>
               </button>
             </div>
 
-            {/* Topic Filter & Search Bar */}
+            {/* Lecture Filter & Search Bar */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2 overflow-x-auto self-start sm:self-auto">
                 {['all', 'High-Yield', 'Core Clinical', 'Advanced / Super-Specialty'].map(diff => (
@@ -1819,7 +1819,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search topic title..."
+                  placeholder="Search lecture title..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -1827,25 +1827,25 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               </div>
             </div>
 
-            {/* Topics List */}
-            {profileFilteredTopics.length === 0 ? (
+            {/* Lectures List */}
+            {profileFilteredLectures.length === 0 ? (
               <div className="text-center py-12 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
                 <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
-                <h4 className="text-sm font-bold text-slate-700">No topics in this chapter yet</h4>
+                <h4 className="text-sm font-bold text-slate-700">No lectures in this module yet</h4>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Start adding high-yield topics to Chapter {activeChapterProfile.chapterNumber} to link PDFs, videos, and flashcards.
+                  Start adding high-yield lectures to Module {activeModuleProfile.moduleNumber} to link PDFs, videos, and flashcards.
                 </p>
                 <button
-                  onClick={() => handleOpenTopicModal(activeChapterProfile, null)}
+                  onClick={() => handleOpenLectureModal(activeModuleProfile, null)}
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2 mt-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>+ Add First Topic</span>
+                  <span>+ Add First Lecture</span>
                 </button>
               </div>
             ) : (
               <div className="space-y-3">
-                {profileFilteredTopics.map((top, tIdx) => {
+                {profileFilteredLectures.map((top, tIdx) => {
                   const content = top.content || {};
                   const pdfCount = content.pdfs?.length || 0;
                   const imageCount = content.images?.length || 0;
@@ -1860,7 +1860,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center shrink-0 border border-slate-200">
-                            {activeChapterProfile.chapterNumber}.{top.topicNumber || tIdx + 1}
+                            {activeModuleProfile.moduleNumber}.{top.lectureNumber || tIdx + 1}
                           </span>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
@@ -1883,7 +1883,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
 
                         <div className="flex items-center gap-2 self-end sm:self-auto">
                           <button
-                            onClick={() => handleOpenTopicStudio(top)}
+                            onClick={() => handleOpenLectureStudio(top)}
                             className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer border border-indigo-200/60"
                           >
                             <UploadCloud className="w-3.5 h-3.5" />
@@ -1892,29 +1892,29 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
 
                           <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
                             <button
-                              onClick={(e) => handleMoveTopic(top, 'up', e)}
+                              onClick={(e) => handleMoveLecture(top, 'up', e)}
                               title="Move Up"
                               className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
                             >
                               <ArrowUp className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={(e) => handleMoveTopic(top, 'down', e)}
+                              onClick={(e) => handleMoveLecture(top, 'down', e)}
                               title="Move Down"
                               className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
                             >
                               <ArrowDown className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleOpenTopicModal(activeChapterProfile, top)}
-                              title="Edit Topic"
+                              onClick={() => handleOpenLectureModal(activeModuleProfile, top)}
+                              title="Edit Lecture"
                               className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => setDeletingTopic(top)}
-                              title="Delete Topic"
+                              onClick={() => setDeletingLecture(top)}
+                              title="Delete Lecture"
                               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1963,7 +1963,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
         </div>
       ) : (
         /* ========================================================================= */
-        /* 2. MAIN CHAPTERS STUDIO LIST VIEW (Clean Uncluttered Chapters Roster)     */
+        /* 2. MAIN MODULES STUDIO LIST VIEW (Clean Uncluttered Modules Roster)     */
         /* ========================================================================= */
         <div className="space-y-6">
 
@@ -1975,20 +1975,20 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 <span>Academic Hierarchy Level 2</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Chapters Studio
+                Modules Studio
               </h1>
               <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
-                Manage syllabus chapters across medical disciplines. Open any chapter's profile to add and configure high-yield topics, clinical notes, and multimedia.
+                Manage syllabus modules across medical disciplines. Open any module's profile to add and configure high-yield lectures, clinical notes, and multimedia.
               </p>
             </div>
 
             <button
-              id="btn-add-chapter"
-              onClick={() => handleOpenChapterModal(null)}
+              id="btn-add-module"
+              onClick={() => handleOpenModuleModal(null)}
               className="inline-flex items-center justify-center gap-2.5 px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm transition-all hover:shadow-indigo-500/20 active:scale-98 cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Add New Chapter</span>
+              <span>+ Add New Module</span>
             </button>
           </div>
 
@@ -2039,7 +2039,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 <span className={`text-[10px] px-1.5 py-0.2 rounded ${
                   selectedSubjectId === 'all' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-200 text-slate-600'
                 }`}>
-                  {chapters.filter(c => {
+                  {modules.filter(c => {
                     const sub = subjects.find(s => s.id === c.subjectId);
                     return c.examId === selectedExamId || sub?.examId === selectedExamId;
                   }).length}
@@ -2047,7 +2047,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               </button>
 
               {availableSubjectsForExam.map(sub => {
-                const subChapCount = chapters.filter(c => c.subjectId === sub.id).length;
+                const subChapCount = modules.filter(c => c.subjectId === sub.id).length;
                 return (
                   <button
                     key={sub.id}
@@ -2076,7 +2076,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search chapters by title, description, or discipline..."
+                  placeholder="Search modules by title, description, or discipline..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -2084,42 +2084,42 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               </div>
 
               <span className="text-xs font-bold text-slate-400 shrink-0">
-                {displayedChapters.length} {displayedChapters.length === 1 ? 'Chapter' : 'Chapters'} Listed
+                {displayedModules.length} {displayedModules.length === 1 ? 'Module' : 'Modules'} Listed
               </span>
             </div>
 
           </div>
 
-          {/* Clean Chapters List Cards */}
-          {displayedChapters.length === 0 ? (
+          {/* Clean Modules List Cards */}
+          {displayedModules.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-xs space-y-4">
               <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
                 <FolderTree className="w-7 h-7" />
               </div>
-              <h3 className="text-base font-bold text-slate-800">No chapters found</h3>
+              <h3 className="text-base font-bold text-slate-800">No modules found</h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                No chapters match your current search and filter criteria. Create a new chapter to begin structuring the syllabus.
+                No modules match your current search and filter criteria. Create a new module to begin structuring the syllabus.
               </p>
               <button
-                onClick={() => handleOpenChapterModal(null)}
+                onClick={() => handleOpenModuleModal(null)}
                 className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                <span>Create New Chapter</span>
+                <span>Create New Module</span>
               </button>
             </div>
           ) : (
             <div className="space-y-4">
-              {displayedChapters.map((chap) => {
+              {displayedModules.map((chap) => {
                 const chapSubject = subjects.find(s => s.id === chap.subjectId);
-                const chapTopics = topics.filter(t => t.chapterId === chap.id);
+                const chapLectures = lectures.filter(t => t.moduleId === chap.id);
                 
                 let pdfCount = 0;
                 let videoCount = 0;
                 let flashCount = 0;
                 let imageCount = 0;
                 
-                chapTopics.forEach(t => {
+                chapLectures.forEach(t => {
                   const c = t.content || {};
                   pdfCount += (c.pdfs?.length || 0);
                   imageCount += (c.images?.length || 0);
@@ -2135,7 +2135,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 flex-wrap">
                         <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
-                          Chapter {chap.chapterNumber}
+                          Module {chap.moduleNumber}
                         </span>
                         <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
                           {chapSubject?.name || 'Subject'}
@@ -2147,29 +2147,29 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
 
                       <div className="flex items-center gap-1 self-end sm:self-auto">
                         <button 
-                          onClick={(e) => handleMoveChapter(chap, 'up', e)}
+                          onClick={(e) => handleMoveModule(chap, 'up', e)}
                           title="Move Up"
                           className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                         >
                           <ArrowUp className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={(e) => handleMoveChapter(chap, 'down', e)}
+                          onClick={(e) => handleMoveModule(chap, 'down', e)}
                           title="Move Down"
                           className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                         >
                           <ArrowDown className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => handleOpenChapterModal(chap)}
-                          title="Edit Chapter"
+                          onClick={() => handleOpenModuleModal(chap)}
+                          title="Edit Module"
                           className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => setDeletingChapter(chap)}
-                          title="Delete Chapter"
+                          onClick={() => setDeletingModule(chap)}
+                          title="Delete Module"
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -2188,11 +2188,11 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                       )}
                     </div>
 
-                    {/* Clinical Assets & Topics Summary + Profile Button */}
+                    {/* Clinical Assets & Lectures Summary + Profile Button */}
                     <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
                       <div className="flex items-center gap-2 flex-wrap text-xs">
                         <span className="font-bold px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 border border-sky-100">
-                          📚 {chapTopics.length} {chapTopics.length === 1 ? 'Topic' : 'Topics'}
+                          📚 {chapLectures.length} {chapLectures.length === 1 ? 'Lecture' : 'Lectures'}
                         </span>
                         {pdfCount > 0 && (
                           <span className="font-semibold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[11px]">
@@ -2216,13 +2216,13 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                         )}
                       </div>
 
-                      {/* Prominent Chapter Profile Button */}
+                      {/* Prominent Module Profile Button */}
                       <button
-                        onClick={() => setActiveChapterProfile(chap)}
+                        onClick={() => setActiveModuleProfile(chap)}
                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer ml-auto"
                       >
                         <BookOpen className="w-4 h-4" />
-                        <span>Chapter Profile & Topics ({chapTopics.length}) ➔</span>
+                        <span>Module Profile & Lectures ({chapLectures.length}) ➔</span>
                       </button>
                     </div>
                   </div>
@@ -2235,9 +2235,9 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: ADD / EDIT CHAPTER (Cascading Dropdowns: Exam -> Subject -> Chapter) */}
+      {/* MODAL: ADD / EDIT MODULE (Cascading Dropdowns: Exam -> Subject -> Module) */}
       {/* ========================================================================= */}
-      {isChapterModalOpen && (
+      {isModuleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -2247,22 +2247,22 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    {editingChapter ? 'Edit Chapter' : 'Add New Chapter'}
+                    {editingModule ? 'Edit Module' : 'Add New Module'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Define exam, subject, and chapter syllabus module.
+                    Define exam, subject, and module syllabus module.
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setIsChapterModalOpen(false)}
+                onClick={() => setIsModuleModalOpen(false)}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveChapter} className="space-y-4">
+            <form onSubmit={handleSaveModule} className="space-y-4">
               {/* Dropdown 1: Exam Track */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -2306,7 +2306,7 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 </select>
               </div>
 
-              {/* Chapter Number & Chapter Name */}
+              {/* Module Number & Module Name */}
               <div className="grid grid-cols-4 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -2324,10 +2324,10 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
 
                 <div className="col-span-3 space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Chapter Name *
+                    Module Name *
                   </label>
                   <input
-                    id="input-chapter-title"
+                    id="input-module-title"
                     type="text"
                     required
                     placeholder="e.g. Cardiac Arrhythmias"
@@ -2343,9 +2343,9 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   Description / Sub-areas (Optional)
                 </label>
                 <textarea
-                  id="input-chapter-description"
+                  id="input-module-description"
                   rows={3}
-                  placeholder="Outline key pathologies or clinical competencies covered in this chapter..."
+                  placeholder="Outline key pathologies or clinical competencies covered in this module..."
                   value={chapDesc}
                   onChange={(e) => setChapDesc(e.target.value)}
                   className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -2355,18 +2355,18 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsChapterModalOpen(false)}
+                  onClick={() => setIsModuleModalOpen(false)}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
-                  id="btn-submit-chapter"
+                  id="btn-submit-module"
                   type="submit"
                   className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>{editingChapter ? 'Save Changes' : 'Create Chapter'}</span>
+                  <span>{editingModule ? 'Save Changes' : 'Create Module'}</span>
                 </button>
               </div>
             </form>
@@ -2375,9 +2375,9 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: ADD / EDIT TOPIC                                                   */}
+      {/* MODAL: ADD / EDIT LECTURE                                                   */}
       {/* ========================================================================= */}
-      {isTopicModalOpen && (
+      {isLectureModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -2387,48 +2387,48 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    {editingTopic ? 'Edit Topic' : 'Add Topic'}
+                    {editingLecture ? 'Edit Lecture' : 'Add Lecture'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Under: Chapter {targetChapterForTopic?.chapterNumber} — {targetChapterForTopic?.title}
+                    Under: Module {targetModuleForLecture?.moduleNumber} — {targetModuleForLecture?.title}
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setIsTopicModalOpen(false)}
+                onClick={() => setIsLectureModalOpen(false)}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveTopic} className="space-y-4">
+            <form onSubmit={handleSaveLecture} className="space-y-4">
               <div className="grid grid-cols-4 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Topic #
+                    Lecture #
                   </label>
                   <input
                     type="number"
                     min="1"
                     required
-                    value={topicNumber}
-                    onChange={(e) => setTopicNumber(e.target.value)}
+                    value={lectureNumber}
+                    onChange={(e) => setLectureNumber(e.target.value)}
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
 
                 <div className="col-span-3 space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Topic Title *
+                    Lecture Title *
                   </label>
                   <input
-                    id="input-topic-title"
+                    id="input-lecture-title"
                     type="text"
                     required
                     placeholder="e.g. Ventricular Tachycardias & Brugada Criteria"
-                    value={topicTitle}
-                    onChange={(e) => setTopicTitle(e.target.value)}
+                    value={lectureTitle}
+                    onChange={(e) => setLectureTitle(e.target.value)}
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -2442,8 +2442,8 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                   <input
                     type="text"
                     placeholder="45 mins"
-                    value={topicDuration}
-                    onChange={(e) => setTopicDuration(e.target.value)}
+                    value={lectureDuration}
+                    onChange={(e) => setLectureDuration(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -2453,8 +2453,8 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
                     Exam Weightage
                   </label>
                   <select
-                    value={topicDifficulty}
-                    onChange={(e) => setTopicDifficulty(e.target.value)}
+                    value={lectureDifficulty}
+                    onChange={(e) => setLectureDifficulty(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   >
                     <option value="High-Yield">High-Yield (Must-Know)</option>
@@ -2467,17 +2467,17 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsTopicModalOpen(false)}
+                  onClick={() => setIsLectureModalOpen(false)}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
-                  id="btn-submit-topic"
+                  id="btn-submit-lecture"
                   type="submit"
                   className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                 >
-                  {editingTopic ? 'Save Changes' : 'Add Topic'}
+                  {editingLecture ? 'Save Changes' : 'Add Lecture'}
                 </button>
               </div>
             </form>
@@ -2521,36 +2521,36 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: DELETE CHAPTER CONFIRMATION                                        */}
+      {/* MODAL: DELETE MODULE CONFIRMATION                                        */}
       {/* ========================================================================= */}
-      {deletingChapter && (
+      {deletingModule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
             <div className="text-center space-y-1">
-              <h3 className="text-base font-bold text-slate-900">Delete Chapter?</h3>
+              <h3 className="text-base font-bold text-slate-900">Delete Module?</h3>
               <p className="text-xs text-slate-500">
-                Are you sure you want to delete <span className="font-bold text-slate-800">"Chapter {deletingChapter.chapterNumber}: {deletingChapter.title}"</span>?
-                This will also delete all topics inside this chapter.
+                Are you sure you want to delete <span className="font-bold text-slate-800">"Module {deletingModule.moduleNumber}: {deletingModule.title}"</span>?
+                This will also delete all lectures inside this module.
               </p>
             </div>
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setDeletingChapter(null)}
+                onClick={() => setDeletingModule(null)}
                 className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                id="btn-confirm-delete-chapter"
-                onClick={handleDeleteChapter}
+                id="btn-confirm-delete-module"
+                onClick={handleDeleteModule}
                 className="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
               >
-                Delete Chapter
+                Delete Module
               </button>
             </div>
           </div>
@@ -2558,36 +2558,36 @@ export default function ChaptersTopicsTab({ initialExamId = 'neet-pg', initialSu
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: DELETE TOPIC CONFIRMATION                                          */}
+      {/* MODAL: DELETE LECTURE CONFIRMATION                                          */}
       {/* ========================================================================= */}
-      {deletingTopic && (
+      {deletingLecture && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
             <div className="text-center space-y-1">
-              <h3 className="text-base font-bold text-slate-900">Delete Topic?</h3>
+              <h3 className="text-base font-bold text-slate-900">Delete Lecture?</h3>
               <p className="text-xs text-slate-500">
-                Are you sure you want to delete <span className="font-bold text-slate-800">"{deletingTopic.title}"</span>?
-                All uploaded content under this topic will be removed.
+                Are you sure you want to delete <span className="font-bold text-slate-800">"{deletingLecture.title}"</span>?
+                All uploaded content under this lecture will be removed.
               </p>
             </div>
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setDeletingTopic(null)}
+                onClick={() => setDeletingLecture(null)}
                 className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                id="btn-confirm-delete-topic"
-                onClick={handleDeleteTopic}
+                id="btn-confirm-delete-lecture"
+                onClick={handleDeleteLecture}
                 className="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
               >
-                Delete Topic
+                Delete Lecture
               </button>
             </div>
           </div>

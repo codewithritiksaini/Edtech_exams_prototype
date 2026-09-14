@@ -63,8 +63,8 @@ export default function FacultySubjectsPage() {
 
   const [exams, setExams] = useState(() => catalogService.getExams());
   const [subjects, setSubjects] = useState(() => curriculumService.getSubjects());
-  const [chapters, setChapters] = useState(() => curriculumService.getChapters());
-  const [topics, setTopics] = useState(() => curriculumService.getTopics());
+  const [modules, setModules] = useState(() => curriculumService.getModules());
+  const [lectures, setLectures] = useState(() => curriculumService.getLectures());
 
   const currentFaculty = peopleService.getCurrentFacultyProfile();
   const facultyAssignedSubjectIds = currentFaculty?.assignedSubjects || [];
@@ -133,8 +133,8 @@ export default function FacultySubjectsPage() {
   useEffect(() => {
     const unsubCurriculum = curriculumService.subscribeCurriculum(() => {
       setSubjects(curriculumService.getSubjects());
-      setChapters(curriculumService.getChapters());
-      setTopics(curriculumService.getTopics());
+      setModules(curriculumService.getModules());
+      setLectures(curriculumService.getLectures());
     });
     const unsubCatalog = catalogService.subscribe((payload) => {
       setExams(payload.exams);
@@ -215,17 +215,17 @@ export default function FacultySubjectsPage() {
       return true;
     });
     const currentSubjectIds = currentSubjects.map(s => s.id);
-    const currentChapters = chapters.filter(c => currentSubjectIds.includes(c.subjectId));
-    const currentChapterIds = currentChapters.map(c => c.id);
-    const currentTopics = topics.filter(t => currentChapterIds.includes(t.chapterId));
+    const currentModules = modules.filter(c => currentSubjectIds.includes(c.subjectId));
+    const currentModuleIds = currentModules.map(c => c.id);
+    const currentLectures = lectures.filter(t => currentModuleIds.includes(t.moduleId));
 
     return {
       totalSubjects: currentSubjects.length,
-      totalChapters: currentChapters.length,
-      totalTopics: currentTopics.length,
+      totalModules: currentModules.length,
+      totalLectures: currentLectures.length,
       assignedCount: currentSubjects.length
     };
-  }, [subjects, chapters, topics, selectedExamFilter, selectedSubjectFilter, facultyAssignedSubjectIds, currentFaculty]);
+  }, [subjects, modules, lectures, selectedExamFilter, selectedSubjectFilter, facultyAssignedSubjectIds, currentFaculty]);
 
   const totalAssignedSubjectsCount = useMemo(() => {
     return subjects.filter(isSubjectAssigned).length;
@@ -286,11 +286,11 @@ export default function FacultySubjectsPage() {
     };
 
     if (editingSubject) {
-      curriculumService.updateSubject(editingSubject.id, payload);
+      curriculumService.saveSubject({ id: editingSubject.id, ...payload });
       showToast(`Subject "${payload.name}" updated successfully.`);
     } else {
       const newSubjectId = `sub-${formExamId.slice(0, 4)}-${Date.now().toString(36)}`;
-      curriculumService.createSubject({
+      curriculumService.saveSubject({
         id: newSubjectId,
         ...payload,
         facultyEmail: currentFaculty?.email || 'faculty@demo.com'
@@ -298,7 +298,7 @@ export default function FacultySubjectsPage() {
       // Auto-assign new subject to current faculty profile
       if (currentFaculty) {
         const updatedAssigned = Array.from(new Set([...(currentFaculty.assignedSubjects || []), newSubjectId]));
-        peopleService.updateFaculty(currentFaculty.id, { assignedSubjects: updatedAssigned });
+        peopleService.saveFaculty({ id: currentFaculty.id, assignedSubjects: updatedAssigned });
       }
       showToast(`Subject "${payload.name}" created and assigned to your roster successfully.`);
     }
@@ -308,18 +308,14 @@ export default function FacultySubjectsPage() {
 
   const handleDeleteSubject = () => {
     if (!deletingSubject) return;
-    const result = curriculumService.deleteSubject(deletingSubject.id);
-    if (!result.success) {
-      alert(result.reason);
-      return;
-    }
+    curriculumService.deleteSubject(deletingSubject.id);
     showToast(`Subject "${deletingSubject.name}" deleted.`);
     setDeletingSubject(null);
   };
 
   const handleToggleStatus = (sub) => {
     const nextStatus = sub.status === 'Draft' ? 'Active' : 'Draft';
-    curriculumService.updateSubject(sub.id, { status: nextStatus });
+    curriculumService.saveSubject({ id: sub.id, status: nextStatus });
     showToast(`Subject status changed to ${nextStatus}.`);
   };
 
@@ -367,7 +363,7 @@ export default function FacultySubjectsPage() {
             {getActiveExam() ? `${getActiveExam().name} • Subjects & Units` : 'All Medical Subjects & Curriculum Units'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
-            Manage clinical and pre-clinical subjects, assign chapter syllabus, and oversee study flow for your teaching track.
+            Manage clinical and pre-clinical subjects, assign module syllabus, and oversee study flow for your teaching track.
           </p>
         </div>
 
@@ -391,14 +387,14 @@ export default function FacultySubjectsPage() {
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
-          <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Chapters Count</span>
-          <div className="text-2xl font-black text-slate-900">{stats.totalChapters}</div>
+          <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Modules Count</span>
+          <div className="text-2xl font-black text-slate-900">{stats.totalModules}</div>
           <span className="text-[11px] text-slate-400 font-medium">Syllabus unit blocks</span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
-          <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Topics Roster</span>
-          <div className="text-2xl font-black text-slate-900">{stats.totalTopics}</div>
+          <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Lectures Roster</span>
+          <div className="text-2xl font-black text-slate-900">{stats.totalLectures}</div>
           <span className="text-[11px] text-slate-400 font-medium">Granular learning concepts</span>
         </div>
 
@@ -557,9 +553,9 @@ export default function FacultySubjectsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredSubjects.map((sub) => {
             const examObj = exams.find(e => e.id === sub.examId);
-            const subChapters = chapters.filter(c => c.subjectId === sub.id);
-            const subChapterIds = subChapters.map(c => c.id);
-            const subTopics = topics.filter(t => subChapterIds.includes(t.chapterId));
+            const subModules = modules.filter(c => c.subjectId === sub.id);
+            const subModuleIds = subModules.map(c => c.id);
+            const subLectures = lectures.filter(t => subModuleIds.includes(t.moduleId));
             const isAssigned = facultyAssignedSubjectIds.includes(sub.id);
 
             const iconDef = AVAILABLE_ICONS.find(i => i.name === sub.iconName) || AVAILABLE_ICONS[0];
@@ -623,12 +619,12 @@ export default function FacultySubjectsPage() {
                   {/* Units info */}
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
                     <div className="bg-slate-50 p-2 rounded-xl">
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Chapters</span>
-                      <span className="text-xs font-extrabold text-slate-800">{subChapters.length} Units</span>
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Modules</span>
+                      <span className="text-xs font-extrabold text-slate-800">{subModules.length} Units</span>
                     </div>
                     <div className="bg-slate-50 p-2 rounded-xl">
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Topics</span>
-                      <span className="text-xs font-extrabold text-slate-800">{subTopics.length} Concepts</span>
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Lectures</span>
+                      <span className="text-xs font-extrabold text-slate-800">{subLectures.length} Concepts</span>
                     </div>
                   </div>
                 </div>
@@ -653,10 +649,10 @@ export default function FacultySubjectsPage() {
                   </div>
 
                   <Link
-                    to={`/faculty/exams/${sub.examId || selectedExamFilter}/subjects/${sub.id}/chapters`}
+                    to={`/faculty/exams/${sub.examId || selectedExamFilter}/subjects/${sub.id}/modules`}
                     className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                   >
-                    <span>Manage Chapters</span>
+                    <span>Manage Modules</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -680,9 +676,9 @@ export default function FacultySubjectsPage() {
             <tbody className="divide-y divide-slate-100">
               {filteredSubjects.map((sub) => {
                 const examObj = exams.find(e => e.id === sub.examId);
-                const subChapters = chapters.filter(c => c.subjectId === sub.id);
-                const subChapterIds = subChapters.map(c => c.id);
-                const subTopics = topics.filter(t => subChapterIds.includes(t.chapterId));
+                const subModules = modules.filter(c => c.subjectId === sub.id);
+                const subModuleIds = subModules.map(c => c.id);
+                const subLectures = lectures.filter(t => subModuleIds.includes(t.moduleId));
                 const isAssigned = facultyAssignedSubjectIds.includes(sub.id);
 
                 const iconDef = AVAILABLE_ICONS.find(i => i.name === sub.iconName) || AVAILABLE_ICONS[0];
@@ -700,7 +696,7 @@ export default function FacultySubjectsPage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <Link
-                              to={`/faculty/exams/${sub.examId || selectedExamFilter}/subjects/${sub.id}/chapters`}
+                              to={`/faculty/exams/${sub.examId || selectedExamFilter}/subjects/${sub.id}/modules`}
                               className="font-extrabold text-slate-900 hover:text-indigo-600 transition-colors text-xs"
                             >
                               {sub.name}
@@ -733,10 +729,10 @@ export default function FacultySubjectsPage() {
                     <td className="py-3.5 px-4 text-center">
                       <div className="inline-flex items-center gap-2">
                         <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                          {subChapters.length} Chapters
+                          {subModules.length} Modules
                         </span>
                         <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                          {subTopics.length} Topics
+                          {subLectures.length} Lectures
                         </span>
                       </div>
                     </td>
@@ -773,10 +769,10 @@ export default function FacultySubjectsPage() {
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                         <Link
-                          to={`/faculty/exams/${sub.examId || selectedExamFilter}/subjects/${sub.id}/chapters`}
+                          to={`/faculty/exams/${sub.examId || selectedExamFilter}/subjects/${sub.id}/modules`}
                           className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white font-bold text-[11px] transition-colors ml-1 inline-flex items-center gap-1"
                         >
-                          <span>Chapters</span>
+                          <span>Modules</span>
                           <ArrowRight className="w-3 h-3" />
                         </Link>
                       </div>
@@ -1002,7 +998,7 @@ export default function FacultySubjectsPage() {
                 Delete Subject?
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Are you sure you want to delete <span className="font-bold text-slate-800">"{deletingSubject.name}"</span>? Any chapters or topics under this subject may also be removed.
+                Are you sure you want to delete <span className="font-bold text-slate-800">"{deletingSubject.name}"</span>? Any modules or lectures under this subject may also be removed.
               </p>
             </div>
 

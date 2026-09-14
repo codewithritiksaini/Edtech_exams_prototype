@@ -1,7 +1,7 @@
 // =============================================================================
 // SAMPLE PAPER SERVICE
-// Manages chapter-level sample papers and PDFs with role & course-based access control.
-// Hierarchy: Exam -> Subject -> Chapter -> Sample Papers (1 or multiple PDFs)
+// Manages module-level sample papers and PDFs with role & course-based access control.
+// Hierarchy: Exam -> Subject -> Module -> Sample Papers (1 or multiple PDFs)
 // =============================================================================
 
 import { curriculumService } from './curriculumService';
@@ -17,7 +17,7 @@ export const INITIAL_SAMPLE_PAPERS = [
     id: 'sp-cardio-valvular-1',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
-    chapterId: 'chap-neet-valvular',
+    moduleId: 'mod-neet-valvular',
     title: 'Sample Paper 1: Valvular Pathology & Murmurs Sprint',
     description: 'High-yield clinical vignettes covering Aortic Stenosis gradient criteria, Mitral Regurgitation v-wave dynamics, and dynamic auscultation maneuvers.',
     pdfUrl: '/samples/sample_paper_cardio_valvular_01.pdf',
@@ -45,7 +45,7 @@ export const INITIAL_SAMPLE_PAPERS = [
     id: 'sp-cardio-valvular-2',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
-    chapterId: 'chap-neet-valvular',
+    moduleId: 'mod-neet-valvular',
     title: 'Sample Paper 2: Echo Tracings & Pressure Volume Loops',
     description: 'Advanced diagnostic assessment with 30 Doppler echocardiogram images, Gorlin formula calculations, and prosthetic valve complications.',
     pdfUrl: '/samples/sample_paper_cardio_valvular_02.pdf',
@@ -73,7 +73,7 @@ export const INITIAL_SAMPLE_PAPERS = [
     id: 'sp-cardio-hf-1',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
-    chapterId: 'chap-neet-hf',
+    moduleId: 'mod-neet-hf',
     title: 'Sample Paper: Heart Failure Guidelines & Pharmacotherapy Trial Mastery',
     description: 'Questions centered on the 4 Pillars of HFrEF: Sacubitril/Valsartan, SGLT2i, Beta-Blockers, and MRAs with acute decompensated hemodynamics.',
     pdfUrl: '/samples/sample_paper_cardio_hf_01.pdf',
@@ -101,7 +101,7 @@ export const INITIAL_SAMPLE_PAPERS = [
     id: 'sp-cardio-arrhythmias-1',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
-    chapterId: 'chap-neet-arrhythmias',
+    moduleId: 'mod-neet-arrhythmias',
     title: 'Sample Paper: 12-Lead ECG Interpretation & Arrhythmia Grand Mock',
     description: 'Wide complex tachycardias, Brugada vs Vereckei algorithmic differentiation, and ACLS emergency cardioversion guidelines.',
     pdfUrl: '/samples/sample_paper_cardio_arrhythmias_01.pdf',
@@ -129,7 +129,7 @@ export const INITIAL_SAMPLE_PAPERS = [
     id: 'sp-pulmo-pft-1',
     examId: 'neet-pg',
     subjectId: 'sub-neet-pulmo',
-    chapterId: 'chap-neet-pft',
+    moduleId: 'mod-neet-pft',
     title: 'Sample Paper: Spirometry, DLCO & Flow-Volume Loops Practice',
     description: 'Differentiating obstructive vs restrictive defects, fixed vs variable intrathoracic upper airway lesions, and DLCO adjustments.',
     pdfUrl: '/samples/sample_paper_pulmo_pft_01.pdf',
@@ -157,7 +157,7 @@ export const INITIAL_SAMPLE_PAPERS = [
     id: 'sp-usmle-cvs-1',
     examId: 'usmle',
     subjectId: 'sub-usmle-cvs',
-    chapterId: 'chap-usmle-emb',
+    moduleId: 'mod-usmle-emb',
     title: 'Sample Paper: Cardiac Embryology & Congenital Defects USMLE Style',
     description: 'Step 1 high-yield vignettes: Truncus arteriosus, Tetralogy of Fallot, transposition of great vessels, and endocardial cushion defects.',
     pdfUrl: '/samples/sample_paper_usmle_cvs_01.pdf',
@@ -195,19 +195,30 @@ class SamplePaperService {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map(p => {
+            let paper = p;
+
+            // Migrate legacy chapterId -> moduleId (pre Module/Lecture rename)
+            if (paper.chapterId !== undefined && paper.moduleId === undefined) {
+              const { chapterId, ...rest } = paper;
+              const migratedModuleId = typeof chapterId === 'string' && chapterId.startsWith('chap-')
+                ? `mod-${chapterId.slice('chap-'.length)}`
+                : chapterId;
+              paper = { ...rest, moduleId: migratedModuleId };
+            }
+
             // Backfill facultyId and uploadedById if missing
-            if (!p.facultyId && p.uploadedByRole === 'faculty') {
-              const email = (p.uploadedByEmail || '').toLowerCase();
-              const name = p.uploadedByName || '';
+            if (!paper.facultyId && paper.uploadedByRole === 'faculty') {
+              const email = (paper.uploadedByEmail || '').toLowerCase();
+              const name = paper.uploadedByName || '';
               if (email.includes('faculty') || name.includes('Siddharth')) {
-                return { ...p, facultyId: 'fac-1', uploadedById: 'fac-1' };
+                return { ...paper, facultyId: 'fac-1', uploadedById: 'fac-1' };
               } else if (email.includes('marcus') || name.includes('Marcus')) {
-                return { ...p, facultyId: 'fac-3', uploadedById: 'fac-3' };
+                return { ...paper, facultyId: 'fac-3', uploadedById: 'fac-3' };
               } else if (email.includes('ananya') || name.includes('Ananya')) {
-                return { ...p, facultyId: 'fac-2', uploadedById: 'fac-2' };
+                return { ...paper, facultyId: 'fac-2', uploadedById: 'fac-2' };
               }
             }
-            return p;
+            return paper;
           });
         }
       }
@@ -237,7 +248,7 @@ class SamplePaperService {
    * Get all sample papers with optional query filters.
    * If role is 'faculty' (or facultyEmail/facultyId provided), strictly returns only papers authored/uploaded by that faculty!
    */
-  getSamplePapers({ examId = null, subjectId = null, chapterId = null, search = '', role = null, facultyEmail = null, facultyId = null } = {}) {
+  getSamplePapers({ examId = null, subjectId = null, moduleId = null, search = '', role = null, facultyEmail = null, facultyId = null } = {}) {
     let list = [...this.papers];
 
     // If role is faculty, enforce strict ownership:
@@ -285,8 +296,8 @@ class SamplePaperService {
       list = list.filter(p => p.subjectId === subjectId);
     }
 
-    if (chapterId && chapterId !== 'all') {
-      list = list.filter(p => p.chapterId === chapterId);
+    if (moduleId && moduleId !== 'all') {
+      list = list.filter(p => p.moduleId === moduleId);
     }
 
     if (search && search.trim()) {
@@ -305,20 +316,20 @@ class SamplePaperService {
     return this.papers.find(p => p.id === id) || null;
   }
 
-  getSamplePapersByChapter(chapterId, options = {}) {
-    if (!chapterId) return [];
+  getSamplePapersByModule(moduleId, options = {}) {
+    if (!moduleId) return [];
     if (options.role === 'faculty' || options.facultyEmail || options.facultyId) {
-      return this.getSamplePapers({ chapterId, role: 'faculty', ...options });
+      return this.getSamplePapers({ moduleId, role: 'faculty', ...options });
     }
-    return this.papers.filter(p => p.chapterId === chapterId && p.status === 'Published');
+    return this.papers.filter(p => p.moduleId === moduleId && p.status === 'Published');
   }
 
-  getSamplePapersCountByChapter(chapterId, options = {}) {
-    if (!chapterId) return 0;
+  getSamplePapersCountByModule(moduleId, options = {}) {
+    if (!moduleId) return 0;
     if (options.role === 'faculty' || options.facultyEmail || options.facultyId) {
-      return this.getSamplePapers({ chapterId, role: 'faculty', ...options }).length;
+      return this.getSamplePapers({ moduleId, role: 'faculty', ...options }).length;
     }
-    return this.papers.filter(p => p.chapterId === chapterId).length;
+    return this.papers.filter(p => p.moduleId === moduleId).length;
   }
 
   /**
@@ -342,8 +353,8 @@ class SamplePaperService {
         id: data.id || `sp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         examId: data.examId,
         subjectId: data.subjectId,
-        chapterId: data.chapterId,
-        title: data.title || 'Untitled Chapter Sample Paper',
+        moduleId: data.moduleId,
+        title: data.title || 'Untitled Module Sample Paper',
         description: data.description || '',
         pdfUrl: data.pdfUrl || '/samples/sample_paper_template.pdf',
         fileName: data.fileName || `${data.title || 'Sample_Paper'}.pdf`.replace(/\s+/g, '_'),
@@ -403,13 +414,13 @@ class SamplePaperService {
    */
   getStats(scopePapers = null) {
     const dataset = scopePapers || this.papers;
-    const chaptersSet = new Set(dataset.map(p => p.chapterId));
+    const modulesSet = new Set(dataset.map(p => p.moduleId));
     const totalQuestions = dataset.reduce((acc, p) => acc + (Number(p.questionsCount) || 0), 0);
     const totalDownloads = dataset.reduce((acc, p) => acc + (Number(p.downloadsCount) || 0), 0);
 
     return {
       totalPapers: dataset.length,
-      chaptersCovered: chaptersSet.size,
+      modulesCovered: modulesSet.size,
       totalQuestions,
       totalDownloads
     };

@@ -390,7 +390,7 @@ export default function StudentDashboardPage() {
             <span className="text-xs font-bold uppercase tracking-widest text-brand-400">EXPLORE PORTAL</span>
             <h3 className="text-xl sm:text-2xl font-black">Comprehensive 5-Level Learning Matrix</h3>
             <p className="text-xs text-slate-300 max-w-xl">
-              Access the complete hierarchy from national exam tracks down to chapter topics and the interactive Topic Study Room.
+              Access the complete hierarchy from national exam tracks down to module lectures and the interactive Lecture Study Room.
             </p>
           </div>
 

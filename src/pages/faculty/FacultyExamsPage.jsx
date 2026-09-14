@@ -210,7 +210,8 @@ export default function FacultyExamsPage() {
       if (currentFaculty && generatedId) {
         const currentAssigned = currentFaculty.assignedExams || [];
         if (!currentAssigned.includes(generatedId)) {
-          peopleService.updateFaculty(currentFaculty.id, {
+          peopleService.saveFaculty({
+            id: currentFaculty.id,
             assignedExams: [...currentAssigned, generatedId]
           });
         }

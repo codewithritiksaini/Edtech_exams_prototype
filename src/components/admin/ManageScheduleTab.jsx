@@ -35,11 +35,20 @@ import {
   CheckSquare,
   Square,
   Award,
-  Tv
+  Tv,
+  Users,
+  CalendarCheck,
+  CalendarX,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
 import { authService, USER_ROLES } from '../../services/authService';
+import { peopleService } from '../../services/peopleService';
+import FacultySlotMatrixView from './schedule/FacultySlotMatrixView';
+import FacultySlotDetailModal from './schedule/FacultySlotDetailModal';
+import { STANDARD_TIME_SLOTS, getSlotsAvailabilityForFaculty } from '../../utils/scheduleSlotUtils';
 
 const SUBJECT_COLOR_MAP = {
   rose: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', tag: 'bg-rose-600', badge: 'bg-rose-100 text-rose-800' },
@@ -75,16 +84,16 @@ export default function ManageScheduleTab({
   });
 
   const [subjects, setSubjects] = useState(() => curriculumService.getSubjects());
-  const [chapters, setChapters] = useState(() => curriculumService.getChapters());
-  const [topics, setTopics] = useState(() => curriculumService.getTopics());
+  const [modules, setModules] = useState(() => curriculumService.getModules());
+  const [lectures, setLectures] = useState(() => curriculumService.getLectures());
   const [schedule, setSchedule] = useState(() => curriculumService.getSchedule(selectedExamId));
 
   // Hierarchical Breakdown States
   const [selectedSubjectId, setSelectedSubjectId] = useState(() => initialSubjectId || 'all');
-  const [selectedChapterId, setSelectedChapterId] = useState('all');
+  const [selectedModuleId, setSelectedModuleId] = useState('all');
 
   const [selectedWeek, setSelectedWeek] = useState(1);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' (7-day matrix) | 'list' (tabular)
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list' | 'faculty'
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
@@ -97,14 +106,19 @@ export default function ManageScheduleTab({
   const [formDayNumber, setFormDayNumber] = useState(1);
   const [formDayTitle, setFormDayTitle] = useState('');
   const [formSubjectId, setFormSubjectId] = useState('');
-  const [formChapterId, setFormChapterId] = useState('');
-  const [formSelectedTopicIds, setFormSelectedTopicIds] = useState([]);
+  const [formModuleId, setFormModuleId] = useState('');
+  const [formSelectedLectureIds, setFormSelectedLectureIds] = useState([]);
   const [formDate, setFormDate] = useState('2026-09-08');
   const [formDuration, setFormDuration] = useState('1.5 hours');
   const [formLectureTimeSlot, setFormLectureTimeSlot] = useState('09:00 AM - 10:30 AM IST');
   const [formHasLive, setFormHasLive] = useState(false);
   const [formHasTest, setFormHasTest] = useState(false);
   const [formStatus, setFormStatus] = useState('Active');
+  // Available-slots-only toggle for the scheduling drawer
+  const [formShowAvailableOnly, setFormShowAvailableOnly] = useState(true);
+
+  // Faculty Slot Detail Modal State
+  const [inspectingFaculty, setInspectingFaculty] = useState(null);
 
   // Preview In-Page Student LMS Experience States
   const [previewSlot, setPreviewSlot] = useState(null);
@@ -121,8 +135,8 @@ export default function ManageScheduleTab({
   useEffect(() => {
     const unsubCurriculum = curriculumService.subscribeCurriculum(() => {
       setSubjects(curriculumService.getSubjects());
-      setChapters(curriculumService.getChapters());
-      setTopics(curriculumService.getTopics());
+      setModules(curriculumService.getModules());
+      setLectures(curriculumService.getLectures());
     });
     const unsubSchedule = curriculumService.subscribeSchedule(() => {
       setSchedule(curriculumService.getSchedule(selectedExamId));
@@ -137,7 +151,7 @@ export default function ManageScheduleTab({
   useEffect(() => {
     setSchedule(curriculumService.getSchedule(selectedExamId));
     setSelectedSubjectId('all');
-    setSelectedChapterId('all');
+    setSelectedModuleId('all');
     setSelectedWeek(1);
   }, [selectedExamId]);
 
@@ -174,37 +188,54 @@ export default function ManageScheduleTab({
     return examSubjects.find(s => s.id === selectedSubjectId) || null;
   }, [examSubjects, selectedSubjectId]);
 
-  // Available chapters for the active selection
-  const availableChapters = useMemo(() => {
+  // Available modules for the active selection
+  const availableModules = useMemo(() => {
     if (selectedSubjectId === 'all') {
       const allowedSubIds = new Set(examSubjects.map(s => s.id));
-      return chapters.filter(c => c.examId === selectedExamId && allowedSubIds.has(c.subjectId));
+      return modules.filter(c => c.examId === selectedExamId && allowedSubIds.has(c.subjectId));
     }
-    return chapters.filter(c => c.subjectId === selectedSubjectId);
-  }, [chapters, selectedExamId, selectedSubjectId, examSubjects]);
+    return modules.filter(c => c.subjectId === selectedSubjectId);
+  }, [modules, selectedExamId, selectedSubjectId, examSubjects]);
 
-  // Active Chapter Object
-  const activeChapter = useMemo(() => {
-    if (selectedChapterId === 'all') return null;
-    return availableChapters.find(c => c.id === selectedChapterId) || null;
-  }, [availableChapters, selectedChapterId]);
+  // Active Module Object
+  const activeModule = useMemo(() => {
+    if (selectedModuleId === 'all') return null;
+    return availableModules.find(c => c.id === selectedModuleId) || null;
+  }, [availableModules, selectedModuleId]);
 
-  // Available chapters based on formSubjectId (inside Modal)
-  const subjectChapters = useMemo(() => {
+  // Available modules based on formSubjectId (inside Modal)
+  const subjectModules = useMemo(() => {
     if (!formSubjectId) return [];
-    return chapters.filter(c => c.subjectId === formSubjectId);
-  }, [chapters, formSubjectId]);
+    return modules.filter(c => c.subjectId === formSubjectId);
+  }, [modules, formSubjectId]);
 
-  // Available topics based on formChapterId (inside Modal)
-  const chapterTopics = useMemo(() => {
-    if (!formChapterId) return [];
-    return topics.filter(t => t.chapterId === formChapterId);
-  }, [topics, formChapterId]);
+  // Available lectures based on formModuleId (inside Modal)
+  const moduleLectures = useMemo(() => {
+    if (!formModuleId) return [];
+    return lectures.filter(t => t.moduleId === formModuleId);
+  }, [lectures, formModuleId]);
 
   // All slots for the active exam
   const examSchedule = useMemo(() => {
     return schedule.filter(s => s.examId === selectedExamId);
   }, [schedule, selectedExamId]);
+
+  // Faculty double-booking check for the slot being scheduled/edited in the modal:
+  // does this subject's faculty already have another session on the chosen day?
+  const facultyConflictForForm = useMemo(() => {
+    const subObj = examSubjects.find(s => s.id === formSubjectId);
+    if (!subObj?.facultyEmail) return null;
+    const facSubjectIds = new Set(
+      subjects
+        .filter(s => s.examId === selectedExamId && s.facultyEmail?.toLowerCase() === subObj.facultyEmail.toLowerCase())
+        .map(s => s.id)
+    );
+    return examSchedule.find(s =>
+      Number(s.dayNumber) === Number(formDayNumber) &&
+      facSubjectIds.has(s.subjectId) &&
+      (!editingSlot || s.id !== editingSlot.id)
+    ) || null;
+  }, [examSubjects, formSubjectId, subjects, selectedExamId, examSchedule, formDayNumber, editingSlot]);
 
   // Subject-filtered slots
   const subjectSchedule = useMemo(() => {
@@ -218,16 +249,16 @@ export default function ManageScheduleTab({
     return examSchedule.filter(s => s.subjectId === selectedSubjectId);
   }, [examSchedule, selectedSubjectId, isAdmin, examSubjects]);
 
-  // Chapter-filtered slots
-  const chapterSchedule = useMemo(() => {
-    if (selectedChapterId === 'all') return subjectSchedule;
-    return subjectSchedule.filter(s => s.chapterId === selectedChapterId);
-  }, [subjectSchedule, selectedChapterId]);
+  // Module-filtered slots
+  const moduleSchedule = useMemo(() => {
+    if (selectedModuleId === 'all') return subjectSchedule;
+    return subjectSchedule.filter(s => s.moduleId === selectedModuleId);
+  }, [subjectSchedule, selectedModuleId]);
 
   // Slots for the currently selected week
   const weekSlots = useMemo(() => {
-    return chapterSchedule.filter(s => s.weekNumber === selectedWeek);
-  }, [chapterSchedule, selectedWeek]);
+    return moduleSchedule.filter(s => s.weekNumber === selectedWeek);
+  }, [moduleSchedule, selectedWeek]);
 
   // 7 Days of the currently selected week (Day 1..7 for Week 1, Day 8..14 for Week 2, etc.)
   const weekDayNumbers = useMemo(() => {
@@ -235,17 +266,55 @@ export default function ManageScheduleTab({
     return Array.from({ length: 7 }, (_, i) => startDay + i);
   }, [selectedWeek]);
 
+  // Unfiltered (by subject/module) slots for the selected week — used for faculty availability,
+  // since admin needs to see every faculty's bookings regardless of the active subject/module filter
+  const examWeekSlots = useMemo(() => {
+    return examSchedule.filter(s => Number(s.weekNumber) === Number(selectedWeek));
+  }, [examSchedule, selectedWeek]);
+
+  // Faculty Availability for the selected week: who's booked on which day, and who's free
+  const facultyAvailability = useMemo(() => {
+    const allFaculty = peopleService.getFacultyList();
+    const examFacultyEmails = new Set(
+      subjects
+        .filter(s => s.examId === selectedExamId && s.facultyEmail)
+        .map(s => s.facultyEmail.toLowerCase())
+    );
+    const relevantFaculty = allFaculty.filter(f => f.email && examFacultyEmails.has(f.email.toLowerCase()));
+
+    return relevantFaculty.map(fac => {
+      const facSubjectIds = new Set(
+        subjects
+          .filter(s => s.examId === selectedExamId && s.facultyEmail?.toLowerCase() === fac.email.toLowerCase())
+          .map(s => s.id)
+      );
+      const slotsByDay = {};
+      examWeekSlots.forEach(slot => {
+        if (facSubjectIds.has(slot.subjectId)) {
+          slotsByDay[Number(slot.dayNumber)] = slot;
+        }
+      });
+      return {
+        email: fac.email,
+        name: fac.name,
+        specialty: fac.specialty,
+        bookedCount: Object.keys(slotsByDay).length,
+        slotsByDay
+      };
+    });
+  }, [subjects, selectedExamId, examWeekSlots]);
+
   // Metrics computation for KPI Banner
   const metrics = useMemo(() => {
     const totalDays = examSchedule.length;
-    const allLinkedTopicIds = new Set();
+    const allLinkedLectureIds = new Set();
     let totalMinutes = 0;
     let totalPdfs = 0;
     let totalImages = 0;
     let totalCards = 0;
 
     examSchedule.forEach(slot => {
-      (slot.topicIds || []).forEach(tid => allLinkedTopicIds.add(tid));
+      (slot.lectureIds || []).forEach(tid => allLinkedLectureIds.add(tid));
       
       // Parse duration
       const durMatch = (slot.estimatedTime || '').match(/([\d.]+)\s*hour/i);
@@ -256,7 +325,7 @@ export default function ManageScheduleTab({
       }
     });
 
-    topics.filter(t => allLinkedTopicIds.has(t.id)).forEach(t => {
+    lectures.filter(t => allLinkedLectureIds.has(t.id)).forEach(t => {
       if (t.content) {
         totalPdfs += (t.content.pdfList?.length || (t.content.pdf ? 1 : 0));
         totalImages += (t.content.images?.length || 0);
@@ -267,24 +336,25 @@ export default function ManageScheduleTab({
     return {
       scheduledDays: totalDays,
       targetDays: selectedExam?.weeks ? selectedExam.weeks * 7 : 28,
-      activeTopics: allLinkedTopicIds.size,
+      activeLectures: allLinkedLectureIds.size,
       studyHours: (totalMinutes / 60).toFixed(1),
       totalPdfs,
       totalImages,
       totalCards
     };
-  }, [examSchedule, selectedExam, topics]);
+  }, [examSchedule, selectedExam, lectures]);
 
   // Open Modal for Schedule Day
-  const handleOpenModal = (slot = null, targetDay = null, targetSubjectId = null) => {
+  // Signature extended: handleOpenModal(slot, targetDay, targetSubjectId, targetTimeSlot, targetFacultyEmail)
+  const handleOpenModal = (slot = null, targetDay = null, targetSubjectId = null, targetTimeSlot = null, targetFacultyEmail = null) => {
     if (slot) {
       setEditingSlot(slot);
       setFormWeekNumber(slot.weekNumber);
       setFormDayNumber(slot.dayNumber);
       setFormDayTitle(slot.dayTitle);
       setFormSubjectId(slot.subjectId || examSubjects[0]?.id || '');
-      setFormChapterId(slot.chapterId || '');
-      setFormSelectedTopicIds(slot.topicIds || []);
+      setFormModuleId(slot.moduleId || '');
+      setFormSelectedLectureIds(slot.lectureIds || []);
       setFormDate(slot.scheduledDate || new Date().toISOString().split('T')[0]);
       setFormDuration(slot.estimatedTime || '1.5 hours');
       setFormLectureTimeSlot(slot.lectureTimeSlot || '09:00 AM - 10:30 AM IST');
@@ -298,19 +368,26 @@ export default function ManageScheduleTab({
       setFormDayNumber(dayNum);
       
       // Pick subject: either targetSubjectId, currently filtered subject, or first assigned
-      const defaultSubId = targetSubjectId || (selectedSubjectId !== 'all' ? selectedSubjectId : (examSubjects[0]?.id || ''));
+      // If targetFacultyEmail is set, prefer subjects taught by that faculty
+      let defaultSubId = targetSubjectId || (selectedSubjectId !== 'all' ? selectedSubjectId : '');
+      if (!defaultSubId && targetFacultyEmail) {
+        const facSub = examSubjects.find(s => s.facultyEmail?.toLowerCase() === targetFacultyEmail.toLowerCase());
+        defaultSubId = facSub?.id || examSubjects[0]?.id || '';
+      }
+      if (!defaultSubId) defaultSubId = examSubjects[0]?.id || '';
       const defaultSubObj = examSubjects.find(s => s.id === defaultSubId) || examSubjects[0];
       setFormSubjectId(defaultSubId);
 
-      // Default lecture time slot from chosen subject!
-      setFormLectureTimeSlot(defaultSubObj?.defaultTimeSlot || '09:00 AM - 10:30 AM IST');
+      // Default lecture time slot: use targetTimeSlot if provided (from empty slot click), else subject default
+      const resolvedTimeSlot = targetTimeSlot || defaultSubObj?.defaultTimeSlot || '09:00 AM - 10:30 AM IST';
+      setFormLectureTimeSlot(resolvedTimeSlot);
 
-      const defaultChaps = chapters.filter(c => c.subjectId === defaultSubId);
-      const defaultChap = (selectedChapterId !== 'all' && defaultChaps.find(c => c.id === selectedChapterId)) || defaultChaps[0] || null;
-      setFormChapterId(defaultChap?.id || '');
+      const defaultChaps = modules.filter(c => c.subjectId === defaultSubId);
+      const defaultChap = (selectedModuleId !== 'all' && defaultChaps.find(c => c.id === selectedModuleId)) || defaultChaps[0] || null;
+      setFormModuleId(defaultChap?.id || '');
 
-      const defaultTopics = defaultChap ? topics.filter(t => t.chapterId === defaultChap.id) : [];
-      setFormSelectedTopicIds(defaultTopics.slice(0, 1).map(t => t.id));
+      const defaultLectures = defaultChap ? lectures.filter(t => t.moduleId === defaultChap.id) : [];
+      setFormSelectedLectureIds(defaultLectures.slice(0, 1).map(t => t.id));
       
       setFormDayTitle(
         defaultChap 
@@ -328,26 +405,27 @@ export default function ManageScheduleTab({
       setFormHasTest(dayNum % 7 === 0);
       setFormStatus('Active');
     }
+    setFormShowAvailableOnly(true);
     setIsModalOpen(true);
   };
 
-  const handleToggleTopicSelection = (topicId) => {
-    setFormSelectedTopicIds(prev => 
-      prev.includes(topicId) ? prev.filter(id => id !== topicId) : [...prev, topicId]
+  const handleToggleLectureSelection = (lectureId) => {
+    setFormSelectedLectureIds(prev => 
+      prev.includes(lectureId) ? prev.filter(id => id !== lectureId) : [...prev, lectureId]
     );
   };
 
-  const handleSelectAllTopics = () => {
-    const allIds = chapterTopics.map(t => t.id);
-    setFormSelectedTopicIds(allIds);
+  const handleSelectAllLectures = () => {
+    const allIds = moduleLectures.map(t => t.id);
+    setFormSelectedLectureIds(allIds);
   };
 
-  const handleClearAllTopics = () => {
-    setFormSelectedTopicIds([]);
+  const handleClearAllLectures = () => {
+    setFormSelectedLectureIds([]);
   };
 
-  const handleAutoFillTitleFromChapter = () => {
-    const chap = chapters.find(c => c.id === formChapterId);
+  const handleAutoFillTitleFromModule = () => {
+    const chap = modules.find(c => c.id === formModuleId);
     if (chap) {
       setFormDayTitle(`Day ${formDayNumber} — ${chap.title}`);
     }
@@ -361,7 +439,7 @@ export default function ManageScheduleTab({
     }
 
     const subObj = examSubjects.find(s => s.id === formSubjectId);
-    const chapObj = chapters.find(c => c.id === formChapterId);
+    const chapObj = modules.find(c => c.id === formModuleId);
 
     const saved = curriculumService.saveScheduleSlot({
       ...(editingSlot ? { id: editingSlot.id } : {}),
@@ -374,13 +452,14 @@ export default function ManageScheduleTab({
       subjectName: subObj?.name || 'Medical Subject',
       subjectCode: subObj?.code || '',
       subjectColor: subObj?.color || 'rose',
-      chapterId: formChapterId,
-      chapterTitle: chapObj?.title || 'Clinical Chapter',
-      topicIds: formSelectedTopicIds,
+      moduleId: formModuleId,
+      moduleTitle: chapObj?.title || 'Clinical Module',
+      lectureIds: formSelectedLectureIds,
       scheduledDate: formDate,
       estimatedTime: formDuration,
       lectureTimeSlot: formLectureTimeSlot,
       facultyName: subObj?.assignedFacultyName || currentUser?.name || 'Lead Specialist',
+      facultyEmail: subObj?.facultyEmail || '',
       hasLive: formHasLive,
       hasTest: formHasTest,
       status: formStatus
@@ -425,11 +504,11 @@ export default function ManageScheduleTab({
 
   // List View Filtered Slots
   const filteredListSlots = useMemo(() => {
-    return chapterSchedule.filter(slot => {
+    return moduleSchedule.filter(slot => {
       const q = searchQuery.toLowerCase().trim();
       if (!q) return true;
       const sub = subjects.find(s => s.id === slot.subjectId);
-      const chap = chapters.find(c => c.id === slot.chapterId);
+      const chap = modules.find(c => c.id === slot.moduleId);
       return (
         slot.dayTitle.toLowerCase().includes(q) ||
         String(slot.dayNumber).includes(q) ||
@@ -439,7 +518,7 @@ export default function ManageScheduleTab({
         (chap?.title || '').toLowerCase().includes(q)
       );
     });
-  }, [chapterSchedule, searchQuery, subjects, chapters]);
+  }, [moduleSchedule, searchQuery, subjects, modules]);
 
   return (
     <div className="space-y-6 animate-in fade-in pb-12">
@@ -544,7 +623,7 @@ export default function ManageScheduleTab({
                       {resolvedPreviewContent.subjectName || previewSlot.subjectName || 'Clinical Subject'}
                     </span>
                     <span className="px-3 py-1 bg-white text-slate-700 text-xs font-bold rounded-xl border border-slate-200 shadow-2xs">
-                      {resolvedPreviewContent.chapterTitle || previewSlot.chapterTitle || 'Clinical Chapter'}
+                      {resolvedPreviewContent.moduleTitle || previewSlot.moduleTitle || 'Clinical Module'}
                     </span>
                     <span className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -579,24 +658,24 @@ export default function ManageScheduleTab({
                     </span>
                   </div>
 
-                  {/* Linked Topics Badges */}
-                  {previewSlot.topicIds && previewSlot.topicIds.length > 0 && (
+                  {/* Linked Lectures Badges */}
+                  {previewSlot.lectureIds && previewSlot.lectureIds.length > 0 && (
                     <div className="pt-2">
                       <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                        Linked Clinical Topics ({previewSlot.topicIds.length}):
+                        Linked Clinical Lectures ({previewSlot.lectureIds.length}):
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {previewSlot.topicIds.map(tid => {
-                          const topicObj = topics.find(t => t.id === tid);
+                        {previewSlot.lectureIds.map(tid => {
+                          const lectureObj = lectures.find(t => t.id === tid);
                           return (
                             <span
                               key={tid}
                               className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 shadow-2xs flex items-center gap-1.5"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                              <span>{topicObj?.title || tid}</span>
-                              {topicObj?.code && (
-                                <span className="text-[10px] text-slate-400 font-mono">({topicObj.code})</span>
+                              <span>{lectureObj?.title || tid}</span>
+                              {lectureObj?.code && (
+                                <span className="text-[10px] text-slate-400 font-mono">({lectureObj.code})</span>
                               )}
                             </span>
                           );
@@ -786,7 +865,7 @@ export default function ManageScheduleTab({
                               {resolvedPreviewContent.title}
                             </h2>
                             <p className="text-xs text-slate-500 mt-1">
-                              Subject: {resolvedPreviewContent.subjectName} • Chapter: {resolvedPreviewContent.chapterTitle}
+                              Subject: {resolvedPreviewContent.subjectName} • Module: {resolvedPreviewContent.moduleTitle}
                             </p>
                           </div>
 
@@ -1270,7 +1349,7 @@ export default function ManageScheduleTab({
             Study Schedule & Drip Planner
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
-            Link subjects, chapters, and clinical topics to specific Weeks and Days. Students automatically unlock these exact PDFs, high-yield diagnostic diagrams, video lectures, and flashcards in their daily study plan.
+            Link subjects, modules, and clinical lectures to specific Weeks and Days. Students automatically unlock these exact PDFs, high-yield diagnostic diagrams, video lectures, and flashcards in their daily study plan.
           </p>
         </div>
 
@@ -1281,7 +1360,7 @@ export default function ManageScheduleTab({
             className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm transition-all hover:shadow-emerald-500/20 active:scale-98 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Schedule Day / Link Topic</span>
+            <span>Schedule Day / Link Lecture</span>
           </button>
         </div>
       </div>
@@ -1320,14 +1399,14 @@ export default function ManageScheduleTab({
           </div>
         </div>
 
-        {/* Metric 3: Active Topics Linked */}
+        {/* Metric 3: Active Lectures Linked */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
           <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
             <FolderTree className="w-3.5 h-3.5 text-sky-500" />
-            Active Topics
+            Active Lectures
           </span>
           <div className="text-lg sm:text-xl font-black text-slate-900">
-            {metrics.activeTopics} <span className="text-xs text-slate-400 font-normal">Topics</span>
+            {metrics.activeLectures} <span className="text-xs text-slate-400 font-normal">Lectures</span>
           </div>
           <div className="text-[10px] text-sky-600 font-bold">
             Assigned to study slots
@@ -1376,7 +1455,7 @@ export default function ManageScheduleTab({
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
               <Filter className="w-3.5 h-3.5 text-indigo-500" />
-              1. Exam Track:
+              Exam Track:
             </span>
             {availableExams.map(exam => (
               <button
@@ -1390,12 +1469,15 @@ export default function ManageScheduleTab({
               >
                 <span>{exam.flag}</span>
                 <span>{exam.name}</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-                  selectedExamId === exam.id ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {exam.enrolledStudents || 0} enrolled
-                </span>
-                {!isAdmin && (
+                {/* Enrolled-count / Assigned badges: belong to enrollment & subject-management pages, not the scheduler. Disabled, not deleted, per request. */}
+                {false && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                    selectedExamId === exam.id ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {exam.enrolledStudents || 0} enrolled
+                  </span>
+                )}
+                {false && !isAdmin && (
                   <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
                     selectedExamId === exam.id ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-emerald-50 text-emerald-700'
                   }`}>
@@ -1417,7 +1499,18 @@ export default function ManageScheduleTab({
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>7-Day Week Matrix</span>
+              <span>7-Day Matrix</span>
+            </button>
+            <button
+              onClick={() => setViewMode('faculty')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'faculty'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Faculty Slots</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
@@ -1428,12 +1521,70 @@ export default function ManageScheduleTab({
               }`}
             >
               <List className="w-3.5 h-3.5" />
-              <span>Slots List ({chapterSchedule.length})</span>
+              <span>List ({moduleSchedule.length})</span>
             </button>
           </div>
         </div>
 
-        {/* Tier 2: Assigned Subjects Breakdown Cards & Switcher */}
+        {/* Compact Subject / Module Filters (replaces the old card-grid + pill-row + breadcrumb banner below, which are disabled, not deleted) */}
+        <div className="flex items-center gap-2.5 flex-wrap pb-3 border-b border-slate-100">
+          <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5 shrink-0">
+            <Filter className="w-3.5 h-3.5 text-rose-500" />
+            Filters:
+          </span>
+
+          <select
+            value={selectedSubjectId}
+            onChange={(e) => {
+              setSelectedSubjectId(e.target.value);
+              setSelectedModuleId('all');
+            }}
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+          >
+            <option value="all">All Subjects</option>
+            {examSubjects.map(sub => (
+              <option key={sub.id} value={sub.id}>{sub.name} ({sub.code})</option>
+            ))}
+          </select>
+
+          {availableModules.length > 0 && (
+            <select
+              value={selectedModuleId}
+              onChange={(e) => setSelectedModuleId(e.target.value)}
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+            >
+              <option value="all">All Modules</option>
+              {availableModules.map(chap => (
+                <option key={chap.id} value={chap.id}>Ch {chap.moduleNumber}: {chap.title}</option>
+              ))}
+            </select>
+          )}
+
+          {(selectedSubjectId !== 'all' || selectedModuleId !== 'all') && (
+            <button
+              onClick={() => {
+                setSelectedSubjectId('all');
+                setSelectedModuleId('all');
+              }}
+              className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset</span>
+            </button>
+          )}
+
+          <span className="text-[11px] text-slate-400 font-medium ml-auto">
+            Showing:{' '}
+            <span className="text-slate-700 font-bold">
+              {activeSubject
+                ? `${activeSubject.name}${activeModule ? ` → Ch ${activeModule.moduleNumber}: ${activeModule.title}` : ''}`
+                : 'All Subjects'}
+            </span>
+          </span>
+        </div>
+
+        {/* Tier 2: Assigned Subjects Breakdown Cards & Switcher — disabled (replaced by the compact filters above), kept for reference/rollback */}
+        {false && (
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
@@ -1448,7 +1599,7 @@ export default function ManageScheduleTab({
               <button
                 onClick={() => {
                   setSelectedSubjectId('all');
-                  setSelectedChapterId('all');
+                  setSelectedModuleId('all');
                 }}
                 className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
               >
@@ -1463,7 +1614,7 @@ export default function ManageScheduleTab({
             <button
               onClick={() => {
                 setSelectedSubjectId('all');
-                setSelectedChapterId('all');
+                setSelectedModuleId('all');
               }}
               className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                 selectedSubjectId === 'all'
@@ -1502,14 +1653,14 @@ export default function ManageScheduleTab({
               const colorInfo = SUBJECT_COLOR_MAP[sub.color] || SUBJECT_COLOR_MAP.rose;
               const isSelected = selectedSubjectId === sub.id;
               const subSlots = examSchedule.filter(s => s.subjectId === sub.id);
-              const subChaps = chapters.filter(c => c.subjectId === sub.id);
+              const subChaps = modules.filter(c => c.subjectId === sub.id);
 
               return (
                 <button
                   key={sub.id}
                   onClick={() => {
                     setSelectedSubjectId(sub.id);
-                    setSelectedChapterId('all');
+                    setSelectedModuleId('all');
                   }}
                   className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                     isSelected
@@ -1557,54 +1708,55 @@ export default function ManageScheduleTab({
             })}
           </div>
         </div>
+        )}
 
-        {/* Tier 3: Chapter / Module Breakdown Pills (Level 3) */}
-        {availableChapters.length > 0 && (
+        {/* Tier 3: Module / Module Breakdown Pills (Level 3) — disabled (replaced by the compact filters above), kept for reference/rollback */}
+        {false && availableModules.length > 0 && (
           <div className="pt-3 border-t border-slate-100 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                 <FolderTree className="w-3.5 h-3.5 text-sky-500" />
-                <span>3. Filter by Chapter / Topic Module:</span>
+                <span>3. Filter by Module / Lecture Module:</span>
               </span>
 
-              {selectedChapterId !== 'all' && (
+              {selectedModuleId !== 'all' && (
                 <button
-                  onClick={() => setSelectedChapterId('all')}
+                  onClick={() => setSelectedModuleId('all')}
                   className="text-xs font-bold text-sky-600 hover:text-sky-800 flex items-center gap-1 cursor-pointer"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>Show All Chapters</span>
+                  <span>Show All Modules</span>
                 </button>
               )}
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               <button
-                onClick={() => setSelectedChapterId('all')}
+                onClick={() => setSelectedModuleId('all')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
-                  selectedChapterId === 'all'
+                  selectedModuleId === 'all'
                     ? 'bg-sky-600 text-white shadow-2xs'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                 }`}
               >
-                <span>All Chapters ({availableChapters.length})</span>
+                <span>All Modules ({availableModules.length})</span>
               </button>
 
-              {availableChapters.map(chap => {
-                const chapSlots = subjectSchedule.filter(s => s.chapterId === chap.id);
-                const isSelected = selectedChapterId === chap.id;
+              {availableModules.map(chap => {
+                const chapSlots = subjectSchedule.filter(s => s.moduleId === chap.id);
+                const isSelected = selectedModuleId === chap.id;
 
                 return (
                   <button
                     key={chap.id}
-                    onClick={() => setSelectedChapterId(chap.id)}
+                    onClick={() => setSelectedModuleId(chap.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 cursor-pointer transition-all ${
                       isSelected
                         ? 'bg-sky-600 text-white shadow-2xs'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
                   >
-                    <span className="truncate max-w-[200px]">Ch {chap.chapterNumber}: {chap.title}</span>
+                    <span className="truncate max-w-[200px]">Ch {chap.moduleNumber}: {chap.title}</span>
                     <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                       isSelected ? 'bg-sky-700 text-sky-100' : 'bg-slate-200 text-slate-600'
                     }`}>
@@ -1617,7 +1769,8 @@ export default function ManageScheduleTab({
           </div>
         )}
 
-        {/* Tier 4: Active Hierarchy Context Breadcrumb Banner */}
+        {/* Tier 4: Active Hierarchy Context Breadcrumb Banner — disabled (folded into the compact filter row above), kept for reference/rollback */}
+        {false && (
         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-700 flex-wrap">
             <span className="text-slate-400 font-medium">Active Hierarchy:</span>
@@ -1639,21 +1792,21 @@ export default function ManageScheduleTab({
                 </span>
               </>
             )}
-            {activeChapter && (
+            {activeModule && (
               <>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                 <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[11px]">
-                  Ch {activeChapter.chapterNumber}: {activeChapter.title}
+                  Ch {activeModule.moduleNumber}: {activeModule.title}
                 </span>
               </>
             )}
           </div>
 
-          {(selectedSubjectId !== 'all' || selectedChapterId !== 'all') && (
+          {(selectedSubjectId !== 'all' || selectedModuleId !== 'all') && (
             <button
               onClick={() => {
                 setSelectedSubjectId('all');
-                setSelectedChapterId('all');
+                setSelectedModuleId('all');
               }}
               className="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
             >
@@ -1662,6 +1815,7 @@ export default function ManageScheduleTab({
             </button>
           )}
         </div>
+        )}
 
         {/* Tier 5: Week Selector Pills */}
         <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap">
@@ -1671,7 +1825,7 @@ export default function ManageScheduleTab({
               4. Select Week:
             </span>
             {availableWeeks.map(wk => {
-              const count = chapterSchedule.filter(s => s.weekNumber === wk).length;
+              const count = moduleSchedule.filter(s => s.weekNumber === wk).length;
               return (
                 <button
                   key={wk}
@@ -1719,6 +1873,140 @@ export default function ManageScheduleTab({
         </div>
 
       </div>
+
+      {/* Faculty Availability Panel: enhanced with slot details, Inspect button */}
+      {viewMode === 'faculty' && facultyAvailability.length > 0 && (
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-600" />
+              <span>Faculty Slot Overview — Week {selectedWeek}</span>
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-400 font-medium">
+                {facultyAvailability.length} faculty · 6 slots/day
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {facultyAvailability.map(fac => {
+              // Count booked sessions across all 6 standard slots (by day)
+              const facSubjectIds = new Set(
+                subjects
+                  .filter(s => s.examId === selectedExamId && s.facultyEmail?.toLowerCase() === fac.email?.toLowerCase())
+                  .map(s => s.id)
+              );
+              // Get all sessions for this faculty in this week
+              const facWeekSessions = examWeekSlots.filter(s =>
+                s.facultyEmail?.toLowerCase() === fac.email?.toLowerCase() ||
+                facSubjectIds.has(s.subjectId)
+              );
+              const facSubjects = subjects.filter(s =>
+                s.examId === selectedExamId &&
+                s.facultyEmail?.toLowerCase() === fac.email?.toLowerCase()
+              );
+
+              return (
+                <div key={fac.email} className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-slate-900 truncate">{fac.name}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{fac.specialty}</div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {facSubjects.slice(0, 2).map(s => (
+                          <span key={s.id} className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100">
+                            {s.code}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ${
+                        facWeekSessions.length >= 7 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}>
+                        {facWeekSessions.length} / 42 Booked
+                      </span>
+                      <button
+                        onClick={() => setInspectingFaculty(fac)}
+                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Eye className="w-2.5 h-2.5" /> Inspect Slots
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Day-by-day with booked slot time info */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {weekDayNumbers.map((dayNum, idx) => {
+                      const daySessions = facWeekSessions.filter(s => Number(s.dayNumber) === dayNum);
+                      const dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+                      const hasAny = daySessions.length > 0;
+
+                      return (
+                        <div
+                          key={dayNum}
+                          title={hasAny
+                            ? daySessions.map(s => `${s.lectureTimeSlot}: ${s.dayTitle || s.subjectName}`).join(' | ')
+                            : `Day ${dayNum}: All 6 slots free`
+                          }
+                          className={`rounded-lg py-1.5 px-1 text-center cursor-pointer transition-all hover:scale-105 ${
+                            hasAny
+                              ? 'bg-indigo-50 border border-indigo-200'
+                              : 'bg-white border border-dashed border-slate-200'
+                          }`}
+                          onClick={() => setInspectingFaculty(fac)}
+                        >
+                          <div className={`text-[8px] font-black ${
+                            hasAny ? 'text-indigo-600' : 'text-slate-300'
+                          }`}>{dayLetters[idx]}</div>
+                          <div className="text-[8px] font-bold text-slate-500">{dayNum}</div>
+                          {hasAny
+                            ? <div className="flex flex-col gap-0.5 mt-0.5">
+                                {[0,1,2,3,4,5].map(si => {
+                                  // crude check: map sessions to approximate slot index by time
+                                  const matched = daySessions.some(s => {
+                                    if (!s.lectureTimeSlot) return false;
+                                    const hr = parseInt(s.lectureTimeSlot.split(':')[0]);
+                                    const slots = [9, 11, 14, 16, 18, 19];
+                                    return Math.abs(hr - (s.lectureTimeSlot.includes('PM') && hr !== 12 ? slots[si] + (si >= 2 ? 0 : 0) : slots[si])) < 2;
+                                  });
+                                  return <div key={si} className={`w-full h-0.5 rounded-full ${si < daySessions.length ? 'bg-indigo-400' : 'bg-slate-100'}`} />;
+                                })}
+                              </div>
+                            : <div className="text-[8px] text-emerald-400 mt-0.5">✓</div>
+                          }
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Booked sessions listing */}
+                  {facWeekSessions.length > 0 && (
+                    <div className="space-y-1">
+                      {facWeekSessions.slice(0, 3).map(session => (
+                        <div key={session.id} className="flex items-center gap-2 text-[10px] text-slate-600 bg-white rounded-lg px-2 py-1 border border-slate-100">
+                          <span className="font-bold text-slate-800 shrink-0">D{session.dayNumber}</span>
+                          <span className="text-indigo-600 font-bold shrink-0">{session.lectureTimeSlot?.split(' - ')[0]}</span>
+                          <span className="truncate font-medium text-slate-500">{session.subjectName}</span>
+                        </div>
+                      ))}
+                      {facWeekSessions.length > 3 && (
+                        <button
+                          onClick={() => setInspectingFaculty(fac)}
+                          className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                        >
+                          +{facWeekSessions.length - 3} more sessions → View All
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* VIEW 1: 7-DAY WEEK MATRIX (DEFAULT GRID MODE)                             */}
@@ -1779,8 +2067,8 @@ export default function ManageScheduleTab({
                       <div className="space-y-3">
                         {daySlots.map(slot => {
                           const subject = subjects.find(s => s.id === slot.subjectId);
-                          const chapter = chapters.find(c => c.id === slot.chapterId);
-                          const linkedTopics = topics.filter(t => (slot.topicIds || []).includes(t.id));
+                          const module = modules.find(c => c.id === slot.moduleId);
+                          const linkedLectures = lectures.filter(t => (slot.lectureIds || []).includes(t.id));
                           const colorInfo = SUBJECT_COLOR_MAP[slot.subjectColor || subject?.color] || SUBJECT_COLOR_MAP.rose;
 
                           // Compute assets count
@@ -1789,7 +2077,7 @@ export default function ManageScheduleTab({
                           let hasVideo = false;
                           let totalCards = 0;
 
-                          linkedTopics.forEach(t => {
+                          linkedLectures.forEach(t => {
                             if (t.content) {
                               totalPdfs += (t.content.pdfList?.length || (t.content.pdf ? 1 : 0));
                               totalImgs += (t.content.images?.length || 0);
@@ -1815,11 +2103,11 @@ export default function ManageScheduleTab({
                                 </span>
                               </div>
 
-                              {/* Chapter & Day Title */}
+                              {/* Module & Day Title */}
                               <div>
                                 <div className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1 truncate">
                                   <FolderTree className="w-3 h-3 text-slate-400 shrink-0" />
-                                  <span className="truncate">{chapter?.title || slot.chapterTitle || 'Clinical Chapter'}</span>
+                                  <span className="truncate">{module?.title || slot.moduleTitle || 'Clinical Module'}</span>
                                 </div>
                                 <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug mt-0.5">
                                   {slot.dayTitle}
@@ -1951,7 +2239,7 @@ export default function ManageScheduleTab({
                         Rest / Self-Study Slot
                       </h4>
                       <p className="text-[11px] text-slate-400 leading-relaxed max-w-[200px] mx-auto">
-                        No chapters or topics assigned to Day {dayNum} yet.
+                        No modules or lectures assigned to Day {dayNum} yet.
                       </p>
                     </div>
                   </div>
@@ -1973,9 +2261,29 @@ export default function ManageScheduleTab({
       )}
 
       {/* ========================================================================= */}
+      {/* VIEW 3: FACULTY SLOT TIMETABLE                                            */}
+      {/* ========================================================================= */}
+      {viewMode === 'faculty' && (
+        <FacultySlotMatrixView
+          facultyAvailability={facultyAvailability}
+          subjects={subjects}
+          schedule={examSchedule}
+          weekNumber={selectedWeek}
+          selectedExamId={selectedExamId}
+          weekDayNumbers={weekDayNumbers}
+          onOpenModal={handleOpenModal}
+          onEditSlot={(slot) => handleOpenModal(slot)}
+          onDeleteSlot={(slot) => setDeletingSlot(slot)}
+          onPreviewSlot={handleOpenPreview}
+          onInspectFaculty={(fac) => setInspectingFaculty(fac)}
+        />
+      )}
+
+      {/* ========================================================================= */}
       {/* VIEW 2: LIST / TABLE VIEW                                                 */}
       {/* ========================================================================= */}
       {viewMode === 'list' && (
+
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden space-y-4">
           
           {/* Table Search Header */}
@@ -1984,7 +2292,7 @@ export default function ManageScheduleTab({
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search by Day #, Title, Subject, or Chapter..."
+                placeholder="Search by Day #, Title, Subject, or Module..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -2006,8 +2314,8 @@ export default function ManageScheduleTab({
                   <th className="py-3 px-4">Lecture Time Slot</th>
                   <th className="py-3 px-4">Day Title</th>
                   <th className="py-3 px-4">Subject & Mentor</th>
-                  <th className="py-3 px-4">Chapter</th>
-                  <th className="py-3 px-4">Topics</th>
+                  <th className="py-3 px-4">Module</th>
+                  <th className="py-3 px-4">Lectures</th>
                   <th className="py-3 px-4">Duration</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-right">Actions</th>
@@ -2023,8 +2331,8 @@ export default function ManageScheduleTab({
                 ) : (
                   filteredListSlots.map(slot => {
                     const subject = subjects.find(s => s.id === slot.subjectId);
-                    const chapter = chapters.find(c => c.id === slot.chapterId);
-                    const topicCount = (slot.topicIds || []).length;
+                    const module = modules.find(c => c.id === slot.moduleId);
+                    const lectureCount = (slot.lectureIds || []).length;
                     const colorInfo = SUBJECT_COLOR_MAP[slot.subjectColor || subject?.color] || SUBJECT_COLOR_MAP.rose;
 
                     return (
@@ -2066,12 +2374,12 @@ export default function ManageScheduleTab({
                         </td>
                         <td className="py-3 px-4">
                           <div className="text-[11px] text-slate-600 font-bold truncate max-w-xs">
-                            {chapter?.title || slot.chapterTitle || 'Unassigned Chapter'}
+                            {module?.title || slot.moduleTitle || 'Unassigned Module'}
                           </div>
                         </td>
                         <td className="py-3 px-4">
                           <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-100 font-bold text-[10px]">
-                            {topicCount} Topics
+                            {lectureCount} Lectures
                           </span>
                         </td>
                         <td className="py-3 px-4 text-slate-600 font-medium">
@@ -2131,7 +2439,7 @@ export default function ManageScheduleTab({
     )}
 
       {/* ========================================================================= */}
-      {/* SLIDE-OVER DRAWER: SCHEDULE DAY / LINK CHAPTER & TOPICS                   */}
+      {/* SLIDE-OVER DRAWER: SCHEDULE DAY / LINK MODULE & LECTURES                  */}
       {/* ========================================================================= */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
@@ -2225,11 +2533,11 @@ export default function ManageScheduleTab({
                   </label>
                   <button
                     type="button"
-                    onClick={handleAutoFillTitleFromChapter}
+                    onClick={handleAutoFillTitleFromModule}
                     className="text-[11px] text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 cursor-pointer"
                   >
                     <Sparkles className="w-3 h-3" />
-                    <span>Auto-Fill from Chapter</span>
+                    <span>Auto-Fill from Module</span>
                   </button>
                 </div>
                 <input
@@ -2242,7 +2550,7 @@ export default function ManageScheduleTab({
                 />
               </div>
 
-              {/* Step 3: Cascading Selection: Subject -> Chapter */}
+              {/* Step 3: Cascading Selection: Subject -> Module */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -2258,11 +2566,11 @@ export default function ManageScheduleTab({
                       if (subObj?.defaultTimeSlot) {
                         setFormLectureTimeSlot(subObj.defaultTimeSlot);
                       }
-                      const chaps = chapters.filter(c => c.subjectId === newSubId);
+                      const chaps = modules.filter(c => c.subjectId === newSubId);
                       const firstChapId = chaps[0]?.id || '';
-                      setFormChapterId(firstChapId);
-                      const topList = topics.filter(t => t.chapterId === firstChapId);
-                      setFormSelectedTopicIds(topList.slice(0, 1).map(t => t.id));
+                      setFormModuleId(firstChapId);
+                      const topList = lectures.filter(t => t.moduleId === firstChapId);
+                      setFormSelectedLectureIds(topList.slice(0, 1).map(t => t.id));
                     }}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   >
@@ -2275,38 +2583,38 @@ export default function ManageScheduleTab({
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                     <FolderTree className="w-3.5 h-3.5 text-sky-600" />
-                    2. Select Chapter *
+                    2. Select Module *
                   </label>
                   <select
-                    value={formChapterId}
+                    value={formModuleId}
                     onChange={(e) => {
                       const newChapId = e.target.value;
-                      setFormChapterId(newChapId);
-                      const topList = topics.filter(t => t.chapterId === newChapId);
-                      setFormSelectedTopicIds(topList.map(t => t.id));
+                      setFormModuleId(newChapId);
+                      const topList = lectures.filter(t => t.moduleId === newChapId);
+                      setFormSelectedLectureIds(topList.map(t => t.id));
                     }}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   >
-                    <option value="">-- Choose Chapter --</option>
-                    {subjectChapters.map(c => (
-                      <option key={c.id} value={c.id}>Ch {c.chapterNumber}: {c.title}</option>
+                    <option value="">-- Choose Module --</option>
+                    {subjectModules.map(c => (
+                      <option key={c.id} value={c.id}>Ch {c.moduleNumber}: {c.title}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              {/* Step 4: Link Topics Multi-Select with Quick Actions */}
+              {/* Step 4: Link Lectures Multi-Select with Quick Actions */}
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>3. Link Topics to this Day ({formSelectedTopicIds.length} Selected)</span>
+                    <span>3. Link Lectures to this Day ({formSelectedLectureIds.length} Selected)</span>
                   </label>
                   
-                  {chapterTopics.length > 0 && (
+                  {moduleLectures.length > 0 && (
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={handleSelectAllTopics}
+                        onClick={handleSelectAllLectures}
                         className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer"
                       >
                         Select All
@@ -2314,7 +2622,7 @@ export default function ManageScheduleTab({
                       <span className="text-slate-300">•</span>
                       <button
                         type="button"
-                        onClick={handleClearAllTopics}
+                        onClick={handleClearAllLectures}
                         className="text-[11px] font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
                       >
                         Clear
@@ -2323,19 +2631,19 @@ export default function ManageScheduleTab({
                   )}
                 </div>
 
-                {chapterTopics.length === 0 ? (
+                {moduleLectures.length === 0 ? (
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center text-xs text-slate-400 space-y-1">
-                    <p>No topics created under this chapter yet.</p>
+                    <p>No lectures created under this module yet.</p>
                     <p className="text-[11px] text-slate-500">
-                      Use the "Chapters & Topics" menu on the sidebar to add topics and clinical content.
+                      Use the "Modules & Lectures" menu on the sidebar to add lectures and clinical content.
                     </p>
                   </div>
                 ) : (
                   <div className="max-h-48 overflow-y-auto space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl">
-                    {chapterTopics.map(top => {
-                      const isSelected = formSelectedTopicIds.includes(top.id);
+                    {moduleLectures.map(top => {
+                      const isSelected = formSelectedLectureIds.includes(top.id);
                       
-                      // Count content assets in this topic
+                      // Count content assets in this lecture
                       const pdfCount = top.content?.pdfList?.length || (top.content?.pdf ? 1 : 0);
                       const imgCount = top.content?.images?.length || 0;
                       const hasVid = Boolean(top.content?.video);
@@ -2353,7 +2661,7 @@ export default function ManageScheduleTab({
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => handleToggleTopicSelection(top.id)}
+                            onChange={() => handleToggleLectureSelection(top.id)}
                             className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500"
                           />
                           <div className="min-w-0 flex-grow">
@@ -2365,7 +2673,7 @@ export default function ManageScheduleTab({
                             </div>
                             
                             <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
-                              <span>Topic {top.topicNumber}</span>
+                              <span>Lecture {top.lectureNumber}</span>
                               <span>•</span>
                               <span className="text-emerald-700 font-medium">{top.difficulty}</span>
                               <span>•</span>
@@ -2400,39 +2708,116 @@ export default function ManageScheduleTab({
                     ) : null;
                   })()}
                 </div>
-                
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { label: 'Morning (09:00 - 10:30 AM)', val: '09:00 AM - 10:30 AM IST' },
-                    { label: 'Midday (11:30 AM - 01:00 PM)', val: '11:30 AM - 01:00 PM IST' },
-                    { label: 'Evening (04:00 - 05:30 PM)', val: '04:00 PM - 05:30 PM IST' },
-                    { label: 'Night (07:30 - 09:00 PM)', val: '07:30 PM - 09:00 PM IST' }
-                  ].map((preset) => (
-                    <button
-                      key={preset.val}
-                      type="button"
-                      onClick={() => setFormLectureTimeSlot(preset.val)}
-                      className={`text-[11px] px-2.5 py-1 rounded-lg font-medium border transition-all cursor-pointer ${
-                        formLectureTimeSlot === preset.val
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40'
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 09:00 AM - 10:30 AM IST"
-                    value={formLectureTimeSlot}
-                    onChange={(e) => setFormLectureTimeSlot(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                  />
-                </div>
+                {facultyConflictForForm && (
+                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 font-semibold flex items-center gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {examSubjects.find(s => s.id === formSubjectId)?.assignedFacultyName || 'This faculty'} is already booked on Day {formDayNumber}
+                      {' '}for {facultyConflictForForm.subjectName || 'another subject'} at {facultyConflictForForm.lectureTimeSlot}.
+                    </span>
+                  </div>
+                )}
+
+                {/* Available Slots Only Toggle */}
+                {(() => {
+                  const selSub = examSubjects.find(s => s.id === formSubjectId);
+                  const selFacultyEmail = selSub?.facultyEmail || '';
+                  const slotAvailability = selFacultyEmail
+                    ? getSlotsAvailabilityForFaculty(
+                        selFacultyEmail, formDayNumber, selectedExamId,
+                        examSchedule, subjects, editingSlot?.id || null
+                      )
+                    : STANDARD_TIME_SLOTS.map(sl => ({ slotInfo: sl, status: 'empty', session: null }));
+
+                  const availableCount = slotAvailability.filter(s => s.status === 'empty').length;
+                  const visibleSlots = formShowAvailableOnly
+                    ? slotAvailability.filter(s => s.status === 'empty')
+                    : slotAvailability;
+
+                  return (
+                    <>
+                      {/* Toggle Header */}
+                      <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+                        <div className="flex items-center gap-2 text-[11px] font-semibold text-indigo-700">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          {availableCount} / {STANDARD_TIME_SLOTS.length} slots free for {selSub?.assignedFacultyName?.split(' ')[0] || 'faculty'} on Day {formDayNumber}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormShowAvailableOnly(v => !v)}
+                          className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
+                            formShowAvailableOnly
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {formShowAvailableOnly
+                            ? <><CheckCircle2 className="w-3 h-3" /> Available Only</>
+                            : <><AlertCircle className="w-3 h-3" /> Show All Slots</>
+                          }
+                        </button>
+                      </div>
+
+                      {/* Slot Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {visibleSlots.map(({ slotInfo, status, session }) => {
+                          const isBooked = status === 'booked';
+                          const isSelected = formLectureTimeSlot === slotInfo.timeRange;
+
+                          return (
+                            <button
+                              key={slotInfo.id}
+                              type="button"
+                              disabled={isBooked}
+                              onClick={() => !isBooked && setFormLectureTimeSlot(slotInfo.timeRange)}
+                              title={isBooked && session
+                                ? `Booked: ${session.subjectName} — ${session.dayTitle}`
+                                : `Select ${slotInfo.label}: ${slotInfo.timeRange}`
+                              }
+                              className={`relative p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                                isBooked
+                                  ? 'bg-rose-50 border-rose-200 opacity-75 cursor-not-allowed'
+                                  : isSelected
+                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                                  : `${slotInfo.bgClass} ${slotInfo.borderClass} hover:border-indigo-400 hover:shadow-xs`
+                              }`}
+                            >
+                              <div className={`text-[10px] font-black flex items-center gap-1 ${
+                                isBooked ? 'text-rose-700' : isSelected ? 'text-white' : slotInfo.textClass
+                              }`}>
+                                <span>{slotInfo.icon}</span>
+                                <span>{slotInfo.label}</span>
+                                {isBooked && <span className="ml-auto text-rose-600">🚫</span>}
+                                {isSelected && !isBooked && <CheckCircle2 className="w-2.5 h-2.5 ml-auto text-white" />}
+                              </div>
+                              <div className={`text-[9px] font-medium mt-0.5 ${
+                                isBooked ? 'text-rose-500' : isSelected ? 'text-indigo-200' : 'text-slate-500'
+                              }`}>
+                                {isBooked && session
+                                  ? `${session.subjectCode || 'Booked'}: ${session.subjectName?.split(' ')[0] || ''}`
+                                  : slotInfo.timeRange
+                                }
+                              </div>
+                              {isBooked && (
+                                <div className="text-[8px] text-rose-400 font-bold mt-0.5 truncate">
+                                  Already scheduled
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {formShowAvailableOnly && availableCount === 0 && (
+                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 font-semibold flex items-center gap-2">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          All 6 standard slots on Day {formDayNumber} are booked for this faculty. Toggle "Show All Slots" to override.
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 <p className="text-[11px] text-slate-500">
                   Multiple subjects can be scheduled on the same day by assigning distinct time slots (e.g. Cardiology Morning + Pharmacology Evening).
                 </p>
@@ -2544,7 +2929,7 @@ export default function ManageScheduleTab({
                 Are you sure you want to remove the schedule slot for <span className="font-bold text-slate-800">Day {deletingSlot.dayNumber}</span>?
               </p>
               <p className="text-[11px] text-slate-400 pt-1">
-                Topics and content in your repository will not be deleted, only unlinked from this day.
+                Lectures and content in your repository will not be deleted, only unlinked from this day.
               </p>
             </div>
             <div className="flex items-center gap-3 pt-2">
@@ -2566,6 +2951,25 @@ export default function ManageScheduleTab({
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* FACULTY SLOT DETAIL MODAL                                                 */}
+      {/* ========================================================================= */}
+      <FacultySlotDetailModal
+        isOpen={Boolean(inspectingFaculty)}
+        onClose={() => setInspectingFaculty(null)}
+        faculty={inspectingFaculty}
+        subjects={subjects}
+        lectures={lectures}
+        schedule={examSchedule}
+        weekNumber={selectedWeek}
+        selectedExamId={selectedExamId}
+        weekDayNumbers={weekDayNumbers}
+        onOpenModal={handleOpenModal}
+        onEditSlot={(slot) => { setInspectingFaculty(null); handleOpenModal(slot); }}
+        onDeleteSlot={(slot) => { setInspectingFaculty(null); setDeletingSlot(slot); }}
+        onPreviewSlot={(slot) => { setInspectingFaculty(null); handleOpenPreview(slot); }}
+      />
 
     </div>
   );

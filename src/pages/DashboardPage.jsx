@@ -80,14 +80,14 @@ export default function DashboardPage() {
 
   // Reactive Curriculum Data from curriculumService
   const [curriculumSubjects, setCurriculumSubjects] = useState(() => curriculumService.getSubjects(selectedExamTrack));
-  const [curriculumChapters, setCurriculumChapters] = useState(() => curriculumService.getChapters(null, selectedExamTrack));
+  const [curriculumModules, setCurriculumModules] = useState(() => curriculumService.getModules(null, selectedExamTrack));
   const [curriculumSchedule, setCurriculumSchedule] = useState(() => curriculumService.getSchedule(selectedExamTrack));
   const [inspectingSubject, setInspectingSubject] = useState(null);
 
   useEffect(() => {
     const unsubC = curriculumService.subscribeCurriculum(() => {
       setCurriculumSubjects(curriculumService.getSubjects(selectedExamTrack));
-      setCurriculumChapters(curriculumService.getChapters(null, selectedExamTrack));
+      setCurriculumModules(curriculumService.getModules(null, selectedExamTrack));
     });
     const unsubS = curriculumService.subscribeSchedule(() => {
       setCurriculumSchedule(curriculumService.getSchedule(selectedExamTrack));
@@ -100,7 +100,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setCurriculumSubjects(curriculumService.getSubjects(selectedExamTrack));
-    setCurriculumChapters(curriculumService.getChapters(null, selectedExamTrack));
+    setCurriculumModules(curriculumService.getModules(null, selectedExamTrack));
     setCurriculumSchedule(curriculumService.getSchedule(selectedExamTrack));
   }, [selectedExamTrack]);
 
@@ -162,13 +162,13 @@ export default function DashboardPage() {
     });
 
     const sortedWeeks = Object.keys(weekMap).map(Number).sort((a, b) => a - b);
-    const allTopics = curriculumService.getTopics();
+    const allLectures = curriculumService.getLectures();
 
     return sortedWeeks.map((wkNum) => {
       const slots = weekMap[wkNum].sort((a, b) => a.dayNumber - b.dayNumber);
       const firstSlot = slots[0];
       const subject = curriculumSubjects.find((s) => s.id === firstSlot?.subjectId);
-      const chapter = curriculumChapters.find((c) => c.id === firstSlot?.chapterId);
+      const module = curriculumModules.find((c) => c.id === firstSlot?.moduleId);
 
       const days = slots.map((s) => {
         const isMarkedCompleted = completedDaysList.includes(s.dayNumber);
@@ -187,8 +187,8 @@ export default function DashboardPage() {
           status = 'available';
         }
 
-        const linkedTopics = (s.topicIds || []).map((tId) => {
-          const top = allTopics.find((t) => t.id === tId);
+        const linkedLectures = (s.lectureIds || []).map((tId) => {
+          const top = allLectures.find((t) => t.id === tId);
           return top?.title;
         }).filter(Boolean);
 
@@ -198,7 +198,7 @@ export default function DashboardPage() {
           duration: s.estimatedTime || '1.5 hours',
           status,
           score: s.dayNumber === 1 ? '18/20 (90%)' : s.dayNumber === 2 ? '17/20 (85%)' : undefined,
-          topics: linkedTopics.length > 0 ? linkedTopics : undefined,
+          lectures: linkedLectures.length > 0 ? linkedLectures : undefined,
           hasLive: s.hasLive,
           hasTest: s.hasTest
         };
@@ -210,14 +210,14 @@ export default function DashboardPage() {
       return {
         weekNumber: wkNum,
         title: subject ? subject.name : `Week ${wkNum} Core Curriculum`,
-        description: chapter ? chapter.title : 'High-Yield Clinical Module',
+        description: module ? module.title : 'High-Yield Clinical Module',
         badge: wkNum === 1 ? 'Active Track' : 'Upcoming Track',
         status: wkNum === 1 ? 'current' : 'upcoming',
         completionRate,
         days
       };
     });
-  }, [curriculumSchedule, curriculumSubjects, curriculumChapters, completedDaysList]);
+  }, [curriculumSchedule, curriculumSubjects, curriculumModules, completedDaysList]);
 
   const toggleWeek = (weekNum) => {
     setExpandedWeeks((prev) => ({
@@ -684,9 +684,9 @@ export default function DashboardPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {curriculumSubjects.map((sub, i) => {
-                    const subChapters = curriculumChapters.filter(c => c.subjectId === sub.id);
-                    const allTopics = curriculumService.getTopics();
-                    const subTopics = allTopics.filter(t => subChapters.some(c => c.id === t.chapterId));
+                    const subModules = curriculumModules.filter(c => c.subjectId === sub.id);
+                    const allLectures = curriculumService.getLectures();
+                    const subLectures = allLectures.filter(t => subModules.some(c => c.id === t.moduleId));
                     const pct = i === 0 ? 85 : i === 1 ? 40 : i === 2 ? 15 : 0;
                     const statusText = i === 0 ? 'Active Module' : i === 1 ? 'Next Up' : sub.status;
 
@@ -705,9 +705,9 @@ export default function DashboardPage() {
                           <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{sub.description}</p>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-slate-500 pt-0.5">
-                          <span className="font-semibold text-slate-700">{subChapters.length} Chapters</span>
+                          <span className="font-semibold text-slate-700">{subModules.length} Modules</span>
                           <span>•</span>
-                          <span>{subTopics.length} Topics</span>
+                          <span>{subLectures.length} Lectures</span>
                         </div>
                         <div className="space-y-1 pt-1">
                           <div className="flex justify-between text-[11px] text-slate-500 font-medium">
@@ -727,7 +727,7 @@ export default function DashboardPage() {
                           className="w-full mt-2 py-2 px-3 rounded-xl bg-slate-50 hover:bg-brand-50 hover:text-brand-700 text-slate-700 border border-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <BookOpen className="w-3.5 h-3.5 text-brand-600" />
-                          <span>View Chapters & Topics ({subChapters.length})</span>
+                          <span>View Modules & Lectures ({subModules.length})</span>
                         </button>
                       </div>
                     );
@@ -964,9 +964,9 @@ export default function DashboardPage() {
                                       {day.title}
                                     </h4>
 
-                                    {day.topics && (
+                                    {day.lectures && (
                                       <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                        {day.topics.map((t, idx) => (
+                                        {day.lectures.map((t, idx) => (
                                           <span key={idx} className="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200/60">
                                             {t}
                                           </span>
@@ -1538,7 +1538,7 @@ export default function DashboardPage() {
         test={selectedTest}
       />
 
-      {/* Subject Chapters & Topics Inspector Modal */}
+      {/* Subject Modules & Lectures Inspector Modal */}
       {inspectingSubject && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in zoom-in-95">
@@ -1565,12 +1565,12 @@ export default function DashboardPage() {
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {(() => {
-                const subChapters = curriculumChapters.filter(c => c.subjectId === inspectingSubject.id);
-                if (subChapters.length === 0) {
+                const subModules = curriculumModules.filter(c => c.subjectId === inspectingSubject.id);
+                if (subModules.length === 0) {
                   return (
                     <div className="text-center py-12 text-slate-400">
                       <FolderTree className="w-12 h-12 mx-auto mb-2 text-slate-300" />
-                      <p className="text-sm font-semibold">No chapters configured for this subject yet.</p>
+                      <p className="text-sm font-semibold">No modules configured for this subject yet.</p>
                     </div>
                   );
                 }
@@ -1578,12 +1578,12 @@ export default function DashboardPage() {
                 return (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between text-xs text-slate-500 font-bold px-1">
-                      <span>{subChapters.length} CHAPTERS IN CURRICULUM</span>
+                      <span>{subModules.length} MODULES IN CURRICULUM</span>
                       <span>DIFFICULTY & CLINICAL ASSETS</span>
                     </div>
 
-                    {subChapters.map((ch, idx) => {
-                      const chTopics = curriculumService.getTopics(ch.id);
+                    {subModules.map((ch, idx) => {
+                      const chLectures = curriculumService.getLectures(ch.id);
                       return (
                         <div key={ch.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-3">
                           <div className="flex items-start justify-between gap-3">
@@ -1599,14 +1599,14 @@ export default function DashboardPage() {
                               )}
                             </div>
                             <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600 shrink-0">
-                              {chTopics.length} Topics
+                              {chLectures.length} Lectures
                             </span>
                           </div>
 
-                          {chTopics.length > 0 && (
+                          {chLectures.length > 0 && (
                             <div className="ml-8 space-y-1.5 pt-1">
-                              {chTopics.map((top, tIdx) => {
-                                const content = curriculumService.getTopicContent(top.id);
+                              {chLectures.map((top, tIdx) => {
+                                const content = curriculumService.getLectureContent(top.id);
                                 const pdfCount = content?.pdfs?.length || 0;
                                 const imgCount = content?.images?.length || 0;
                                 const hasVid = Boolean(content?.video?.url || content?.video?.title);
@@ -1662,7 +1662,7 @@ export default function DashboardPage() {
 
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
               <span className="text-xs text-slate-500">
-                Topics are drip-fed according to the Master Study Plan.
+                Lectures are drip-fed according to the Master Study Plan.
               </span>
               <div className="flex items-center gap-2">
                 <button

@@ -16,8 +16,8 @@ import FacultyLayout from './layouts/FacultyLayout';
 import StudentLayout from './layouts/StudentLayout';
 import AdminExamsPage from './pages/admin/AdminExamsPage';
 import AdminSubjectsPage from './pages/admin/AdminSubjectsPage';
-import AdminChaptersPage from './pages/admin/AdminChaptersPage';
-import AdminTopicsPage from './pages/admin/AdminTopicsPage';
+import AdminModulesPage from './pages/admin/AdminModulesPage';
+import AdminLecturesPage from './pages/admin/AdminLecturesPage';
 import AdminContentStudioPage from './pages/admin/AdminContentStudioPage';
 import AdminOverviewPage from './pages/admin/AdminOverviewPage';
 import AdminSchedulePage from './pages/admin/AdminSchedulePage';
@@ -32,8 +32,8 @@ import FacultyOverviewPage from './pages/faculty/FacultyOverviewPage';
 import FacultyExamsPage from './pages/faculty/FacultyExamsPage';
 import FacultySamplePapersPage from './pages/faculty/FacultySamplePapersPage';
 import FacultySubjectsPage from './pages/faculty/FacultySubjectsPage';
-import FacultyChaptersPage from './pages/faculty/FacultyChaptersPage';
-import FacultyTopicsPage from './pages/faculty/FacultyTopicsPage';
+import FacultyModulesPage from './pages/faculty/FacultyModulesPage';
+import FacultyLecturesPage from './pages/faculty/FacultyLecturesPage';
 import FacultyContentStudioPage from './pages/faculty/FacultyContentStudioPage';
 import FacultyDirectUploadPage from './pages/faculty/FacultyDirectUploadPage';
 import FacultyLiveSessionsPage from './pages/faculty/FacultyLiveSessionsPage';
@@ -46,9 +46,9 @@ import FacultyTestResultsPage from './pages/faculty/FacultyTestResultsPage';
 import StudentCoursesPage from './pages/student/StudentCoursesPage';
 import StudentExamOverviewPage from './pages/student/StudentExamOverviewPage';
 import StudentSubjectsPage from './pages/student/StudentSubjectsPage';
-import StudentChaptersPage from './pages/student/StudentChaptersPage';
-import StudentTopicsPage from './pages/student/StudentTopicsPage';
-import StudentTopicLearnPage from './pages/student/StudentTopicLearnPage';
+import StudentModulesPage from './pages/student/StudentModulesPage';
+import StudentLecturesPage from './pages/student/StudentLecturesPage';
+import StudentLectureLearnPage from './pages/student/StudentLectureLearnPage';
 import StudentDashboardPage from './pages/student/StudentDashboardPage';
 import StudentStudyPlanPage from './pages/student/StudentStudyPlanPage';
 import StudentLiveSessionsPage from './pages/student/StudentLiveSessionsPage';
@@ -154,17 +154,17 @@ export default function App() {
             <Route path="/admin/exams/:examId/subjects" element={<AdminSubjectsPage />} />
             <Route path="/admin/subjects" element={<AdminSubjectsPage />} />
 
-            {/* Level 3: Chapters & Topics (Subject-based & Exam-based) */}
-            <Route path="/admin/subjects/:subjectId/chapters" element={<AdminChaptersPage />} />
-            <Route path="/admin/exams/:examId/subjects/:subjectId/chapters" element={<AdminChaptersPage />} />
+            {/* Level 3: Modules & Lectures (Subject-based & Exam-based) */}
+            <Route path="/admin/subjects/:subjectId/modules" element={<AdminModulesPage />} />
+            <Route path="/admin/exams/:examId/subjects/:subjectId/modules" element={<AdminModulesPage />} />
 
-            {/* Level 4: Topics */}
-            <Route path="/admin/subjects/:subjectId/chapters/:chapterId/topics" element={<AdminTopicsPage />} />
-            <Route path="/admin/exams/:examId/subjects/:subjectId/chapters/:chapterId/topics" element={<AdminTopicsPage />} />
+            {/* Level 4: Lectures */}
+            <Route path="/admin/subjects/:subjectId/modules/:moduleId/lectures" element={<AdminLecturesPage />} />
+            <Route path="/admin/exams/:examId/subjects/:subjectId/modules/:moduleId/lectures" element={<AdminLecturesPage />} />
 
-            {/* Level 5: Topic Content Studio */}
-            <Route path="/admin/subjects/:subjectId/chapters/:chapterId/topics/:topicId/content" element={<AdminContentStudioPage />} />
-            <Route path="/admin/exams/:examId/subjects/:subjectId/chapters/:chapterId/topics/:topicId/content" element={<AdminContentStudioPage />} />
+            {/* Level 5: Lecture Content Studio */}
+            <Route path="/admin/subjects/:subjectId/modules/:moduleId/lectures/:lectureId/content" element={<AdminContentStudioPage />} />
+            <Route path="/admin/exams/:examId/subjects/:subjectId/modules/:moduleId/lectures/:lectureId/content" element={<AdminContentStudioPage />} />
 
             {/* Phase 3: Admin Operations & Management Sub-Pages */}
             <Route path="/admin/schedule-classes" element={<AdminSchedulePage />} />
@@ -199,17 +199,17 @@ export default function App() {
             <Route path="/faculty/exams/:examId/subjects" element={<FacultySubjectsPage />} />
             <Route path="/faculty/subjects" element={<FacultySubjectsPage />} />
 
-            {/* Level 3: Chapters & Syllabus */}
-            <Route path="/faculty/exams/:examId/subjects/:subjectId/chapters" element={<FacultyChaptersPage />} />
-            <Route path="/faculty/subjects/:subjectId/chapters" element={<FacultyChaptersPage />} />
+            {/* Level 3: Modules & Syllabus */}
+            <Route path="/faculty/exams/:examId/subjects/:subjectId/modules" element={<FacultyModulesPage />} />
+            <Route path="/faculty/subjects/:subjectId/modules" element={<FacultyModulesPage />} />
 
-            {/* Level 4: Topics Roster */}
-            <Route path="/faculty/exams/:examId/subjects/:subjectId/chapters/:chapterId/topics" element={<FacultyTopicsPage />} />
-            <Route path="/faculty/subjects/:subjectId/chapters/:chapterId/topics" element={<FacultyTopicsPage />} />
+            {/* Level 4: Lectures Roster */}
+            <Route path="/faculty/exams/:examId/subjects/:subjectId/modules/:moduleId/lectures" element={<FacultyLecturesPage />} />
+            <Route path="/faculty/subjects/:subjectId/modules/:moduleId/lectures" element={<FacultyLecturesPage />} />
 
-            {/* Level 5: Topic Content Studio */}
-            <Route path="/faculty/exams/:examId/subjects/:subjectId/chapters/:chapterId/topics/:topicId/content" element={<FacultyContentStudioPage />} />
-            <Route path="/faculty/subjects/:subjectId/chapters/:chapterId/topics/:topicId/content" element={<FacultyContentStudioPage />} />
+            {/* Level 5: Lecture Content Studio */}
+            <Route path="/faculty/exams/:examId/subjects/:subjectId/modules/:moduleId/lectures/:lectureId/content" element={<FacultyContentStudioPage />} />
+            <Route path="/faculty/subjects/:subjectId/modules/:moduleId/lectures/:lectureId/content" element={<FacultyContentStudioPage />} />
 
             {/* Operational Management Sub-Pages */}
             <Route path="/faculty/schedule" element={<FacultySchedulePage />} />
@@ -240,14 +240,14 @@ export default function App() {
             {/* Level 2: Subjects */}
             <Route path="/student/courses/:examId/subjects" element={<StudentSubjectsPage />} />
 
-            {/* Level 3: Chapters */}
-            <Route path="/student/courses/:examId/subjects/:subjectId/chapters" element={<StudentChaptersPage />} />
+            {/* Level 3: Modules */}
+            <Route path="/student/courses/:examId/subjects/:subjectId/modules" element={<StudentModulesPage />} />
 
-            {/* Level 4: Topics */}
-            <Route path="/student/courses/:examId/subjects/:subjectId/chapters/:chapterId/topics" element={<StudentTopicsPage />} />
+            {/* Level 4: Lectures */}
+            <Route path="/student/courses/:examId/subjects/:subjectId/modules/:moduleId/lectures" element={<StudentLecturesPage />} />
 
-            {/* Level 5: Topic Study Room */}
-            <Route path="/student/courses/:examId/subjects/:subjectId/chapters/:chapterId/topics/:topicId" element={<StudentTopicLearnPage />} />
+            {/* Level 5: Lecture Study Room */}
+            <Route path="/student/courses/:examId/subjects/:subjectId/modules/:moduleId/lectures/:lectureId" element={<StudentLectureLearnPage />} />
 
             {/* Phase 6: Student Operations Sub-Pages */}
             <Route path="/student/study-plan" element={<StudentStudyPlanPage />} />

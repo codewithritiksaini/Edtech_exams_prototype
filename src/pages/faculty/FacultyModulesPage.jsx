@@ -29,15 +29,15 @@ import { catalogService } from '../../services/catalogService';
 import { samplePaperService } from '../../services/samplePaperService';
 import { peopleService } from '../../services/peopleService';
 
-export default function FacultyChaptersPage() {
+export default function FacultyModulesPage() {
   const { examId: routeExamId, subjectId } = useParams();
   const navigate = useNavigate();
 
   const [subject, setSubject] = useState(() => curriculumService.getSubjectById(subjectId));
   const effectiveExamId = routeExamId || subject?.examId || 'neet-pg';
   const [exam, setExam] = useState(() => catalogService.getExamById(effectiveExamId) || { id: effectiveExamId, name: effectiveExamId.toUpperCase(), flag: '🩺' });
-  const [chapters, setChapters] = useState(() => curriculumService.getChapters(subjectId, effectiveExamId));
-  const [topics, setTopics] = useState(() => curriculumService.getTopics(null, subjectId, effectiveExamId));
+  const [modules, setModules] = useState(() => curriculumService.getModules(subjectId, effectiveExamId));
+  const [lectures, setLectures] = useState(() => curriculumService.getLectures(null, subjectId, effectiveExamId));
   
   const currentFaculty = peopleService.getCurrentFacultyProfile();
   const assignedSubjectIds = currentFaculty?.assignedSubjects || [];
@@ -62,10 +62,10 @@ export default function FacultyChaptersPage() {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
 
-  // Add / Edit Chapter Modal State
+  // Add / Edit Module Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingChapter, setEditingChapter] = useState(null);
-  const [deletingChapter, setDeletingChapter] = useState(null);
+  const [editingModule, setEditingModule] = useState(null);
+  const [deletingModule, setDeletingModule] = useState(null);
 
   // Form State
   const [formTitle, setFormTitle] = useState('');
@@ -78,8 +78,8 @@ export default function FacultyChaptersPage() {
       const sub = curriculumService.getSubjectById(subjectId);
       setSubject(sub);
       const exId = routeExamId || sub?.examId || 'neet-pg';
-      setChapters(curriculumService.getChapters(subjectId, exId));
-      setTopics(curriculumService.getTopics(null, subjectId, exId));
+      setModules(curriculumService.getModules(subjectId, exId));
+      setLectures(curriculumService.getLectures(null, subjectId, exId));
     });
     return unsub;
   }, [subjectId, routeExamId]);
@@ -91,8 +91,8 @@ export default function FacultyChaptersPage() {
       const exId = routeExamId || sub.examId || 'neet-pg';
       const foundExam = catalogService.getExamById(exId);
       if (foundExam) setExam(foundExam);
-      setChapters(curriculumService.getChapters(subjectId, exId));
-      setTopics(curriculumService.getTopics(null, subjectId, exId));
+      setModules(curriculumService.getModules(subjectId, exId));
+      setLectures(curriculumService.getLectures(null, subjectId, exId));
     }
   }, [subjectId, routeExamId]);
 
@@ -101,9 +101,9 @@ export default function FacultyChaptersPage() {
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  // Filtered and sorted chapters
-  const filteredChapters = useMemo(() => {
-    return chapters
+  // Filtered and sorted modules
+  const filteredModules = useMemo(() => {
+    return modules
       .filter(c => {
         if (statusFilter !== 'all' && c.status !== statusFilter) return false;
         if (!searchQuery.trim()) return true;
@@ -111,8 +111,8 @@ export default function FacultyChaptersPage() {
         return c.title.toLowerCase().includes(q) || 
                (c.description && c.description.toLowerCase().includes(q));
       })
-      .sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
-  }, [chapters, searchQuery, statusFilter]);
+      .sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
+  }, [modules, searchQuery, statusFilter]);
 
   // Statistics
   const facultyPapersCount = useMemo(() => {
@@ -142,13 +142,13 @@ export default function FacultyChaptersPage() {
       return;
     }
 
-    const reordered = [...filteredChapters];
+    const reordered = [...filteredModules];
     const [draggedItem] = reordered.splice(draggedIndex, 1);
     reordered.splice(targetIndex, 0, draggedItem);
 
     const orderedIds = reordered.map(c => c.id);
-    curriculumService.reorderChapters(subjectId, orderedIds);
-    showToast(`Chapter #${targetIndex + 1}: "${draggedItem.title}" reordered.`);
+    curriculumService.reorderModules(subjectId, orderedIds);
+    showToast(`Module #${targetIndex + 1}: "${draggedItem.title}" reordered.`);
 
     setDraggedIndex(null);
     setDragOverIndex(null);
@@ -160,27 +160,27 @@ export default function FacultyChaptersPage() {
   };
 
   const handleOpenCreateModal = () => {
-    setEditingChapter(null);
+    setEditingModule(null);
     setFormTitle('');
-    setFormNumber(chapters.length + 1);
+    setFormNumber(modules.length + 1);
     setFormDesc('');
     setFormStatus('Active');
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (chap) => {
-    setEditingChapter(chap);
+    setEditingModule(chap);
     setFormTitle(chap.title);
-    setFormNumber(chap.chapterNumber || 1);
+    setFormNumber(chap.moduleNumber || 1);
     setFormDesc(chap.description || '');
     setFormStatus(chap.status || 'Active');
     setIsModalOpen(true);
   };
 
-  const handleSaveChapter = (e) => {
+  const handleSaveModule = (e) => {
     e.preventDefault();
     if (!formTitle.trim()) {
-      alert('Please enter a chapter title');
+      alert('Please enter a module title');
       return;
     }
 
@@ -188,37 +188,37 @@ export default function FacultyChaptersPage() {
       subjectId,
       examId: effectiveExamId,
       title: formTitle.trim(),
-      chapterNumber: Number(formNumber) || 1,
+      moduleNumber: Number(formNumber) || 1,
       description: formDesc.trim(),
       status: formStatus
     };
 
-    if (editingChapter) {
-      curriculumService.updateChapter(editingChapter.id, payload);
-      showToast(`Chapter "${payload.title}" updated.`);
+    if (editingModule) {
+      curriculumService.saveModule({ id: editingModule.id, ...payload });
+      showToast(`Module "${payload.title}" updated.`);
     } else {
-      curriculumService.createChapter({
-        id: `chap-${effectiveExamId.slice(0, 4)}-${Date.now().toString(36)}`,
+      curriculumService.saveModule({
+        id: `mod-${effectiveExamId.slice(0, 4)}-${Date.now().toString(36)}`,
         ...payload
       });
-      showToast(`Chapter "${payload.title}" created.`);
+      showToast(`Module "${payload.title}" created.`);
     }
     setIsModalOpen(false);
   };
 
   const handleOpenDeleteModal = (chap) => {
-    setDeletingChapter(chap);
+    setDeletingModule(chap);
   };
 
   const handleConfirmDelete = () => {
-    if (!deletingChapter) return;
-    curriculumService.deleteChapter(deletingChapter.id);
-    showToast(`Chapter "${deletingChapter.title}" deleted.`);
-    setDeletingChapter(null);
+    if (!deletingModule) return;
+    curriculumService.deleteModule(deletingModule.id);
+    showToast(`Module "${deletingModule.title}" deleted.`);
+    setDeletingModule(null);
   };
 
   const handleMoveOrder = (chapId, direction) => {
-    curriculumService.moveChapterOrder(chapId, direction);
+    curriculumService.moveModuleOrder(chapId, direction);
   };
 
   // If subject is not assigned to current faculty, restrict access
@@ -230,7 +230,7 @@ export default function FacultyChaptersPage() {
         </div>
         <h2 className="text-xl font-black text-slate-900 tracking-tight">Department Access Restricted</h2>
         <p className="text-xs text-slate-500 leading-relaxed">
-          You do not have assigned permissions for this subject. In the faculty portal, you can only view and manage chapters and topics for subjects explicitly assigned to your faculty roster.
+          You do not have assigned permissions for this subject. In the faculty portal, you can only view and manage modules and lectures for subjects explicitly assigned to your faculty roster.
         </p>
         <div className="pt-2">
           <Link
@@ -276,11 +276,11 @@ export default function FacultyChaptersPage() {
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Assigned Subject • Full Chapter & Topic Access</span>
+                  <span>Assigned Subject • Full Module & Lecture Access</span>
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                {subject?.name || 'Subject'} — Chapters & Topics
+                {subject?.name || 'Subject'} — Modules & Lectures
               </h1>
               <p className="text-xs text-slate-500 mt-1">
                 Exam Track: <strong className="text-slate-700">{exam?.flag} {exam?.name}</strong> • Subject Code: <strong className="text-slate-700 font-mono">{subject?.code || 'N/A'}</strong>
@@ -295,7 +295,7 @@ export default function FacultyChaptersPage() {
             className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add Chapter</span>
+            <span>+ Add Module</span>
           </button>
         </div>
       </div>
@@ -303,14 +303,14 @@ export default function FacultyChaptersPage() {
       {/* KPI Stats Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
-          <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Total Chapters</span>
-          <div className="text-2xl font-black text-slate-900">{chapters.length}</div>
+          <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Total Modules</span>
+          <div className="text-2xl font-black text-slate-900">{modules.length}</div>
           <span className="text-[11px] text-slate-400 font-medium">Syllabus units</span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
-          <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Total Topics</span>
-          <div className="text-2xl font-black text-slate-900">{topics.length}</div>
+          <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Total Lectures</span>
+          <div className="text-2xl font-black text-slate-900">{lectures.length}</div>
           <span className="text-[11px] text-slate-400 font-medium">Under this subject</span>
         </div>
 
@@ -336,7 +336,7 @@ export default function FacultyChaptersPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search chapters, high-yield focus, overview..."
+              placeholder="Search modules, high-yield focus, overview..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
@@ -377,25 +377,25 @@ export default function FacultyChaptersPage() {
         </div>
       </div>
 
-      {/* Chapters Table View (List) */}
+      {/* Modules Table View (List) */}
       {viewMode === 'table' ? (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
               <tr>
                 <th className="py-3 px-4 w-20 text-center">Unit #</th>
-                <th className="py-3 px-4">Syllabus Chapter & Overview</th>
-                <th className="py-3 px-4 text-center">Topics & Sample Papers</th>
+                <th className="py-3 px-4">Syllabus Module & Overview</th>
+                <th className="py-3 px-4 text-center">Lectures & Sample Papers</th>
                 <th className="py-3 px-4 text-center">Status</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredChapters.map((chap, idx) => {
-                const chapTopics = topics.filter(t => t.chapterId === chap.id);
+              {filteredModules.map((chap, idx) => {
+                const chapLectures = lectures.filter(t => t.moduleId === chap.id);
                 const isDragging = draggedIndex === idx;
                 const isDragOver = dragOverIndex === idx;
-                const samplePaperCount = samplePaperService.getSamplePapersCountByChapter(chap.id, { role: 'faculty' });
+                const samplePaperCount = samplePaperService.getSamplePapersCountByModule(chap.id, { role: 'faculty' });
 
                 return (
                   <tr
@@ -419,21 +419,21 @@ export default function FacultyChaptersPage() {
                         <button
                           type="button"
                           className="text-slate-300 hover:text-indigo-600 cursor-grab active:cursor-grabbing p-1 rounded hover:bg-slate-100 transition-colors"
-                          title="Drag to reorder chapter"
+                          title="Drag to reorder module"
                         >
                           <GripVertical className="w-4 h-4" />
                         </button>
                         <span className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs flex items-center justify-center border border-indigo-100 shadow-2xs shrink-0">
-                          {chap.chapterNumber || idx + 1}
+                          {chap.moduleNumber || idx + 1}
                         </span>
                       </div>
                     </td>
 
-                    {/* Chapter Title & Description */}
+                    {/* Module Title & Description */}
                     <td className="py-3.5 px-4">
                       <div className="space-y-1">
                         <Link
-                          to={`/faculty/exams/${effectiveExamId}/subjects/${subjectId}/chapters/${chap.id}/topics`}
+                          to={`/faculty/exams/${effectiveExamId}/subjects/${subjectId}/modules/${chap.id}/lectures`}
                           className="font-extrabold text-slate-900 hover:text-indigo-600 transition-colors text-xs block"
                         >
                           {chap.title}
@@ -446,21 +446,21 @@ export default function FacultyChaptersPage() {
                       </div>
                     </td>
 
-                    {/* Topics & Sample Papers Count */}
+                    {/* Lectures & Sample Papers Count */}
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex flex-col items-center gap-1">
                         <Link
-                          to={`/faculty/exams/${effectiveExamId}/subjects/${subjectId}/chapters/${chap.id}/topics`}
+                          to={`/faculty/exams/${effectiveExamId}/subjects/${subjectId}/modules/${chap.id}/lectures`}
                           className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 transition-colors"
-                          title="View Topics"
+                          title="View Lectures"
                         >
                           <FileText className="w-3.5 h-3.5" />
-                          <span>{chapTopics.length} Topics</span>
+                          <span>{chapLectures.length} Lectures</span>
                         </Link>
                         <Link
-                          to={`/faculty/sample-papers?examId=${effectiveExamId}&subjectId=${subjectId}&chapterId=${chap.id}`}
+                          to={`/faculty/sample-papers?examId=${effectiveExamId}&subjectId=${subjectId}&moduleId=${chap.id}`}
                           className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors"
-                          title="Manage Chapter Sample Papers"
+                          title="Manage Module Sample Papers"
                         >
                           <FileCheck className="w-3 h-3 text-purple-600" />
                           <span>{samplePaperCount > 0 ? `${samplePaperCount} Sample Paper${samplePaperCount > 1 ? 's' : ''}` : '+ Sample Paper'}</span>
@@ -485,14 +485,14 @@ export default function FacultyChaptersPage() {
                         <button
                           onClick={() => handleOpenEditModal(chap)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                          title="Edit Chapter"
+                          title="Edit Module"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDeleteChapter(chap)}
+                          onClick={() => handleDeleteModule(chap)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Delete Chapter"
+                          title="Delete Module"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -508,7 +508,7 @@ export default function FacultyChaptersPage() {
                           </button>
                           <button
                             onClick={() => handleMoveOrder(chap.id, 'down')}
-                            disabled={idx === filteredChapters.length - 1}
+                            disabled={idx === filteredModules.length - 1}
                             className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 rounded"
                             title="Move Down"
                           >
@@ -517,10 +517,10 @@ export default function FacultyChaptersPage() {
                         </div>
 
                         <Link
-                          to={`/faculty/exams/${effectiveExamId}/subjects/${subjectId}/chapters/${chap.id}/topics`}
+                          to={`/faculty/exams/${effectiveExamId}/subjects/${subjectId}/modules/${chap.id}/lectures`}
                           className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white font-bold text-[11px] transition-colors ml-1.5 inline-flex items-center gap-1 cursor-pointer"
                         >
-                          <span>Topics</span>
+                          <span>Lectures</span>
                           <ArrowRight className="w-3 h-3" />
                         </Link>
                       </div>
@@ -532,11 +532,11 @@ export default function FacultyChaptersPage() {
           </table>
         </div>
       ) : (
-        /* Chapters Grid Cards View */
+        /* Modules Grid Cards View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredChapters.map((chap, idx) => {
-            const chapTopics = topics.filter(t => t.chapterId === chap.id);
-            const samplePaperCount = samplePaperService.getSamplePapersCountByChapter(chap.id, { role: 'faculty' });
+          {filteredModules.map((chap, idx) => {
+            const chapLectures = lectures.filter(t => t.moduleId === chap.id);
+            const samplePaperCount = samplePaperService.getSamplePapersCountByModule(chap.id, { role: 'faculty' });
 
             return (
               <div
@@ -546,7 +546,7 @@ export default function FacultyChaptersPage() {
                 <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
                     <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 font-black text-xs flex items-center justify-center border border-indigo-100 shadow-2xs">
-                      #{chap.chapterNumber || idx + 1}
+                      #{chap.moduleNumber || idx + 1}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       chap.status === 'Draft'
@@ -564,18 +564,18 @@ export default function FacultyChaptersPage() {
                   </div>
 
                   <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                    {chap.description || 'Clinical topics, diagnostic pearls, and active recall practice.'}
+                    {chap.description || 'Clinical lectures, diagnostic pearls, and active recall practice.'}
                   </p>
 
                   <div className="pt-2 border-t border-slate-100 text-xs text-slate-500 font-semibold flex items-center justify-between">
                     <span className="inline-flex items-center gap-1 text-indigo-700 font-bold">
                       <FileText className="w-3.5 h-3.5" />
-                      <span>{chapTopics.length} Topics</span>
+                      <span>{chapLectures.length} Lectures</span>
                     </span>
                     <Link
-                      to={`/faculty/sample-papers?examId=${effectiveExamId}&subjectId=${subjectId}&chapterId=${chap.id}`}
+                      to={`/faculty/sample-papers?examId=${effectiveExamId}&subjectId=${subjectId}&moduleId=${chap.id}`}
                       className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors"
-                      title="Manage Chapter Sample Papers"
+                      title="Manage Module Sample Papers"
                     >
                       <FileCheck className="w-3 h-3 text-purple-600" />
                       <span>{samplePaperCount > 0 ? `${samplePaperCount} Sample Paper${samplePaperCount > 1 ? 's' : ''}` : '+ Sample Paper'}</span>
@@ -588,24 +588,24 @@ export default function FacultyChaptersPage() {
                     <button
                       onClick={() => handleOpenEditModal(chap)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                      title="Edit Chapter"
+                      title="Edit Module"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteChapter(chap)}
+                      onClick={() => handleDeleteModule(chap)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                      title="Delete Chapter"
+                      title="Delete Module"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
 
                   <Link
-                    to={`/faculty/exams/${effectiveExamId}/subjects/${subjectId}/chapters/${chap.id}/topics`}
+                    to={`/faculty/exams/${effectiveExamId}/subjects/${subjectId}/modules/${chap.id}/lectures`}
                     className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                   >
-                    <span>Manage Topics</span>
+                    <span>Manage Lectures</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -616,7 +616,7 @@ export default function FacultyChaptersPage() {
       )}
 
       {/* ======================================================================= */}
-      {/* MODAL: ADD / EDIT CHAPTER                                               */}
+      {/* MODAL: ADD / EDIT MODULE                                                */}
       {/* ======================================================================= */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
@@ -628,10 +628,10 @@ export default function FacultyChaptersPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900">
-                    {editingChapter ? 'Edit Chapter' : 'Add New Chapter'}
+                    {editingModule ? 'Edit Module' : 'Add New Module'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Configure curriculum chapter details and sequence
+                    Configure curriculum module details and sequence
                   </p>
                 </div>
               </div>
@@ -643,7 +643,7 @@ export default function FacultyChaptersPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveChapter} className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
+            <form onSubmit={handleSaveModule} className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="font-extrabold text-slate-700 block mb-1">
@@ -659,7 +659,7 @@ export default function FacultyChaptersPage() {
                 </div>
                 <div className="sm:col-span-3">
                   <label className="font-extrabold text-slate-700 block mb-1">
-                    Chapter Title <span className="text-rose-500">*</span>
+                    Module Title <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -674,7 +674,7 @@ export default function FacultyChaptersPage() {
 
               <div>
                 <label className="font-extrabold text-slate-700 block mb-1">
-                  Chapter Overview / Clinical Focus
+                  Module Overview / Clinical Focus
                 </label>
                 <textarea
                   rows={3}
@@ -727,7 +727,7 @@ export default function FacultyChaptersPage() {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
                 >
-                  {editingChapter ? 'Save Changes' : 'Create Chapter'}
+                  {editingModule ? 'Save Changes' : 'Create Module'}
                 </button>
               </div>
             </form>
@@ -738,7 +738,7 @@ export default function FacultyChaptersPage() {
       {/* ======================================================================= */}
       {/* DELETE MODAL                                                            */}
       {/* ======================================================================= */}
-      {deletingChapter && (
+      {deletingModule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
@@ -747,16 +747,16 @@ export default function FacultyChaptersPage() {
 
             <div className="text-center space-y-1">
               <h3 className="text-base font-black text-slate-900">
-                Delete Chapter?
+                Delete Module?
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Are you sure you want to delete <span className="font-bold text-slate-800">"{deletingChapter.title}"</span>? Any topics under this chapter will also be removed.
+                Are you sure you want to delete <span className="font-bold text-slate-800">"{deletingModule.title}"</span>? Any lectures under this module will also be removed.
               </p>
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
-                onClick={() => setDeletingChapter(null)}
+                onClick={() => setDeletingModule(null)}
                 className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-colors text-xs cursor-pointer"
               >
                 Cancel

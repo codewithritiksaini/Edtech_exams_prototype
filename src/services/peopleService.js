@@ -278,7 +278,13 @@ export const peopleService = {
     const list = peopleService.getFacultyList();
     let updated;
     const existingIndex = list.findIndex(f => f.id === facultyData.id);
-    const assignedSubjects = facultyData.assignedSubjects || [];
+    const existingRecord = existingIndex !== -1 ? list[existingIndex] : null;
+    // Partial updates (e.g. only assignedExams) must not wipe fields that weren't passed
+    const assignedSubjects = facultyData.assignedSubjects !== undefined
+      ? facultyData.assignedSubjects
+      : (existingRecord?.assignedSubjects || []);
+    const effectiveEmail = facultyData.email ?? existingRecord?.email;
+    const effectiveName = facultyData.name ?? existingRecord?.name;
 
     if (existingIndex !== -1) {
       updated = [...list];
@@ -313,20 +319,22 @@ export const peopleService = {
     }
 
     // Connect with curriculumService: synchronize subject assignment so subjects know who is teaching them!
-    try {
-      curriculumService.assignFacultyToSubjects(facultyData.email, facultyData.name, assignedSubjects);
-    } catch (e) {
-      console.warn('Curriculum faculty sync error:', e);
-    }
+    if (effectiveEmail) {
+      try {
+        curriculumService.assignFacultyToSubjects(effectiveEmail, effectiveName, assignedSubjects);
+      } catch (e) {
+        console.warn('Curriculum faculty sync error:', e);
+      }
 
-    // Connect with authService: register account so this email can immediately log in!
-    authService.registerFacultyAccount?.({
-      email: facultyData.email,
-      name: facultyData.name,
-      assignedExams: facultyData.assignedExamsLabels || facultyData.assignedExams,
-      assignedSubjects,
-      assignedWeeks: facultyData.assignedWeeks
-    });
+      // Connect with authService: register account so this email can immediately log in!
+      authService.registerFacultyAccount?.({
+        email: effectiveEmail,
+        name: effectiveName,
+        assignedExams: facultyData.assignedExamsLabels || facultyData.assignedExams || existingRecord?.assignedExamsLabels || existingRecord?.assignedExams,
+        assignedSubjects,
+        assignedWeeks: facultyData.assignedWeeks || existingRecord?.assignedWeeks
+      });
+    }
 
     return updated;
   },

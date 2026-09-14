@@ -1,15 +1,19 @@
 // =============================================================================
 // CURRICULUM SERVICE — PHASE 1 HIERARCHICAL CURRICULUM ARCHITECTURE
-// Hierarchy: Exam -> Subject -> Chapter -> Topic -> Topic Content (PDF/Images/Video/Cards) -> Study Schedule
+// Hierarchy: Exam -> Subject -> Module -> Lecture -> Lecture Content (PDF/Images/Video/Cards/Topics) -> Study Schedule
 // Persists in localStorage with cross-component reactive event dispatching
 // =============================================================================
 
 import { dayContentStore } from '../data/mockData';
 
 const STORAGE_KEY_SUBJECTS = 'medprep_curriculum_subjects_v1';
-const STORAGE_KEY_CHAPTERS = 'medprep_curriculum_chapters_v1';
-const STORAGE_KEY_TOPICS = 'medprep_curriculum_topics_v1';
+const STORAGE_KEY_MODULES = 'medprep_curriculum_modules_v1';
+const STORAGE_KEY_LECTURES = 'medprep_curriculum_lectures_v1';
 const STORAGE_KEY_SCHEDULE = 'medprep_curriculum_schedule_v1';
+
+// Legacy keys from the pre-rename Chapter/Topic model (kept only for one-time migration)
+const LEGACY_STORAGE_KEY_CHAPTERS = 'medprep_curriculum_chapters_v1';
+const LEGACY_STORAGE_KEY_TOPICS = 'medprep_curriculum_topics_v1';
 
 // =============================================================================
 // INITIAL SEED DATA
@@ -179,166 +183,166 @@ export const INITIAL_SUBJECTS = [
   }
 ];
 
-export const INITIAL_CHAPTERS = [
+export const INITIAL_MODULES = [
   // Under NEET Cardiology
   {
-    id: 'chap-neet-valvular',
+    id: 'mod-neet-valvular',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
     title: 'Valvular Heart Diseases & Auscultation Dynamics',
-    chapterNumber: 1,
+    moduleNumber: 1,
     description: 'Aortic stenosis, regurgitation, mitral valve prolapse, and diagnostic auscultatory maneuvers.',
     status: 'Active'
   },
   {
-    id: 'chap-neet-hf',
+    id: 'mod-neet-hf',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
     title: 'Heart Failure & Guideline Pharmacotherapy',
-    chapterNumber: 2,
+    moduleNumber: 2,
     description: 'HFrEF vs HFpEF, neurohormonal activation, ARNI therapy, and SGLT2 inhibitor trials.',
     status: 'Active'
   },
   {
-    id: 'chap-neet-arrhythmias',
+    id: 'mod-neet-arrhythmias',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
     title: 'Cardiac Arrhythmias & Clinical ECG Mastery',
-    chapterNumber: 3,
+    moduleNumber: 3,
     description: 'Wide complex tachycardias, Brugada vs Vereckei criteria, AV blocks, and ACLS algorithms.',
     status: 'Active'
   },
   {
-    id: 'chap-neet-cad',
+    id: 'mod-neet-cad',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
     title: 'Acute Coronary Syndromes & STEMI Pathways',
-    chapterNumber: 4,
+    moduleNumber: 4,
     description: 'Plaque rupture, biomarker kinetics, primary PCI vs thrombolysis, and TIMI risk scoring.',
     status: 'Active'
   },
 
   // Under NEET Pulmonology
   {
-    id: 'chap-neet-pft',
+    id: 'mod-neet-pft',
     examId: 'neet-pg',
     subjectId: 'sub-neet-pulmo',
     title: 'Pulmonary Function Testing & Flow-Volume Loops',
-    chapterNumber: 1,
+    moduleNumber: 1,
     description: 'Spirometry interpretation, diffusion capacity (DLCO), and airway resistance.',
     status: 'Active'
   },
   {
-    id: 'chap-neet-copd',
+    id: 'mod-neet-copd',
     examId: 'neet-pg',
     subjectId: 'sub-neet-pulmo',
     title: 'COPD, Bronchial Asthma & Bronchiectasis',
-    chapterNumber: 2,
+    moduleNumber: 2,
     description: 'GOLD staging guidelines, acute exacerbations, biological therapies, and cystic fibrosis.',
     status: 'Active'
   },
   {
-    id: 'chap-neet-ards',
+    id: 'mod-neet-ards',
     examId: 'neet-pg',
     subjectId: 'sub-neet-pulmo',
     title: 'ARDS, Sepsis & Mechanical Ventilation Protocols',
-    chapterNumber: 3,
+    moduleNumber: 3,
     description: 'Berlin definition, lung-protective ventilation, prone positioning, and ECMO indications.',
     status: 'Active'
   },
 
   // Under NEET Nephrology
   {
-    id: 'chap-neet-gn',
+    id: 'mod-neet-gn',
     examId: 'neet-pg',
     subjectId: 'sub-neet-nephro',
     title: 'Glomerular Disorders & Biopsy Histology',
-    chapterNumber: 1,
+    moduleNumber: 1,
     description: 'Nephritic vs nephrotic presentation, electron microscopy pearls, and immunofluorescence.',
     status: 'Active'
   },
   {
-    id: 'chap-neet-acidbase',
+    id: 'mod-neet-acidbase',
     examId: 'neet-pg',
     subjectId: 'sub-neet-nephro',
     title: 'Clinical Acid-Base Disorders & Electrolytes',
-    chapterNumber: 2,
+    moduleNumber: 2,
     description: 'Anion gap calculations, Winter formula, delta ratio, and renal tubular acidosis.',
     status: 'Active'
   },
 
   // Under NEET Clinical Pharmacology
   {
-    id: 'chap-neet-pharm-receptors',
+    id: 'mod-neet-pharm-receptors',
     examId: 'neet-pg',
     subjectId: 'sub-neet-pharma',
     title: 'Autonomic Receptors & Sympathomimetic Agents',
-    chapterNumber: 1,
+    moduleNumber: 1,
     description: 'Alpha/Beta adrenergic agonists, pressor selection in septic shock, and chronotropic effects.',
     status: 'Active'
   },
   {
-    id: 'chap-neet-pharm-antiarrhythmics',
+    id: 'mod-neet-pharm-antiarrhythmics',
     examId: 'neet-pg',
     subjectId: 'sub-neet-pharma',
     title: 'Antiarrhythmics & Vaughan-Williams Pharmacology',
-    chapterNumber: 2,
+    moduleNumber: 2,
     description: 'Sodium channel kinetics, beta-blocker trials, amiodarone toxicity pearls, and adenosine dosing.',
     status: 'Active'
   },
 
-  // USMLE Step 1 Chapters
+  // USMLE Step 1 Modules
   {
-    id: 'chap-usmle-pvloops',
+    id: 'mod-usmle-pvloops',
     examId: 'usmle',
     subjectId: 'sub-usmle-cvs',
     title: 'Ventricular Pressure-Volume Loops & Murmurs',
-    chapterNumber: 1,
+    moduleNumber: 1,
     description: 'Wiggers diagram, stroke volume, inotropy, and pressure-volume loop shifts in valvular stenosis and regurgitation.',
     status: 'Active'
   },
   {
-    id: 'chap-usmle-autonomic',
+    id: 'mod-usmle-autonomic',
     examId: 'usmle',
     subjectId: 'sub-usmle-neuro',
     title: 'Autonomic Pharmacology & Receptor Signaling',
-    chapterNumber: 1,
+    moduleNumber: 1,
     description: 'Alpha, beta, and muscarinic receptor kinetics, autonomic reflex loops, and pressor mechanisms.',
     status: 'Active'
   },
 
-  // PLAB 1 & 2 Chapters
+  // PLAB 1 & 2 Modules
   {
-    id: 'chap-plab-chestpain',
+    id: 'mod-plab-chestpain',
     examId: 'plab',
     subjectId: 'sub-plab-acute',
     title: 'NICE Clinical Guidelines: Acute Chest Pain & ACS',
-    chapterNumber: 1,
+    moduleNumber: 1,
     description: 'Emergency department triage, troponin pathway, GRACE risk assessment, and Sepsis 6 resuscitation.',
     status: 'Active'
   },
 
-  // Europe Licensing Chapters
+  // Europe Licensing Modules
   {
-    id: 'chap-eur-anamnese',
+    id: 'mod-eur-anamnese',
     examId: 'europe',
     subjectId: 'sub-eur-fsp',
     title: 'Medical History Taking (Anamnese) & Doctor Handover',
-    chapterNumber: 1,
+    moduleNumber: 1,
     description: 'German medical terminology, SOCRATES pain history in German, and structured doctor-to-doctor presentation.',
     status: 'Active'
   }
 ];
 
-export const INITIAL_TOPICS = [
-  // Under Chapter: Valvular Heart Diseases
+export const INITIAL_LECTURES = [
+  // Under Module: Valvular Heart Diseases
   {
-    id: 'top-valvular-murmurs',
+    id: 'lec-valvular-murmurs',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
-    chapterId: 'chap-neet-valvular',
+    moduleId: 'mod-neet-valvular',
     title: 'Aortic Stenosis & Regurgitation Auscultation Pearls',
-    topicNumber: 1,
+    lectureNumber: 1,
     duration: '40 mins',
     difficulty: 'High-Yield',
     status: 'Published',
@@ -428,18 +432,22 @@ export const INITIAL_TOPICS = [
           recordingUrl: ''
         }
       ],
+      topics: [
+        { id: 'lt-valvular-1', title: 'Aortic Stenosis Grading & Gorlin Formula', order: 1, summary: 'Valve area cutoffs, mean gradient thresholds, and low-flow low-gradient AS.' },
+        { id: 'lt-valvular-2', title: 'Mitral Regurgitation & Austin Flint Murmur', order: 2, summary: 'Acute vs chronic MR hemodynamics and the Austin Flint murmur mechanism.' }
+      ],
       clinicalNotes: 'Severe aortic stenosis with valve area < 1.0 cm2 or mean gradient > 40 mmHg requires prompt valve replacement.'
     }
   },
 
-  // Under Chapter: Heart Failure
+  // Under Module: Heart Failure
   {
-    id: 'top-hf-gdmt',
+    id: 'lec-hf-gdmt',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
-    chapterId: 'chap-neet-hf',
+    moduleId: 'mod-neet-hf',
     title: 'HFrEF vs HFpEF: Quadruple Medical Therapy (ARNI, SGLT2i, MRA, Beta-Blockers)',
-    topicNumber: 1,
+    lectureNumber: 1,
     duration: '45 mins',
     difficulty: 'Core Clinical',
     status: 'Published',
@@ -480,18 +488,20 @@ export const INITIAL_TOPICS = [
           answer: 'Dapagliflozin and Empagliflozin.'
         }
       ],
+      liveClasses: [],
+      topics: [],
       clinicalNotes: 'All HFrEF patients should be on all 4 foundational drug classes titrated to target doses as tolerated.'
     }
   },
 
-  // Under Chapter: Cardiac Arrhythmias
+  // Under Module: Cardiac Arrhythmias
   {
-    id: 'top-ecg-arrhythmias',
+    id: 'lec-ecg-arrhythmias',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
-    chapterId: 'chap-neet-arrhythmias',
+    moduleId: 'mod-neet-arrhythmias',
     title: 'Wide Complex Tachycardias: Brugada vs Vereckei & ACLS Protocols',
-    topicNumber: 1,
+    lectureNumber: 1,
     duration: '50 mins',
     difficulty: 'High-Yield',
     status: 'Published',
@@ -557,18 +567,20 @@ export const INITIAL_TOPICS = [
           answer: 'AV nodal blocking agents: Adenosine, Beta-blockers, CCBs, Digoxin (ABCD). They divert conduction solely down the accessory pathway into VF.'
         }
       ],
+      liveClasses: [],
+      topics: [],
       clinicalNotes: 'Treat any wide complex tachycardia as VT until proven otherwise in an emergency setting.'
     }
   },
 
-  // Under Chapter: Pulmonology PFT
+  // Under Module: Pulmonology PFT
   {
-    id: 'top-pulmo-pft',
+    id: 'lec-pulmo-pft',
     examId: 'neet-pg',
     subjectId: 'sub-neet-pulmo',
-    chapterId: 'chap-neet-pft',
+    moduleId: 'mod-neet-pft',
     title: 'Flow-Volume Loops & Obstructive vs Restrictive Patterns',
-    topicNumber: 1,
+    lectureNumber: 1,
     duration: '45 mins',
     difficulty: 'High-Yield',
     status: 'Published',
@@ -611,18 +623,20 @@ export const INITIAL_TOPICS = [
           answer: 'Emphysema: DECREASED (alveolar capillary destruction). Chronic Bronchitis: NORMAL. Asthma: NORMAL or slightly ELEVATED.'
         }
       ],
+      liveClasses: [],
+      topics: [],
       clinicalNotes: 'Always check FEV1/FVC ratio first: < 0.70 confirms obstruction.'
     }
   },
 
-  // Under Chapter: Acute Coronary Syndromes & STEMI Pathways
+  // Under Module: Acute Coronary Syndromes & STEMI Pathways
   {
-    id: 'top-cad-stemi',
+    id: 'lec-cad-stemi',
     examId: 'neet-pg',
     subjectId: 'sub-neet-cardio',
-    chapterId: 'chap-neet-cad',
+    moduleId: 'mod-neet-cad',
     title: 'STEMI Localization & Culprit Artery ECG Criteria',
-    topicNumber: 1,
+    lectureNumber: 1,
     duration: '45 mins',
     difficulty: 'High-Yield',
     status: 'Published',
@@ -660,18 +674,20 @@ export const INITIAL_TOPICS = [
           answer: '>= 2.5 mm (0.25 mV). In men >= 40 it is >= 2.0 mm; in women of any age it is >= 1.5 mm.'
         }
       ],
+      liveClasses: [],
+      topics: [],
       clinicalNotes: 'Time is myocardium: primary PCI within 90 minutes or thrombolysis within 30 minutes if transfer time > 120 mins.'
     }
   },
 
-  // USMLE Topic
+  // USMLE Lecture
   {
-    id: 'top-usmle-pvloops',
+    id: 'lec-usmle-pvloops',
     examId: 'usmle',
     subjectId: 'sub-usmle-cvs',
-    chapterId: 'chap-usmle-pvloops',
+    moduleId: 'mod-usmle-pvloops',
     title: 'Wiggers Diagram & Valvular Shifts on PV Loops',
-    topicNumber: 1,
+    lectureNumber: 1,
     duration: '45 mins',
     difficulty: 'High-Yield',
     status: 'Published',
@@ -709,18 +725,20 @@ export const INITIAL_TOPICS = [
           answer: 'Markedly increases peak left ventricular systolic pressure due to high afterload and transvalvular gradient.'
         }
       ],
+      liveClasses: [],
+      topics: [],
       clinicalNotes: 'Width of PV loop = Stroke Volume (EDV - ESV).'
     }
   },
 
-  // PLAB Topic
+  // PLAB Lecture
   {
-    id: 'top-plab-triage',
+    id: 'lec-plab-triage',
     examId: 'plab',
     subjectId: 'sub-plab-acute',
-    chapterId: 'chap-plab-chestpain',
+    moduleId: 'mod-plab-chestpain',
     title: 'Emergency Triage & Troponin Protocols (NICE NG185)',
-    topicNumber: 1,
+    lectureNumber: 1,
     duration: '40 mins',
     difficulty: 'High-Yield',
     status: 'Published',
@@ -758,18 +776,20 @@ export const INITIAL_TOPICS = [
           answer: 'Aspirin 300 mg chewable, GTN sublingual, IV access, and ECG within 10 minutes.'
         }
       ],
+      liveClasses: [],
+      topics: [],
       clinicalNotes: 'Always perform ECG within 10 minutes of patient arrival.'
     }
   },
 
-  // Europe Topic
+  // Europe Lecture
   {
-    id: 'top-eur-dialogue',
+    id: 'lec-eur-dialogue',
     examId: 'europe',
     subjectId: 'sub-eur-fsp',
-    chapterId: 'chap-eur-anamnese',
+    moduleId: 'mod-eur-anamnese',
     title: 'Strukturierte Schmerzanamnese & Arzt-zu-Arzt Übergabe',
-    topicNumber: 1,
+    lectureNumber: 1,
     duration: '35 mins',
     difficulty: 'High-Yield',
     status: 'Published',
@@ -807,6 +827,8 @@ export const INITIAL_TOPICS = [
           answer: 'Retrosternal tightness radiating to the left arm (typisch für Angina Pectoris / Myokardinfarkt).'
         }
       ],
+      liveClasses: [],
+      topics: [],
       clinicalNotes: 'Wichtig für FSP: Empathische Kommunikation und Vermeidung von Fachjargon im Patientengespräch.'
     }
   }
@@ -823,14 +845,15 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 1 — Valvular Heart Diseases & Murmurs',
     subjectId: 'sub-neet-cardio',
     subjectName: 'Cardiology & Hemodynamics',
-    chapterId: 'chap-neet-valvular',
-    chapterTitle: 'Valvular Heart Diseases & Auscultation Dynamics',
-    topicIds: ['top-valvular-murmurs'],
+    moduleId: 'mod-neet-valvular',
+    moduleTitle: 'Valvular Heart Diseases & Auscultation Dynamics',
+    lectureIds: ['lec-valvular-murmurs'],
     scheduledDate: '2026-09-08',
     status: 'Active',
     estimatedTime: '1.5 hours',
     lectureTimeSlot: '09:00 AM - 10:30 AM IST',
     facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
     hasLive: true,
     hasTest: false
   },
@@ -843,14 +866,15 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 2 — Congestive Heart Failure & Pharmacotherapy',
     subjectId: 'sub-neet-cardio',
     subjectName: 'Cardiology & Hemodynamics',
-    chapterId: 'chap-neet-hf',
-    chapterTitle: 'Heart Failure & Guideline Pharmacotherapy',
-    topicIds: ['top-hf-gdmt'],
+    moduleId: 'mod-neet-hf',
+    moduleTitle: 'Heart Failure & Guideline Pharmacotherapy',
+    lectureIds: ['lec-hf-gdmt'],
     scheduledDate: '2026-09-09',
     status: 'Active',
     estimatedTime: '2.0 hours',
     lectureTimeSlot: '09:00 AM - 11:00 AM IST',
     facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
     hasLive: false,
     hasTest: false
   },
@@ -863,14 +887,15 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 3 (Morn) — Cardiac Arrhythmias & ECG Interpretation',
     subjectId: 'sub-neet-cardio',
     subjectName: 'Cardiology & Hemodynamics',
-    chapterId: 'chap-neet-arrhythmias',
-    chapterTitle: 'Cardiac Arrhythmias & Clinical ECG Mastery',
-    topicIds: ['top-ecg-arrhythmias'],
+    moduleId: 'mod-neet-arrhythmias',
+    moduleTitle: 'Cardiac Arrhythmias & Clinical ECG Mastery',
+    lectureIds: ['lec-ecg-arrhythmias'],
     scheduledDate: '2026-09-10',
     status: 'Active',
     estimatedTime: '2.0 hours',
     lectureTimeSlot: '09:00 AM - 11:00 AM IST',
     facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
     hasLive: true,
     hasTest: false
   },
@@ -883,14 +908,15 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 3 (Eve) — Antiarrhythmic Drug Protocols & Pharmacotherapy',
     subjectId: 'sub-neet-pharma',
     subjectName: 'Clinical Pharmacology & Toxicology',
-    chapterId: 'chap-neet-pharm-antiarrhythmics',
-    chapterTitle: 'Antiarrhythmics & Vaughan-Williams Pharmacology',
-    topicIds: [],
+    moduleId: 'mod-neet-pharm-antiarrhythmics',
+    moduleTitle: 'Antiarrhythmics & Vaughan-Williams Pharmacology',
+    lectureIds: [],
     scheduledDate: '2026-09-10',
     status: 'Active',
     estimatedTime: '1.5 hours',
     lectureTimeSlot: '04:00 PM - 05:30 PM IST',
     facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
     hasLive: false,
     hasTest: false
   },
@@ -903,14 +929,15 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 4 — Acute Coronary Syndromes & STEMI Pathways',
     subjectId: 'sub-neet-cardio',
     subjectName: 'Cardiology & Hemodynamics',
-    chapterId: 'chap-neet-cad',
-    chapterTitle: 'Acute Coronary Syndromes & STEMI Pathways',
-    topicIds: ['top-cad-stemi'],
+    moduleId: 'mod-neet-cad',
+    moduleTitle: 'Acute Coronary Syndromes & STEMI Pathways',
+    lectureIds: ['lec-cad-stemi'],
     scheduledDate: '2026-09-11',
     status: 'Scheduled',
     estimatedTime: '1.5 hours',
     lectureTimeSlot: '09:00 AM - 10:30 AM IST',
     facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
     hasLive: false,
     hasTest: false
   },
@@ -923,14 +950,15 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 5 — Pulmonary Function Tests & Spirometry Loops',
     subjectId: 'sub-neet-pulmo',
     subjectName: 'Respiratory Medicine & Pulmonology',
-    chapterId: 'chap-neet-pft',
-    chapterTitle: 'Pulmonary Function Testing & Flow-Volume Loops',
-    topicIds: ['top-pulmo-pft'],
+    moduleId: 'mod-neet-pft',
+    moduleTitle: 'Pulmonary Function Testing & Flow-Volume Loops',
+    lectureIds: ['lec-pulmo-pft'],
     scheduledDate: '2026-09-12',
     status: 'Scheduled',
     estimatedTime: '1.5 hours',
     lectureTimeSlot: '11:00 AM - 12:30 PM IST',
     facultyName: 'Dr. Marcus Vance',
+    facultyEmail: 'marcus.vance@demo.com',
     hasLive: false,
     hasTest: false
   },
@@ -943,14 +971,15 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 6 — High-Yield ECG Mastery & Clinical Flashcards Sprint',
     subjectId: 'sub-neet-cardio',
     subjectName: 'Cardiology & Hemodynamics',
-    chapterId: 'chap-neet-arrhythmias',
-    chapterTitle: 'Cardiac Arrhythmias & Clinical ECG Mastery',
-    topicIds: ['top-ecg-arrhythmias'],
+    moduleId: 'mod-neet-arrhythmias',
+    moduleTitle: 'Cardiac Arrhythmias & Clinical ECG Mastery',
+    lectureIds: ['lec-ecg-arrhythmias'],
     scheduledDate: '2026-09-13',
     status: 'Scheduled',
     estimatedTime: '1.0 hour',
     lectureTimeSlot: '09:00 AM - 10:00 AM IST',
     facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
     hasLive: true,
     hasTest: false
   },
@@ -963,14 +992,15 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 7 — Subject Grand Test #01: Full Cardiology CBT',
     subjectId: 'sub-neet-cardio',
     subjectName: 'Cardiology & Hemodynamics',
-    chapterId: 'chap-neet-valvular',
-    chapterTitle: 'Valvular Heart Diseases & Auscultation Dynamics',
-    topicIds: ['top-valvular-murmurs'],
+    moduleId: 'mod-neet-valvular',
+    moduleTitle: 'Valvular Heart Diseases & Auscultation Dynamics',
+    lectureIds: ['lec-valvular-murmurs'],
     scheduledDate: '2026-09-14',
     status: 'Scheduled',
     estimatedTime: '1.0 hour',
     lectureTimeSlot: '10:00 AM - 11:30 AM IST',
     facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
     hasLive: false,
     hasTest: true
   },
@@ -985,9 +1015,9 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 8 — Pulmonary Function Tests & Flow-Volume Loops',
     subjectId: 'sub-neet-pulmo',
     subjectName: 'Respiratory Medicine & Pulmonology',
-    chapterId: 'chap-neet-pft',
-    chapterTitle: 'Pulmonary Function Testing & Flow-Volume Loops',
-    topicIds: ['top-pulmo-pft'],
+    moduleId: 'mod-neet-pft',
+    moduleTitle: 'Pulmonary Function Testing & Flow-Volume Loops',
+    lectureIds: ['lec-pulmo-pft'],
     scheduledDate: '2026-09-15',
     status: 'Scheduled',
     estimatedTime: '1.5 hours',
@@ -1005,9 +1035,9 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 1 — Pressure-Volume Loops & Valvular Shifts',
     subjectId: 'sub-usmle-cvs',
     subjectName: 'Cardiovascular Physiology & Pathology',
-    chapterId: 'chap-usmle-pvloops',
-    chapterTitle: 'Ventricular Pressure-Volume Loops & Murmurs',
-    topicIds: ['top-usmle-pvloops'],
+    moduleId: 'mod-usmle-pvloops',
+    moduleTitle: 'Ventricular Pressure-Volume Loops & Murmurs',
+    lectureIds: ['lec-usmle-pvloops'],
     scheduledDate: '2026-09-08',
     status: 'Active',
     estimatedTime: '2.0 hours',
@@ -1023,9 +1053,9 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 2 — Autonomic Receptor Kinetics & Pressors',
     subjectId: 'sub-usmle-neuro',
     subjectName: 'Autonomic & Neuro-Pharmacology',
-    chapterId: 'chap-usmle-autonomic',
-    chapterTitle: 'Autonomic Pharmacology & Receptor Signaling',
-    topicIds: ['top-usmle-pvloops'],
+    moduleId: 'mod-usmle-autonomic',
+    moduleTitle: 'Autonomic Pharmacology & Receptor Signaling',
+    lectureIds: ['lec-usmle-pvloops'],
     scheduledDate: '2026-09-09',
     status: 'Scheduled',
     estimatedTime: '1.5 hours',
@@ -1043,9 +1073,9 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 1 — Acute Chest Pain Triage & NICE Troponin Pathways',
     subjectId: 'sub-plab-acute',
     subjectName: 'NHS Acute Clinical Presentations & Guidelines',
-    chapterId: 'chap-plab-chestpain',
-    chapterTitle: 'NICE Clinical Guidelines: Acute Chest Pain & ACS',
-    topicIds: ['top-plab-triage'],
+    moduleId: 'mod-plab-chestpain',
+    moduleTitle: 'NICE Clinical Guidelines: Acute Chest Pain & ACS',
+    lectureIds: ['lec-plab-triage'],
     scheduledDate: '2026-09-08',
     status: 'Active',
     estimatedTime: '1.5 hours',
@@ -1063,9 +1093,9 @@ export const INITIAL_SCHEDULE = [
     dayTitle: 'Day 1 — Strukturierte Schmerzanamnese (SOCRATES auf Deutsch)',
     subjectId: 'sub-eur-fsp',
     subjectName: 'Fachsprachprüfung (FSP) Medical Terminology',
-    chapterId: 'chap-eur-anamnese',
-    chapterTitle: 'Medical History Taking (Anamnese) & Doctor Handover',
-    topicIds: ['top-eur-dialogue'],
+    moduleId: 'mod-eur-anamnese',
+    moduleTitle: 'Medical History Taking (Anamnese) & Doctor Handover',
+    lectureIds: ['lec-eur-dialogue'],
     scheduledDate: '2026-09-08',
     status: 'Active',
     estimatedTime: '1.5 hours',
@@ -1075,15 +1105,93 @@ export const INITIAL_SCHEDULE = [
 ];
 
 // =============================================================================
+// LEGACY ID REMAPPING HELPERS (used only during one-time migration)
+// =============================================================================
+
+function remapLegacyId(id, fromPrefix, toPrefix) {
+  if (typeof id !== 'string' || !id.startsWith(fromPrefix)) return id;
+  return toPrefix + id.slice(fromPrefix.length);
+}
+
+// =============================================================================
 // CURRICULUM SERVICE CLASS
 // =============================================================================
 
 class CurriculumService {
   constructor() {
+    this.migrateLegacyChapterTopicData();
     this.subjects = this.loadSubjects();
-    this.chapters = this.loadChapters();
-    this.topics = this.loadTopics();
+    this.modules = this.loadModules();
+    this.lectures = this.loadLectures();
     this.schedule = this.loadSchedule();
+  }
+
+  // ---------------------------------------------------------------------------
+  // ONE-TIME MIGRATION: pre-rename "Chapter"/"Topic" model -> "Module"/"Lecture"
+  // ---------------------------------------------------------------------------
+  migrateLegacyChapterTopicData() {
+    try {
+      const alreadyMigratedModules = localStorage.getItem(STORAGE_KEY_MODULES);
+      const alreadyMigratedLectures = localStorage.getItem(STORAGE_KEY_LECTURES);
+
+      if (!alreadyMigratedModules) {
+        const legacyChapters = localStorage.getItem(LEGACY_STORAGE_KEY_CHAPTERS);
+        if (legacyChapters) {
+          const parsed = JSON.parse(legacyChapters);
+          const migrated = parsed.map(c => {
+            const { chapterNumber, ...rest } = c;
+            return {
+              ...rest,
+              id: remapLegacyId(c.id, 'chap-', 'mod-'),
+              moduleNumber: chapterNumber
+            };
+          });
+          localStorage.setItem(STORAGE_KEY_MODULES, JSON.stringify(migrated));
+        }
+      }
+
+      if (!alreadyMigratedLectures) {
+        const legacyTopics = localStorage.getItem(LEGACY_STORAGE_KEY_TOPICS);
+        if (legacyTopics) {
+          const parsed = JSON.parse(legacyTopics);
+          const migrated = parsed.map(t => {
+            const { chapterId, topicNumber, ...rest } = t;
+            return {
+              ...rest,
+              id: remapLegacyId(t.id, 'top-', 'lec-'),
+              moduleId: remapLegacyId(chapterId, 'chap-', 'mod-'),
+              lectureNumber: topicNumber
+            };
+          });
+          localStorage.setItem(STORAGE_KEY_LECTURES, JSON.stringify(migrated));
+        }
+      }
+
+      // Schedule keeps the same storage key, but its shape changes in place
+      const scheduleRaw = localStorage.getItem(STORAGE_KEY_SCHEDULE);
+      if (scheduleRaw) {
+        const parsedSchedule = JSON.parse(scheduleRaw);
+        const needsMigration = Array.isArray(parsedSchedule) && parsedSchedule.some(
+          s => s.chapterId !== undefined || s.topicIds !== undefined || s.chapterTitle !== undefined
+        );
+        if (needsMigration) {
+          const migrated = parsedSchedule.map(s => {
+            const { chapterId, chapterTitle, topicIds, ...rest } = s;
+            return {
+              ...rest,
+              moduleId: chapterId !== undefined ? remapLegacyId(chapterId, 'chap-', 'mod-') : (s.moduleId || null),
+              moduleTitle: chapterTitle !== undefined ? chapterTitle : (s.moduleTitle || ''),
+              lectureIds: topicIds !== undefined
+                ? topicIds.map(id => remapLegacyId(id, 'top-', 'lec-'))
+                : (s.lectureIds || [])
+            };
+          });
+          localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(migrated));
+        }
+      }
+    } catch (e) {
+      console.warn('Legacy Chapter/Topic -> Module/Lecture migration failed:', e);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1130,107 +1238,113 @@ class CurriculumService {
     }
   }
 
-  loadChapters() {
+  loadModules() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY_CHAPTERS);
+      const stored = localStorage.getItem(STORAGE_KEY_MODULES);
       if (stored) {
         const parsed = JSON.parse(stored);
-        const existingIds = new Set(parsed.map(c => c.id));
-        const missing = INITIAL_CHAPTERS.filter(c => !existingIds.has(c.id));
+        const existingIds = new Set(parsed.map(m => m.id));
+        const missing = INITIAL_MODULES.filter(m => !existingIds.has(m.id));
         if (missing.length > 0) {
           const merged = [...parsed, ...missing];
-          localStorage.setItem(STORAGE_KEY_CHAPTERS, JSON.stringify(merged));
+          localStorage.setItem(STORAGE_KEY_MODULES, JSON.stringify(merged));
           return merged;
         }
         return parsed;
       }
     } catch (e) {
-      console.warn('Failed to load chapters from storage:', e);
+      console.warn('Failed to load modules from storage:', e);
     }
-    return JSON.parse(JSON.stringify(INITIAL_CHAPTERS));
+    return JSON.parse(JSON.stringify(INITIAL_MODULES));
   }
 
-  saveChapters() {
+  saveModules() {
     try {
-      localStorage.setItem(STORAGE_KEY_CHAPTERS, JSON.stringify(this.chapters));
-      window.dispatchEvent(new CustomEvent('medprep-curriculum-updated', { detail: { type: 'chapters', data: this.chapters } }));
+      localStorage.setItem(STORAGE_KEY_MODULES, JSON.stringify(this.modules));
+      window.dispatchEvent(new CustomEvent('medprep-curriculum-updated', { detail: { type: 'modules', data: this.modules } }));
     } catch (e) {
-      console.warn('Failed to save chapters:', e);
+      console.warn('Failed to save modules:', e);
     }
   }
 
-  loadTopics() {
+  loadLectures() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY_TOPICS);
+      const stored = localStorage.getItem(STORAGE_KEY_LECTURES);
       if (stored) {
         let parsed = JSON.parse(stored);
         let updated = false;
 
-        parsed = parsed.map(topic => {
-          if (!topic.content) {
-            topic.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [], clinicalNotes: '' };
+        parsed = parsed.map(lecture => {
+          if (!lecture.content) {
+            lecture.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [], topics: [], clinicalNotes: '' };
             updated = true;
-          } else if (!topic.content.liveClasses) {
-            if (topic.id === 'top-valvular-auscultation') {
-              topic.content.liveClasses = [
-                {
-                  id: 'live-auscultation-1',
-                  title: 'Live Masterclass: Heart Murmurs & Bedside Auscultation Maneuvers',
-                  instructor: 'Dr. Rajiv Mehta (MD, DM Cardiology)',
-                  date: 'Tomorrow',
-                  time: '07:00 PM - 08:15 PM IST',
-                  duration: '75 mins',
-                  platform: 'Zoom Live Interactive',
-                  joinUrl: 'https://zoom.us/j/9876543210',
-                  meetingId: '987 654 3210',
-                  passcode: 'CARDIO2026',
-                  status: 'Live Now',
-                  recordingUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ'
-                },
-                {
-                  id: 'live-auscultation-2',
-                  title: 'Clinical Grand Round: Severe AS vs MR Hemodynamic Diagnostic Traps',
-                  instructor: 'Dr. Siddharth V. (Clinical Specialist)',
-                  date: 'Friday',
-                  time: '08:00 PM - 09:00 PM IST',
-                  duration: '60 mins',
-                  platform: 'Google Meet',
-                  joinUrl: 'https://meet.google.com/med-card-live',
-                  meetingId: 'med-card-live',
-                  passcode: 'NEETPG99',
-                  status: 'Scheduled',
-                  recordingUrl: ''
-                }
-              ];
-            } else {
-              topic.content.liveClasses = [];
+          } else {
+            if (!lecture.content.liveClasses) {
+              if (lecture.id === 'lec-valvular-auscultation') {
+                lecture.content.liveClasses = [
+                  {
+                    id: 'live-auscultation-1',
+                    title: 'Live Masterclass: Heart Murmurs & Bedside Auscultation Maneuvers',
+                    instructor: 'Dr. Rajiv Mehta (MD, DM Cardiology)',
+                    date: 'Tomorrow',
+                    time: '07:00 PM - 08:15 PM IST',
+                    duration: '75 mins',
+                    platform: 'Zoom Live Interactive',
+                    joinUrl: 'https://zoom.us/j/9876543210',
+                    meetingId: '987 654 3210',
+                    passcode: 'CARDIO2026',
+                    status: 'Live Now',
+                    recordingUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ'
+                  },
+                  {
+                    id: 'live-auscultation-2',
+                    title: 'Clinical Grand Round: Severe AS vs MR Hemodynamic Diagnostic Traps',
+                    instructor: 'Dr. Siddharth V. (Clinical Specialist)',
+                    date: 'Friday',
+                    time: '08:00 PM - 09:00 PM IST',
+                    duration: '60 mins',
+                    platform: 'Google Meet',
+                    joinUrl: 'https://meet.google.com/med-card-live',
+                    meetingId: 'med-card-live',
+                    passcode: 'NEETPG99',
+                    status: 'Scheduled',
+                    recordingUrl: ''
+                  }
+                ];
+              } else {
+                lecture.content.liveClasses = [];
+              }
+              updated = true;
             }
-            updated = true;
+            if (!lecture.content.topics) {
+              lecture.content.topics = [];
+              updated = true;
+            }
           }
-          return topic;
+          return lecture;
         });
 
-        const existingIds = new Set(parsed.map(t => t.id));
-        const missing = INITIAL_TOPICS.filter(t => !existingIds.has(t.id));
+        const existingIds = new Set(parsed.map(l => l.id));
+        const missing = INITIAL_LECTURES.filter(l => !existingIds.has(l.id));
         if (missing.length > 0 || updated) {
           const merged = missing.length > 0 ? [...parsed, ...missing] : parsed;
-          localStorage.setItem(STORAGE_KEY_TOPICS, JSON.stringify(merged));
+          localStorage.setItem(STORAGE_KEY_LECTURES, JSON.stringify(merged));
           return merged;
         }
         return parsed;
       }
     } catch (e) {
-      console.warn('Failed to load topics from storage:', e);
+      console.warn('Failed to load lectures from storage:', e);
     }
-    return JSON.parse(JSON.stringify(INITIAL_TOPICS));
+    return JSON.parse(JSON.stringify(INITIAL_LECTURES));
   }
 
-  saveTopics() {
+  saveLectures() {
     try {
-      localStorage.setItem(STORAGE_KEY_TOPICS, JSON.stringify(this.topics));
-      window.dispatchEvent(new CustomEvent('medprep-curriculum-updated', { detail: { type: 'topics', data: this.topics } }));
+      localStorage.setItem(STORAGE_KEY_LECTURES, JSON.stringify(this.lectures));
+      window.dispatchEvent(new CustomEvent('medprep-curriculum-updated', { detail: { type: 'lectures', data: this.lectures } }));
     } catch (e) {
-      console.warn('Failed to save topics:', e);
+      console.warn('Failed to save lectures:', e);
     }
   }
 
@@ -1313,13 +1427,13 @@ class CurriculumService {
   }
 
   deleteSubject(id) {
-    // Also delete or cascade warn for child chapters
+    // Also delete or cascade warn for child modules/lectures
     this.subjects = this.subjects.filter(s => s.id !== id);
-    this.chapters = this.chapters.filter(c => c.subjectId !== id);
-    this.topics = this.topics.filter(t => t.subjectId !== id);
+    this.modules = this.modules.filter(m => m.subjectId !== id);
+    this.lectures = this.lectures.filter(l => l.subjectId !== id);
     this.saveSubjects();
-    this.saveChapters();
-    this.saveTopics();
+    this.saveModules();
+    this.saveLectures();
     return this.subjects;
   }
 
@@ -1334,11 +1448,11 @@ class CurriculumService {
   moveSubjectOrder(id, direction) {
     const sub = this.subjects.find(s => s.id === id);
     if (!sub) return this.subjects;
-    
+
     const examSubs = this.subjects
       .filter(s => s.examId === sub.examId)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
-    
+
     const currentIndex = examSubs.findIndex(s => s.id === id);
     if (currentIndex === -1) return this.subjects;
 
@@ -1348,7 +1462,7 @@ class CurriculumService {
     const neighbor = examSubs[targetIndex];
     const prevOrder = sub.order ?? (currentIndex + 1);
     const neighborOrder = neighbor.order ?? (targetIndex + 1);
-    
+
     if (prevOrder === neighborOrder) {
       sub.order = targetIndex + 1;
       neighbor.order = currentIndex + 1;
@@ -1391,198 +1505,200 @@ class CurriculumService {
   }
 
   // ---------------------------------------------------------------------------
-  // 2. CHAPTERS CRUD
+  // 2. MODULES CRUD (formerly "Chapters")
   // ---------------------------------------------------------------------------
-  getChapters(subjectId = null, examId = null) {
-    let list = this.chapters;
+  getModules(subjectId = null, examId = null) {
+    let list = this.modules;
     if (examId && examId !== 'all') {
-      list = list.filter(c => c.examId === examId);
+      list = list.filter(m => m.examId === examId);
     }
     if (subjectId && subjectId !== 'all') {
-      list = list.filter(c => c.subjectId === subjectId);
+      list = list.filter(m => m.subjectId === subjectId);
     }
     return list;
   }
 
-  getChaptersBySubject(subjectId, examId = null) {
-    return this.getChapters(subjectId, examId);
+  getModulesBySubject(subjectId, examId = null) {
+    return this.getModules(subjectId, examId);
   }
 
-  getChaptersByExam(examId) {
-    return this.getChapters(null, examId);
+  getModulesByExam(examId) {
+    return this.getModules(null, examId);
   }
 
-  getChapterById(id) {
-    return this.chapters.find(c => c.id === id) || null;
+  getModuleById(id) {
+    return this.modules.find(m => m.id === id) || null;
   }
 
-  saveChapter(data) {
-    const existingIndex = this.chapters.findIndex(c => c.id === data.id);
+  saveModule(data) {
+    const existingIndex = this.modules.findIndex(m => m.id === data.id);
     if (existingIndex !== -1) {
-      this.chapters[existingIndex] = { ...this.chapters[existingIndex], ...data };
+      this.modules[existingIndex] = { ...this.modules[existingIndex], ...data };
     } else {
-      const subjectChapters = this.chapters.filter(c => c.subjectId === data.subjectId);
-      const newChapter = {
-        id: data.id || `chap-${Date.now()}`,
+      const subjectModules = this.modules.filter(m => m.subjectId === data.subjectId);
+      const newModule = {
+        id: data.id || `mod-${Date.now()}`,
         examId: data.examId,
         subjectId: data.subjectId,
         title: data.title,
-        chapterNumber: Number(data.chapterNumber) || subjectChapters.length + 1,
+        moduleNumber: Number(data.moduleNumber) || subjectModules.length + 1,
         description: data.description || '',
         status: data.status || 'Active'
       };
-      this.chapters.push(newChapter);
+      this.modules.push(newModule);
     }
-    this.saveChapters();
-    return this.chapters;
+    this.saveModules();
+    return this.modules;
   }
 
-  deleteChapter(id) {
-    this.chapters = this.chapters.filter(c => c.id !== id);
-    this.topics = this.topics.filter(t => t.chapterId !== id);
-    this.saveChapters();
-    this.saveTopics();
-    return this.chapters;
+  deleteModule(id) {
+    this.modules = this.modules.filter(m => m.id !== id);
+    this.lectures = this.lectures.filter(l => l.moduleId !== id);
+    this.saveModules();
+    this.saveLectures();
+    return this.modules;
   }
 
-  moveChapterOrder(id, direction) {
-    const chap = this.chapters.find(c => c.id === id);
-    if (!chap) return this.chapters;
+  moveModuleOrder(id, direction) {
+    const mod = this.modules.find(m => m.id === id);
+    if (!mod) return this.modules;
 
-    const subjectChaps = this.chapters
-      .filter(c => c.subjectId === chap.subjectId)
-      .sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
+    const subjectMods = this.modules
+      .filter(m => m.subjectId === mod.subjectId)
+      .sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
 
-    const currentIndex = subjectChaps.findIndex(c => c.id === id);
-    if (currentIndex === -1) return this.chapters;
+    const currentIndex = subjectMods.findIndex(m => m.id === id);
+    if (currentIndex === -1) return this.modules;
 
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    if (targetIndex < 0 || targetIndex >= subjectChaps.length) return this.chapters;
+    if (targetIndex < 0 || targetIndex >= subjectMods.length) return this.modules;
 
-    const neighbor = subjectChaps[targetIndex];
-    const prevNum = chap.chapterNumber ?? (currentIndex + 1);
-    const neighborNum = neighbor.chapterNumber ?? (targetIndex + 1);
+    const neighbor = subjectMods[targetIndex];
+    const prevNum = mod.moduleNumber ?? (currentIndex + 1);
+    const neighborNum = neighbor.moduleNumber ?? (targetIndex + 1);
 
     if (prevNum === neighborNum) {
-      chap.chapterNumber = targetIndex + 1;
-      neighbor.chapterNumber = currentIndex + 1;
+      mod.moduleNumber = targetIndex + 1;
+      neighbor.moduleNumber = currentIndex + 1;
     } else {
-      chap.chapterNumber = neighborNum;
-      neighbor.chapterNumber = prevNum;
+      mod.moduleNumber = neighborNum;
+      neighbor.moduleNumber = prevNum;
     }
 
-    this.saveChapters();
-    return this.chapters;
+    this.saveModules();
+    return this.modules;
   }
 
-  reorderChapters(subjectId, orderedIds) {
+  reorderModules(subjectId, orderedIds) {
     orderedIds.forEach((id, index) => {
-      const chap = this.chapters.find(c => c.id === id);
-      if (chap) {
-        chap.chapterNumber = index + 1;
+      const mod = this.modules.find(m => m.id === id);
+      if (mod) {
+        mod.moduleNumber = index + 1;
       }
     });
-    this.saveChapters();
-    return this.chapters;
+    this.saveModules();
+    return this.modules;
   }
 
-  moveTopicOrder(id, direction) {
-    const top = this.topics.find(t => t.id === id);
-    if (!top) return this.topics;
+  moveLectureOrder(id, direction) {
+    const lec = this.lectures.find(l => l.id === id);
+    if (!lec) return this.lectures;
 
-    const chapTopics = this.topics
-      .filter(t => t.chapterId === top.chapterId)
-      .sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
+    const moduleLectures = this.lectures
+      .filter(l => l.moduleId === lec.moduleId)
+      .sort((a, b) => (a.lectureNumber || 0) - (b.lectureNumber || 0));
 
-    const currentIndex = chapTopics.findIndex(t => t.id === id);
-    if (currentIndex === -1) return this.topics;
+    const currentIndex = moduleLectures.findIndex(l => l.id === id);
+    if (currentIndex === -1) return this.lectures;
 
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    if (targetIndex < 0 || targetIndex >= chapTopics.length) return this.topics;
+    if (targetIndex < 0 || targetIndex >= moduleLectures.length) return this.lectures;
 
-    const neighbor = chapTopics[targetIndex];
-    const prevNum = top.topicNumber ?? (currentIndex + 1);
-    const neighborNum = neighbor.topicNumber ?? (targetIndex + 1);
+    const neighbor = moduleLectures[targetIndex];
+    const prevNum = lec.lectureNumber ?? (currentIndex + 1);
+    const neighborNum = neighbor.lectureNumber ?? (targetIndex + 1);
 
     if (prevNum === neighborNum) {
-      top.topicNumber = targetIndex + 1;
-      neighbor.topicNumber = currentIndex + 1;
+      lec.lectureNumber = targetIndex + 1;
+      neighbor.lectureNumber = currentIndex + 1;
     } else {
-      top.topicNumber = neighborNum;
-      neighbor.topicNumber = prevNum;
+      lec.lectureNumber = neighborNum;
+      neighbor.lectureNumber = prevNum;
     }
 
-    this.saveTopics();
-    return this.topics;
+    this.saveLectures();
+    return this.lectures;
   }
 
-  reorderTopics(chapterId, orderedIds) {
+  reorderLectures(moduleId, orderedIds) {
     orderedIds.forEach((id, index) => {
-      const top = this.topics.find(t => t.id === id);
-      if (top) {
-        top.topicNumber = index + 1;
+      const lec = this.lectures.find(l => l.id === id);
+      if (lec) {
+        lec.lectureNumber = index + 1;
       }
     });
-    this.saveTopics();
-    return this.topics;
+    this.saveLectures();
+    return this.lectures;
   }
 
   // ---------------------------------------------------------------------------
-  // 3. TOPICS CRUD
+  // 3. LECTURES CRUD (formerly "Topics")
   // ---------------------------------------------------------------------------
-  getTopics(chapterId = null, subjectId = null, examId = null) {
-    let list = this.topics;
+  getLectures(moduleId = null, subjectId = null, examId = null) {
+    let list = this.lectures;
     if (examId && examId !== 'all') {
-      list = list.filter(t => t.examId === examId);
+      list = list.filter(l => l.examId === examId);
     }
     if (subjectId && subjectId !== 'all') {
-      list = list.filter(t => t.subjectId === subjectId);
+      list = list.filter(l => l.subjectId === subjectId);
     }
-    if (chapterId && chapterId !== 'all') {
-      list = list.filter(t => t.chapterId === chapterId);
+    if (moduleId && moduleId !== 'all') {
+      list = list.filter(l => l.moduleId === moduleId);
     }
     return list;
   }
 
-  getTopicsByChapter(chapterId, subjectId = null, examId = null) {
-    return this.getTopics(chapterId, subjectId, examId);
+  getLecturesByModule(moduleId, subjectId = null, examId = null) {
+    return this.getLectures(moduleId, subjectId, examId);
   }
 
-  getTopicsBySubject(subjectId, examId = null) {
-    return this.getTopics(null, subjectId, examId);
+  getLecturesBySubject(subjectId, examId = null) {
+    return this.getLectures(null, subjectId, examId);
   }
 
-  getTopicsByExam(examId) {
-    return this.getTopics(null, null, examId);
+  getLecturesByExam(examId) {
+    return this.getLectures(null, null, examId);
   }
 
-  getTopicById(id) {
-    return this.topics.find(t => t.id === id) || null;
+  getLectureById(id) {
+    return this.lectures.find(l => l.id === id) || null;
   }
 
-  saveTopic(data) {
-    const existingIndex = this.topics.findIndex(t => t.id === data.id);
+  saveLecture(data) {
+    const existingIndex = this.lectures.findIndex(l => l.id === data.id);
     if (existingIndex !== -1) {
-      this.topics[existingIndex] = {
-        ...this.topics[existingIndex],
+      this.lectures[existingIndex] = {
+        ...this.lectures[existingIndex],
         ...data,
-        content: data.content || this.topics[existingIndex].content || {
+        content: data.content || this.lectures[existingIndex].content || {
           pdfList: [],
           images: [],
           video: null,
           flashcards: [],
+          liveClasses: [],
+          topics: [],
           clinicalNotes: ''
         }
       };
     } else {
-      const chapterTopics = this.topics.filter(t => t.chapterId === data.chapterId);
-      const newTopic = {
-        id: data.id || `top-${Date.now()}`,
+      const moduleLectures = this.lectures.filter(l => l.moduleId === data.moduleId);
+      const newLecture = {
+        id: data.id || `lec-${Date.now()}`,
         examId: data.examId,
         subjectId: data.subjectId,
-        chapterId: data.chapterId,
+        moduleId: data.moduleId,
         title: data.title,
-        topicNumber: Number(data.topicNumber) || chapterTopics.length + 1,
+        lectureNumber: Number(data.lectureNumber) || moduleLectures.length + 1,
         duration: data.duration || '45 mins',
         difficulty: data.difficulty || 'High-Yield',
         status: data.status || 'Published',
@@ -1591,104 +1707,106 @@ class CurriculumService {
           images: [],
           video: null,
           flashcards: [],
+          liveClasses: [],
+          topics: [],
           clinicalNotes: ''
         }
       };
-      this.topics.push(newTopic);
+      this.lectures.push(newLecture);
     }
-    this.saveTopics();
-    return this.topics;
+    this.saveLectures();
+    return this.lectures;
   }
 
-  deleteTopic(id) {
-    this.topics = this.topics.filter(t => t.id !== id);
-    // Remove topic from any schedule slots that reference it
+  deleteLecture(id) {
+    this.lectures = this.lectures.filter(l => l.id !== id);
+    // Remove lecture from any schedule slots that reference it
     this.schedule = this.schedule.map(slot => ({
       ...slot,
-      topicIds: (slot.topicIds || []).filter(tid => tid !== id)
+      lectureIds: (slot.lectureIds || []).filter(lid => lid !== id)
     }));
-    this.saveTopics();
+    this.saveLectures();
     this.saveSchedule();
-    return this.topics;
+    return this.lectures;
   }
 
   // ---------------------------------------------------------------------------
-  // 4. TOPIC CONTENT SUB-OPERATIONS (PDF, Images, Video, Flashcards)
+  // 4. LECTURE CONTENT SUB-OPERATIONS (PDF, Images, Video, Flashcards, Topics)
   // ---------------------------------------------------------------------------
-  getTopicContent(topicId) {
-    const topic = this.getTopicById(topicId);
-    if (!topic) return null;
-    if (!topic.content) {
-      topic.content = { pdfList: [], images: [], video: null, flashcards: [], clinicalNotes: '' };
+  getLectureContent(lectureId) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture) return null;
+    if (!lecture.content) {
+      lecture.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [], topics: [], clinicalNotes: '' };
     }
-    return topic.content;
+    return lecture.content;
   }
 
-  saveTopicContent(topicId, newContent) {
-    const topic = this.getTopicById(topicId);
-    if (!topic) return null;
-    topic.content = { ...topic.content, ...newContent };
-    this.saveTopics();
-    return topic.content;
+  saveLectureContent(lectureId, newContent) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture) return null;
+    lecture.content = { ...lecture.content, ...newContent };
+    this.saveLectures();
+    return lecture.content;
   }
 
-  addTopicPdf(topicId, pdfData) {
-    const topic = this.getTopicById(topicId);
-    if (!topic) return null;
-    if (!topic.content) topic.content = { pdfList: [], images: [], video: null, flashcards: [] };
+  addLecturePdf(lectureId, pdfData) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture) return null;
+    if (!lecture.content) lecture.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [], topics: [] };
     const newPdf = {
       id: `pdf-${Date.now()}`,
       fileName: pdfData.fileName || 'Clinical_Study_Notes.pdf',
-      title: pdfData.title || 'High-Yield Topic Notes',
+      title: pdfData.title || 'High-Yield Lecture Notes',
       pages: Number(pdfData.pages) || 16,
       size: pdfData.size || '3.2 MB',
       updated: 'Just now',
       author: pdfData.author || 'Faculty Specialist'
     };
-    topic.content.pdfList = [newPdf, ...(topic.content.pdfList || [])];
-    this.saveTopics();
-    return topic.content;
+    lecture.content.pdfList = [newPdf, ...(lecture.content.pdfList || [])];
+    this.saveLectures();
+    return lecture.content;
   }
 
-  deleteTopicPdf(topicId, pdfId) {
-    const topic = this.getTopicById(topicId);
-    if (!topic || !topic.content) return null;
-    topic.content.pdfList = (topic.content.pdfList || []).filter(p => p.id !== pdfId);
-    this.saveTopics();
-    return topic.content;
+  deleteLecturePdf(lectureId, pdfId) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture || !lecture.content) return null;
+    lecture.content.pdfList = (lecture.content.pdfList || []).filter(p => p.id !== pdfId);
+    this.saveLectures();
+    return lecture.content;
   }
 
-  addTopicImage(topicId, imageData) {
-    const topic = this.getTopicById(topicId);
-    if (!topic) return null;
-    if (!topic.content) topic.content = { pdfList: [], images: [], video: null, flashcards: [] };
+  addLectureImage(lectureId, imageData) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture) return null;
+    if (!lecture.content) lecture.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [], topics: [] };
     const newImage = {
       id: `img-${Date.now()}`,
       title: imageData.title || 'Diagnostic ECG / Clinical Diagram',
       url: imageData.url || 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80',
       caption: imageData.caption || 'Clinical diagnostic specimen with annotations.'
     };
-    topic.content.images = [newImage, ...(topic.content.images || [])];
-    this.saveTopics();
-    return topic.content;
+    lecture.content.images = [newImage, ...(lecture.content.images || [])];
+    this.saveLectures();
+    return lecture.content;
   }
 
-  deleteTopicImage(topicId, imageId) {
-    const topic = this.getTopicById(topicId);
-    if (!topic || !topic.content) return null;
-    topic.content.images = (topic.content.images || []).filter(img => img.id !== imageId);
-    this.saveTopics();
-    return topic.content;
+  deleteLectureImage(lectureId, imageId) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture || !lecture.content) return null;
+    lecture.content.images = (lecture.content.images || []).filter(img => img.id !== imageId);
+    this.saveLectures();
+    return lecture.content;
   }
 
-  saveTopicVideo(topicId, videoData) {
-    const topic = this.getTopicById(topicId);
-    if (!topic) return null;
-    if (!topic.content) topic.content = { pdfList: [], images: [], video: null, flashcards: [] };
+  saveLectureVideo(lectureId, videoData) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture) return null;
+    if (!lecture.content) lecture.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [], topics: [] };
     if (!videoData) {
-      topic.content.video = null;
+      lecture.content.video = null;
     } else {
-      topic.content.video = {
+      lecture.content.video = {
         title: videoData.title || 'Clinical Video Lecture',
         duration: videoData.duration || '40:00',
         instructor: videoData.instructor || 'Specialist Lead',
@@ -1697,37 +1815,37 @@ class CurriculumService {
         chapters: videoData.chapters || []
       };
     }
-    this.saveTopics();
-    return topic.content;
+    this.saveLectures();
+    return lecture.content;
   }
 
-  addTopicFlashcard(topicId, cardData) {
-    const topic = this.getTopicById(topicId);
-    if (!topic) return null;
-    if (!topic.content) topic.content = { pdfList: [], images: [], video: null, flashcards: [] };
+  addLectureFlashcard(lectureId, cardData) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture) return null;
+    if (!lecture.content) lecture.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [], topics: [] };
     const newCard = {
       id: `fc-${Date.now()}`,
       question: cardData.question,
       answer: cardData.answer
     };
-    topic.content.flashcards = [...(topic.content.flashcards || []), newCard];
-    this.saveTopics();
-    return topic.content;
+    lecture.content.flashcards = [...(lecture.content.flashcards || []), newCard];
+    this.saveLectures();
+    return lecture.content;
   }
 
-  deleteTopicFlashcard(topicId, cardId) {
-    const topic = this.getTopicById(topicId);
-    if (!topic || !topic.content) return null;
-    topic.content.flashcards = (topic.content.flashcards || []).filter(c => c.id !== cardId);
-    this.saveTopics();
-    return topic.content;
+  deleteLectureFlashcard(lectureId, cardId) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture || !lecture.content) return null;
+    lecture.content.flashcards = (lecture.content.flashcards || []).filter(c => c.id !== cardId);
+    this.saveLectures();
+    return lecture.content;
   }
 
   // Live Classes Methods
-  addTopicLiveClass(topicId, liveData) {
-    const topic = this.getTopicById(topicId);
-    if (!topic) return null;
-    if (!topic.content) topic.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [] };
+  addLectureLiveClass(lectureId, liveData) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture) return null;
+    if (!lecture.content) lecture.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [], topics: [] };
     const newLive = {
       id: `live-${Date.now()}`,
       title: liveData.title || 'Live Interactive Clinical Session',
@@ -1742,27 +1860,62 @@ class CurriculumService {
       status: liveData.status || 'Scheduled', // 'Scheduled' | 'Live Now' | 'Completed'
       recordingUrl: liveData.recordingUrl || ''
     };
-    topic.content.liveClasses = [newLive, ...(topic.content.liveClasses || [])];
-    this.saveTopics();
-    return topic.content;
+    lecture.content.liveClasses = [newLive, ...(lecture.content.liveClasses || [])];
+    this.saveLectures();
+    return lecture.content;
   }
 
-  updateTopicLiveClass(topicId, liveId, liveData) {
-    const topic = this.getTopicById(topicId);
-    if (!topic || !topic.content) return null;
-    topic.content.liveClasses = (topic.content.liveClasses || []).map(item => 
+  updateLectureLiveClass(lectureId, liveId, liveData) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture || !lecture.content) return null;
+    lecture.content.liveClasses = (lecture.content.liveClasses || []).map(item =>
       item.id === liveId ? { ...item, ...liveData } : item
     );
-    this.saveTopics();
-    return topic.content;
+    this.saveLectures();
+    return lecture.content;
   }
 
-  deleteTopicLiveClass(topicId, liveId) {
-    const topic = this.getTopicById(topicId);
-    if (!topic || !topic.content) return null;
-    topic.content.liveClasses = (topic.content.liveClasses || []).filter(item => item.id !== liveId);
-    this.saveTopics();
-    return topic.content;
+  deleteLectureLiveClass(lectureId, liveId) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture || !lecture.content) return null;
+    lecture.content.liveClasses = (lecture.content.liveClasses || []).filter(item => item.id !== liveId);
+    this.saveLectures();
+    return lecture.content;
+  }
+
+  // Lecture "Topics" — lightweight titled sub-sections within a Lecture (NOT full content units)
+  addLectureTopic(lectureId, topicData) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture) return null;
+    if (!lecture.content) lecture.content = { pdfList: [], images: [], video: null, flashcards: [], liveClasses: [], topics: [] };
+    if (!lecture.content.topics) lecture.content.topics = [];
+    const newTopic = {
+      id: `lt-${Date.now()}`,
+      title: topicData.title || 'Untitled Topic',
+      summary: topicData.summary || '',
+      order: Number(topicData.order) || lecture.content.topics.length + 1
+    };
+    lecture.content.topics = [...lecture.content.topics, newTopic];
+    this.saveLectures();
+    return lecture.content;
+  }
+
+  updateLectureTopic(lectureId, topicId, topicData) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture || !lecture.content) return null;
+    lecture.content.topics = (lecture.content.topics || []).map(t =>
+      t.id === topicId ? { ...t, ...topicData } : t
+    );
+    this.saveLectures();
+    return lecture.content;
+  }
+
+  deleteLectureTopic(lectureId, topicId) {
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture || !lecture.content) return null;
+    lecture.content.topics = (lecture.content.topics || []).filter(t => t.id !== topicId);
+    this.saveLectures();
+    return lecture.content;
   }
 
   // ---------------------------------------------------------------------------
@@ -1777,20 +1930,36 @@ class CurriculumService {
 
   getScheduleSlot(examId, weekNumber, dayNumber) {
     return this.schedule.find(
-      s => s.examId === examId && 
-           Number(s.weekNumber) === Number(weekNumber) && 
+      s => s.examId === examId &&
+           Number(s.weekNumber) === Number(weekNumber) &&
            Number(s.dayNumber) === Number(dayNumber)
     ) || null;
   }
 
   saveScheduleSlot(slotData) {
-    const existingIndex = this.schedule.findIndex(
-      s => (slotData.id && s.id === slotData.id) ||
-           (s.examId === slotData.examId && Number(s.dayNumber) === Number(slotData.dayNumber) && s.subjectId === slotData.subjectId)
-    );
+    // Key uniquely by id (edit) or by examId + dayNumber + subjectId + lectureTimeSlot
+    // This allows multiple distinct time slots per day per subject
+    const existingIndex = this.schedule.findIndex(s => {
+      if (slotData.id && s.id === slotData.id) return true;
+      if (!slotData.id) {
+        const sameExamDaySub =
+          s.examId === slotData.examId &&
+          Number(s.dayNumber) === Number(slotData.dayNumber) &&
+          s.subjectId === slotData.subjectId;
+        if (!sameExamDaySub) return false;
+        // Allow same subject on same day if time slot is different
+        if (slotData.lectureTimeSlot && s.lectureTimeSlot) {
+          return s.lectureTimeSlot === slotData.lectureTimeSlot;
+        }
+        return true;
+      }
+      return false;
+    });
 
     const subject = this.getSubjectById(slotData.subjectId);
-    const chapter = this.getChapterById(slotData.chapterId);
+    const module = this.getModuleById(slotData.moduleId);
+
+    const resolvedTimeSlot = slotData.lectureTimeSlot || subject?.defaultTimeSlot || '09:00 AM - 10:30 AM IST';
 
     const payload = {
       id: slotData.id || `sched-${slotData.examId}-d${slotData.dayNumber}-${slotData.subjectId || 'slot'}-${Date.now()}`,
@@ -1803,14 +1972,15 @@ class CurriculumService {
       subjectName: subject?.name || slotData.subjectName || 'Medical Subject',
       subjectCode: subject?.code || '',
       subjectColor: subject?.color || 'rose',
-      chapterId: slotData.chapterId || null,
-      chapterTitle: chapter?.title || slotData.chapterTitle || 'Clinical Chapter',
-      topicIds: slotData.topicIds || [],
+      moduleId: slotData.moduleId || null,
+      moduleTitle: module?.title || slotData.moduleTitle || 'Clinical Module',
+      lectureIds: slotData.lectureIds || [],
       scheduledDate: slotData.scheduledDate || new Date().toISOString().split('T')[0],
       status: slotData.status || 'Active',
       estimatedTime: slotData.estimatedTime || '1.5 hours',
-      lectureTimeSlot: slotData.lectureTimeSlot || subject?.defaultTimeSlot || '09:00 AM - 10:30 AM IST',
+      lectureTimeSlot: resolvedTimeSlot,
       facultyName: slotData.facultyName || subject?.assignedFacultyName || 'Specialist Lead',
+      facultyEmail: slotData.facultyEmail || subject?.facultyEmail || '',
       hasLive: Boolean(slotData.hasLive),
       hasTest: Boolean(slotData.hasTest),
       notes: slotData.notes || ''
@@ -1824,6 +1994,31 @@ class CurriculumService {
 
     this.saveSchedule();
     return payload;
+  }
+
+  /**
+   * Get all schedule slots for a specific faculty member (across exams or for one exam)
+   */
+  getFacultySchedule(facultyEmail, examId = null) {
+    if (!facultyEmail) return [];
+    const email = facultyEmail.toLowerCase();
+    // Build a set of subjectIds this faculty teaches
+    const facultySubjectIds = new Set(
+      this.subjects
+        .filter(s => s.facultyEmail?.toLowerCase() === email && (!examId || s.examId === examId))
+        .map(s => s.id)
+    );
+    return this.schedule.filter(s => {
+      if (examId && s.examId !== examId) return false;
+      return (
+        s.facultyEmail?.toLowerCase() === email ||
+        facultySubjectIds.has(s.subjectId)
+      );
+    }).sort((a, b) => {
+      if (a.weekNumber !== b.weekNumber) return a.weekNumber - b.weekNumber;
+      if (a.dayNumber !== b.dayNumber) return a.dayNumber - b.dayNumber;
+      return 0;
+    });
   }
 
   getScheduleBySubject(examId = 'neet-pg', subjectId = 'all') {
@@ -1848,38 +2043,38 @@ class CurriculumService {
     return this.schedule;
   }
 
-  linkTopicToDay(examId, weekNumber, dayNumber, topicId) {
+  linkLectureToDay(examId, weekNumber, dayNumber, lectureId) {
     let slot = this.getScheduleSlot(examId, weekNumber, dayNumber);
-    const topic = this.getTopicById(topicId);
-    if (!topic) return null;
+    const lecture = this.getLectureById(lectureId);
+    if (!lecture) return null;
 
     if (!slot) {
       slot = this.saveScheduleSlot({
         examId,
         weekNumber,
         dayNumber,
-        dayTitle: `Day ${dayNumber} — ${topic.title}`,
-        subjectId: topic.subjectId,
-        chapterId: topic.chapterId,
-        topicIds: [topicId],
+        dayTitle: `Day ${dayNumber} — ${lecture.title}`,
+        subjectId: lecture.subjectId,
+        moduleId: lecture.moduleId,
+        lectureIds: [lectureId],
         status: 'Active'
       });
     } else {
-      const currentIds = slot.topicIds || [];
-      if (!currentIds.includes(topicId)) {
-        slot.topicIds = [...currentIds, topicId];
+      const currentIds = slot.lectureIds || [];
+      if (!currentIds.includes(lectureId)) {
+        slot.lectureIds = [...currentIds, lectureId];
       }
-      if (!slot.subjectId) slot.subjectId = topic.subjectId;
-      if (!slot.chapterId) slot.chapterId = topic.chapterId;
+      if (!slot.subjectId) slot.subjectId = lecture.subjectId;
+      if (!slot.moduleId) slot.moduleId = lecture.moduleId;
       this.saveSchedule();
     }
     return slot;
   }
 
-  unlinkTopicFromDay(examId, dayNumber, topicId) {
+  unlinkLectureFromDay(examId, dayNumber, lectureId) {
     const slot = this.schedule.find(s => s.examId === examId && Number(s.dayNumber) === Number(dayNumber));
     if (!slot) return null;
-    slot.topicIds = (slot.topicIds || []).filter(id => id !== topicId);
+    slot.lectureIds = (slot.lectureIds || []).filter(id => id !== lectureId);
     this.saveSchedule();
     return slot;
   }
@@ -1902,41 +2097,41 @@ class CurriculumService {
 
     const fallbackMock = dayContentStore[String(dayId)] || dayContentStore['1'] || {};
 
-    // If slot has linked topics with content, aggregate them
-    if (slot && slot.topicIds && slot.topicIds.length > 0) {
-      const linkedTopics = slot.topicIds.map(tid => this.getTopicById(tid)).filter(Boolean);
-      const primaryTopic = linkedTopics[0];
-      
-      if (primaryTopic) {
-        const subject = this.getSubjectById(slot.subjectId || primaryTopic.subjectId);
-        const chapter = this.getChapterById(slot.chapterId || primaryTopic.chapterId);
+    // If slot has linked lectures with content, aggregate them
+    if (slot && slot.lectureIds && slot.lectureIds.length > 0) {
+      const linkedLectures = slot.lectureIds.map(lid => this.getLectureById(lid)).filter(Boolean);
+      const primaryLecture = linkedLectures[0];
 
-        // Aggregate assets across all linked topics
+      if (primaryLecture) {
+        const subject = this.getSubjectById(slot.subjectId || primaryLecture.subjectId);
+        const module = this.getModuleById(slot.moduleId || primaryLecture.moduleId);
+
+        // Aggregate assets across all linked lectures
         const aggregatedPdfs = [];
         const aggregatedImages = [];
         let primaryVideo = null;
         const aggregatedCards = [];
 
-        linkedTopics.forEach(t => {
-          if (t.content) {
-            if (t.content.pdfList && t.content.pdfList.length > 0) {
-              aggregatedPdfs.push(...t.content.pdfList);
-            } else if (t.content.pdf) {
-              aggregatedPdfs.push(t.content.pdf);
+        linkedLectures.forEach(l => {
+          if (l.content) {
+            if (l.content.pdfList && l.content.pdfList.length > 0) {
+              aggregatedPdfs.push(...l.content.pdfList);
+            } else if (l.content.pdf) {
+              aggregatedPdfs.push(l.content.pdf);
             }
-            if (t.content.images && t.content.images.length > 0) {
-              aggregatedImages.push(...t.content.images);
+            if (l.content.images && l.content.images.length > 0) {
+              aggregatedImages.push(...l.content.images);
             }
-            if (!primaryVideo && t.content.video) {
-              primaryVideo = t.content.video;
+            if (!primaryVideo && l.content.video) {
+              primaryVideo = l.content.video;
             }
-            if (t.content.flashcards && t.content.flashcards.length > 0) {
-              aggregatedCards.push(...t.content.flashcards);
+            if (l.content.flashcards && l.content.flashcards.length > 0) {
+              aggregatedCards.push(...l.content.flashcards);
             }
           }
         });
 
-        // Fallbacks if topic has empty asset buckets so preview is never blank
+        // Fallbacks if lecture has empty asset buckets so preview is never blank
         if (aggregatedPdfs.length === 0 && fallbackMock.pdf) {
           aggregatedPdfs.push(fallbackMock.pdf);
         }
@@ -1964,14 +2159,14 @@ class CurriculumService {
         return {
           dayNumber: Number(dayId),
           weekNumber: slot.weekNumber || 1,
-          title: slot.dayTitle || primaryTopic.title,
-          estimatedTime: slot.estimatedTime || primaryTopic.duration || '1.5 hours',
+          title: slot.dayTitle || primaryLecture.title,
+          estimatedTime: slot.estimatedTime || primaryLecture.duration || '1.5 hours',
           subject: subject?.name || slot.subjectName || 'Clinical Medicine',
           subjectName: subject?.name || slot.subjectName || 'Clinical Medicine',
-          unit: chapter?.title || slot.chapterTitle || 'Clinical Chapter',
-          chapterTitle: chapter?.title || slot.chapterTitle || 'Clinical Chapter',
-          topicTitle: primaryTopic.title,
-          topics: linkedTopics,
+          unit: module?.title || slot.moduleTitle || 'Clinical Module',
+          moduleTitle: module?.title || slot.moduleTitle || 'Clinical Module',
+          lectureTitle: primaryLecture.title,
+          lectures: linkedLectures,
           activeTabs: activeTabs.length > 0 ? activeTabs : ['notes', 'images', 'video', 'flashcards', 'live'],
           pdf: primaryPdf,
           notesPdf: primaryPdf,
@@ -1985,7 +2180,7 @@ class CurriculumService {
           hasTest: Boolean(slot.hasTest),
           live: {
             hasSession: Boolean(slot.hasLive),
-            title: `Live Clinical Grand Rounds: ${primaryTopic.title}`,
+            title: `Live Clinical Grand Rounds: ${primaryLecture.title}`,
             faculty: slot.facultyName || subject?.assignedFacultyName || 'Dr. Siddharth V. (MD Cardiology)',
             duration: '60 mins',
             time: slot.lectureTimeSlot ? slot.lectureTimeSlot.split('-')[0].trim() : '09:00 AM IST'
@@ -1994,10 +2189,10 @@ class CurriculumService {
       }
     }
 
-    // If slot exists without topicIds (e.g. Grand Mock Test day 7)
+    // If slot exists without lectureIds (e.g. Grand Mock Test day 7)
     if (slot) {
       const subject = this.getSubjectById(slot.subjectId);
-      const chapter = this.getChapterById(slot.chapterId);
+      const module = this.getModuleById(slot.moduleId);
       const primaryPdf = fallbackMock.pdf || null;
       const pdfs = fallbackMock.pdfList || (primaryPdf ? [primaryPdf] : []);
       const imgs = fallbackMock.images || [];
@@ -2019,10 +2214,10 @@ class CurriculumService {
         estimatedTime: slot.estimatedTime || '1.0 hour',
         subject: subject?.name || slot.subjectName || 'Clinical Medicine',
         subjectName: subject?.name || slot.subjectName || 'Clinical Medicine',
-        unit: chapter?.title || slot.chapterTitle || 'Review & Assessment',
-        chapterTitle: chapter?.title || slot.chapterTitle || 'Review & Assessment',
-        topicTitle: slot.dayTitle,
-        topics: [],
+        unit: module?.title || slot.moduleTitle || 'Review & Assessment',
+        moduleTitle: module?.title || slot.moduleTitle || 'Review & Assessment',
+        lectureTitle: slot.dayTitle,
+        lectures: [],
         activeTabs: activeTabs.length > 0 ? activeTabs : ['notes', 'images', 'video', 'flashcards'],
         pdf: primaryPdf,
         notesPdf: primaryPdf,
@@ -2051,8 +2246,8 @@ class CurriculumService {
         ...d,
         subject: d.subject || d.subjectName || 'Cardiology & Hemodynamics',
         subjectName: d.subjectName || d.subject || 'Cardiology & Hemodynamics',
-        unit: d.unit || d.chapterTitle || 'Valvular Heart Diseases',
-        chapterTitle: d.chapterTitle || d.unit || 'Valvular Heart Diseases',
+        unit: d.unit || d.moduleTitle || d.chapterTitle || 'Valvular Heart Diseases',
+        moduleTitle: d.moduleTitle || d.chapterTitle || d.unit || 'Valvular Heart Diseases',
         notesPdf: d.pdf,
         galleryImages: d.images,
         videoData: d.video
@@ -2068,7 +2263,7 @@ class CurriculumService {
       subject: 'Cardiology & Hemodynamics',
       subjectName: 'Cardiology & Hemodynamics',
       unit: 'Valvular Heart Diseases',
-      chapterTitle: 'Valvular Heart Diseases',
+      moduleTitle: 'Valvular Heart Diseases',
       activeTabs: ['notes', 'images', 'video', 'flashcards', 'live'],
       pdf: fallbackMock.pdf || null,
       notesPdf: fallbackMock.pdf || null,
@@ -2096,8 +2291,8 @@ class CurriculumService {
   subscribeCurriculum(callback) {
     const handler = (e) => callback(e.detail || {
       subjects: this.subjects,
-      chapters: this.chapters,
-      topics: this.topics
+      modules: this.modules,
+      lectures: this.lectures
     });
     window.addEventListener('medprep-curriculum-updated', handler);
     return () => window.removeEventListener('medprep-curriculum-updated', handler);

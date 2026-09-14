@@ -60,8 +60,8 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
     icon: Home
   });
 
-  // Check for Exam -> Subject -> Chapter -> Topic -> Content hierarchy
-  const { examId, subjectId, chapterId, topicId, dayId, testId } = params;
+  // Check for Exam -> Subject -> Module -> Lecture -> Content hierarchy
+  const { examId, subjectId, moduleId, lectureId, dayId, testId } = params;
 
   if (segments.includes('exams') || examId) {
     crumbs.push({
@@ -83,25 +83,25 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
           const subject = curriculumService.getSubjectById(subjectId);
           crumbs.push({
             label: subject ? subject.name : 'Subject',
-            path: `/${rootSegment}/exams/${examId}/subjects/${subjectId}/chapters`,
+            path: `/${rootSegment}/exams/${examId}/subjects/${subjectId}/modules`,
             icon: Layers
           });
 
-          if (segments.includes('chapters') || chapterId) {
-            if (chapterId) {
-              const chapter = curriculumService.getChapterById(chapterId);
+          if (segments.includes('modules') || moduleId) {
+            if (moduleId) {
+              const module = curriculumService.getModuleById(moduleId);
               crumbs.push({
-                label: chapter ? chapter.title : 'Chapter',
-                path: `/${rootSegment}/exams/${examId}/subjects/${subjectId}/chapters/${chapterId}/topics`,
+                label: module ? module.title : 'Module',
+                path: `/${rootSegment}/exams/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures`,
                 icon: FolderTree
               });
 
-              if (segments.includes('topics') || topicId) {
-                if (topicId) {
-                  const topic = curriculumService.getTopicById(topicId);
+              if (segments.includes('lectures') || lectureId) {
+                if (lectureId) {
+                  const lecture = curriculumService.getLectureById(lectureId);
                   crumbs.push({
-                    label: topic ? topic.title : 'Topic',
-                    path: `/${rootSegment}/exams/${examId}/subjects/${subjectId}/chapters/${chapterId}/topics/${topicId}/content`,
+                    label: lecture ? lecture.title : 'Lecture',
+                    path: `/${rootSegment}/exams/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures/${lectureId}/content`,
                     icon: FileText
                   });
 
@@ -137,20 +137,20 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
         const subject = curriculumService.getSubjectById(subjectId);
         crumbs.push({
           label: subject?.name || 'Subject',
-          path: `/${rootSegment}/courses/${examId}/subjects/${subjectId}/chapters`
+          path: `/${rootSegment}/courses/${examId}/subjects/${subjectId}/modules`
         });
 
-        if (chapterId) {
-          const chapter = curriculumService.getChapterById(chapterId);
+        if (moduleId) {
+          const module = curriculumService.getModuleById(moduleId);
           crumbs.push({
-            label: chapter?.title || 'Chapter',
-            path: `/${rootSegment}/courses/${examId}/subjects/${subjectId}/chapters/${chapterId}/topics`
+            label: module?.title || 'Module',
+            path: `/${rootSegment}/courses/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures`
           });
 
-          if (topicId) {
-            const topic = curriculumService.getTopicById(topicId);
+          if (lectureId) {
+            const lecture = curriculumService.getLectureById(lectureId);
             crumbs.push({
-              label: topic?.title || 'Topic Study Room',
+              label: lecture?.title || 'Lecture Study Room',
               path: null
             });
           }
@@ -168,25 +168,25 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
       const subject = curriculumService.getSubjectById(subjectId);
       crumbs.push({
         label: subject ? subject.name : 'Subject',
-        path: `/${rootSegment}/subjects/${subjectId}/chapters`,
+        path: `/${rootSegment}/subjects/${subjectId}/modules`,
         icon: Layers
       });
 
-      if (segments.includes('chapters') || chapterId) {
-        if (chapterId) {
-          const chapter = curriculumService.getChapterById(chapterId);
+      if (segments.includes('modules') || moduleId) {
+        if (moduleId) {
+          const module = curriculumService.getModuleById(moduleId);
           crumbs.push({
-            label: chapter ? chapter.title : 'Chapter',
-            path: `/${rootSegment}/subjects/${subjectId}/chapters/${chapterId}/topics`,
+            label: module ? module.title : 'Module',
+            path: `/${rootSegment}/subjects/${subjectId}/modules/${moduleId}/lectures`,
             icon: FolderTree
           });
 
-          if (segments.includes('topics') || topicId) {
-            if (topicId) {
-              const topic = curriculumService.getTopicById(topicId);
+          if (segments.includes('lectures') || lectureId) {
+            if (lectureId) {
+              const lecture = curriculumService.getLectureById(lectureId);
               crumbs.push({
-                label: topic ? topic.title : 'Topic',
-                path: `/${rootSegment}/subjects/${subjectId}/chapters/${chapterId}/topics/${topicId}/content`,
+                label: lecture ? lecture.title : 'Lecture',
+                path: `/${rootSegment}/subjects/${subjectId}/modules/${moduleId}/lectures/${lectureId}/content`,
                 icon: FileText
               });
 

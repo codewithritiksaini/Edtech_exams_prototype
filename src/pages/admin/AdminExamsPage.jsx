@@ -362,7 +362,7 @@ export default function AdminExamsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredExams.map((exam) => {
             const subjectsCount = curriculumService.getSubjects(exam.id).length;
-            const chaptersCount = curriculumService.getChapters(null, exam.id).length;
+            const modulesCount = curriculumService.getModules(null, exam.id).length;
             const difficultyCls = getDifficultyBadge(exam.difficulty);
 
             return (
@@ -445,15 +445,15 @@ export default function AdminExamsPage() {
                     </div>
                   )}
 
-                  {/* Metrics Badges: Subjects & Chapters */}
+                  {/* Metrics Badges: Subjects & Modules */}
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
                     <div className="bg-slate-50 p-2 rounded-xl">
                       <span className="text-[10px] text-slate-400 font-bold block uppercase">Subjects</span>
                       <span className="text-xs font-extrabold text-slate-800">{subjectsCount} Modules</span>
                     </div>
                     <div className="bg-slate-50 p-2 rounded-xl">
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Chapters</span>
-                      <span className="text-xs font-extrabold text-slate-800">{chaptersCount} Units</span>
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Modules</span>
+                      <span className="text-xs font-extrabold text-slate-800">{modulesCount} Units</span>
                     </div>
                   </div>
                 </div>

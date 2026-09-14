@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, 
   Plus, 
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { authService, USER_ROLES } from '../../services/authService';
 import { catalogService } from '../../services/catalogService';
+import { curriculumService } from '../../services/curriculumService';
 import { testService, initialCohortTestResults, sampleCbtQuestionBank } from '../../data/mockData';
 
 const samplePresetQuestions = [
@@ -89,6 +90,10 @@ export default function ManageTestsTab() {
   // Form State
   // ---------------------------------------------------------------------------
   const [formExam, setFormExam] = useState(() => availableExams[0]?.id || 'neet-pg');
+  // Optional scoping: leave any of these as 'all' to keep the test exam-wide (current behavior)
+  const [formSubjectId, setFormSubjectId] = useState('all');
+  const [formModuleId, setFormModuleId] = useState('all');
+  const [formLectureId, setFormLectureId] = useState('all');
   const [formTestName, setFormTestName] = useState('');
   const [formBatch, setFormBatch] = useState('All Enrolled Students');
   const [formDate, setFormDate] = useState('2026-09-12');
@@ -141,6 +146,35 @@ export default function ManageTestsTab() {
     });
     return unsubscribe;
   }, []);
+
+  // Cascading Subject -> Module -> Lecture scoping options for the current exam
+  const scopeSubjects = useMemo(() => curriculumService.getSubjects(formExam), [formExam]);
+  const scopeModules = useMemo(
+    () => (formSubjectId !== 'all' ? curriculumService.getModules(formSubjectId, formExam) : []),
+    [formSubjectId, formExam]
+  );
+  const scopeLectures = useMemo(
+    () => (formModuleId !== 'all' ? curriculumService.getLectures(formModuleId, formSubjectId, formExam) : []),
+    [formModuleId, formSubjectId, formExam]
+  );
+
+  const handleFormExamChange = (newExamId) => {
+    setFormExam(newExamId);
+    setFormSubjectId('all');
+    setFormModuleId('all');
+    setFormLectureId('all');
+  };
+
+  const handleFormSubjectChange = (newSubjectId) => {
+    setFormSubjectId(newSubjectId);
+    setFormModuleId('all');
+    setFormLectureId('all');
+  };
+
+  const handleFormModuleChange = (newModuleId) => {
+    setFormModuleId(newModuleId);
+    setFormLectureId('all');
+  };
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -208,6 +242,9 @@ export default function ManageTestsTab() {
       name: formTestName.trim(),
       courseId: formExam,
       course: selectedExamObj?.name || 'NEET PG & NExT 2026',
+      subjectId: formSubjectId !== 'all' ? formSubjectId : null,
+      moduleId: formModuleId !== 'all' ? formModuleId : null,
+      lectureId: formLectureId !== 'all' ? formLectureId : null,
       batch: formBatch,
       dateTime: `${formDate} @ ${formTime} IST`,
       duration: formDuration,
@@ -219,7 +256,17 @@ export default function ManageTestsTab() {
     setFormTestName('');
     setFormQuestionsList([]);
     setShowQuestionComposer(false);
-    showToast(`✅ CBT Assessment "${created.name}" published with ${created.questionsCount} questions! Visible on Student Dashboards.`);
+    setFormSubjectId('all');
+    setFormModuleId('all');
+    setFormLectureId('all');
+    const scopeNote = formLectureId !== 'all'
+      ? ` (scoped to lecture)`
+      : formModuleId !== 'all'
+        ? ` (scoped to module)`
+        : formSubjectId !== 'all'
+          ? ` (scoped to subject)`
+          : '';
+    showToast(`✅ CBT Assessment "${created.name}" published with ${created.questionsCount} questions${scopeNote}! Visible on Student Dashboards.`);
   };
 
   // Cancel Test Handler
@@ -395,7 +442,7 @@ export default function ManageTestsTab() {
                 </label>
                 <select
                   value={formExam}
-                  onChange={(e) => setFormExam(e.target.value)}
+                  onChange={(e) => handleFormExamChange(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 >
                   {availableExams.map((exam) => (
@@ -416,6 +463,62 @@ export default function ManageTestsTab() {
                   onChange={(e) => setFormTestName(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 bg-white"
                 />
+              </div>
+            </div>
+
+            {/* Optional Curriculum Scoping: Subject -> Module -> Lecture */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 flex items-center justify-between">
+                  <span>Scope to Subject</span>
+                  <span className="text-[10px] text-slate-400 font-semibold">Optional</span>
+                </label>
+                <select
+                  value={formSubjectId}
+                  onChange={(e) => handleFormSubjectChange(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option value="all">🌐 Entire Exam (All Subjects)</option>
+                  {scopeSubjects.map((sub) => (
+                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 flex items-center justify-between">
+                  <span>Scope to Module</span>
+                  <span className="text-[10px] text-slate-400 font-semibold">Optional</span>
+                </label>
+                <select
+                  value={formModuleId}
+                  onChange={(e) => handleFormModuleChange(e.target.value)}
+                  disabled={formSubjectId === 'all'}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="all">📚 All Modules in Subject</option>
+                  {scopeModules.map((mod) => (
+                    <option key={mod.id} value={mod.id}>{mod.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 flex items-center justify-between">
+                  <span>Scope to Lecture</span>
+                  <span className="text-[10px] text-slate-400 font-semibold">Optional</span>
+                </label>
+                <select
+                  value={formLectureId}
+                  onChange={(e) => setFormLectureId(e.target.value)}
+                  disabled={formModuleId === 'all'}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="all">🎬 All Lectures in Module</option>
+                  {scopeLectures.map((lec) => (
+                    <option key={lec.id} value={lec.id}>{lec.title}</option>
+                  ))}
+                </select>
               </div>
             </div>
 

@@ -1,46 +1,47 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  Sparkles, 
-  FileText, 
-  Video, 
-  Image as ImageIcon, 
-  Brain, 
-  Radio, 
-  CheckCircle2, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  ArrowLeft, 
-  Eye, 
-  ExternalLink, 
-  Clock, 
-  Download, 
-  Play, 
-  X, 
-  Check, 
-  UploadCloud, 
-  AlertTriangle, 
-  Search, 
+import {
+  Sparkles,
+  FileText,
+  Video,
+  Image as ImageIcon,
+  Brain,
+  Radio,
+  CheckCircle2,
+  Plus,
+  Trash2,
+  Edit3,
+  ArrowLeft,
+  Eye,
+  ExternalLink,
+  Clock,
+  Download,
+  Play,
+  X,
+  Check,
+  UploadCloud,
+  AlertTriangle,
+  Search,
   Filter,
-  BookOpen, 
+  BookOpen,
   ZoomIn,
   ChevronDown,
   ChevronUp,
-  ChevronsUpDown
+  ChevronsUpDown,
+  ListTree
 } from 'lucide-react';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
 
 export default function AdminContentStudioPage() {
-  const { examId: routeExamId, subjectId, chapterId, topicId } = useParams();
+  const { examId: routeExamId, subjectId, moduleId, lectureId } = useParams();
   const navigate = useNavigate();
 
   const [subject, setSubject] = useState(() => curriculumService.getSubjectById(subjectId));
   const effectiveExamId = routeExamId || subject?.examId || 'neet-pg';
   const [exam, setExam] = useState(() => catalogService.getExamById(effectiveExamId) || { id: effectiveExamId, name: effectiveExamId.toUpperCase(), flag: '🩺' });
-  const [chapter, setChapter] = useState(() => curriculumService.getChapterById(chapterId));
-  const [topic, setTopic] = useState(() => curriculumService.getTopicById(topicId));
+  const [module, setModule] = useState(() => curriculumService.getModuleById(moduleId));
+  const [lecture, setLecture] = useState(() => curriculumService.getLectureById(lectureId));
 
   // Filters & State
   const [activeTypeFilter, setActiveTypeFilter] = useState('all');
@@ -57,8 +58,8 @@ export default function AdminContentStudioPage() {
   const [previewAsset, setPreviewAsset] = useState(null);
 
   // Form State for Add / Edit Modal / Drawer
-  const [selectedContentType, setSelectedContentType] = useState('pdf'); // 'pdf' | 'ppt' | 'image' | 'video' | 'flashcard' | 'live' | 'notes'
-  
+  const [selectedContentType, setSelectedContentType] = useState('pdf'); // 'pdf' | 'ppt' | 'image' | 'video' | 'flashcard' | 'live' | 'subtopic' | 'notes'
+
   // File Uploader state
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -103,7 +104,11 @@ export default function AdminContentStudioPage() {
   const [livePlatform, setLivePlatform] = useState('Zoom Live Interactive');
   const [liveJoinUrl, setLiveJoinUrl] = useState('https://zoom.us/j/9876543210');
 
-  // 6. Clinical Notes fields
+  // 6. Sub-Topic fields (lightweight titled sub-sections within this lecture)
+  const [subtopicTitle, setSubtopicTitle] = useState('');
+  const [subtopicSummary, setSubtopicSummary] = useState('');
+
+  // 7. Clinical Notes fields
   const [notesContent, setNotesContent] = useState('');
 
   // File Uploader logic
@@ -112,8 +117,8 @@ export default function AdminContentStudioPage() {
     setIsUploading(true);
     setUploadProgress(20);
 
-    const formattedSize = file.size > 1024 * 1024 
-      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
+    const formattedSize = file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
       : `${(file.size / 1024).toFixed(0)} KB`;
 
     setTimeout(() => {
@@ -177,12 +182,12 @@ export default function AdminContentStudioPage() {
       const exId = routeExamId || foundSub?.examId || 'neet-pg';
       const foundEx = catalogService.getExamById(exId);
       if (foundEx) setExam(foundEx);
-      setChapter(curriculumService.getChapterById(chapterId));
-      const foundTop = curriculumService.getTopicById(topicId);
-      setTopic(foundTop);
+      setModule(curriculumService.getModuleById(moduleId));
+      const foundLec = curriculumService.getLectureById(lectureId);
+      setLecture(foundLec);
     });
     return unsub;
-  }, [subjectId, chapterId, topicId, routeExamId]);
+  }, [subjectId, moduleId, lectureId, routeExamId]);
 
   useEffect(() => {
     const foundSub = curriculumService.getSubjectById(subjectId);
@@ -190,37 +195,37 @@ export default function AdminContentStudioPage() {
     const exId = routeExamId || foundSub?.examId || 'neet-pg';
     const foundEx = catalogService.getExamById(exId);
     if (foundEx) setExam(foundEx);
-    const foundChap = curriculumService.getChapterById(chapterId);
-    if (foundChap) setChapter(foundChap);
-    const foundTop = curriculumService.getTopicById(topicId);
-    if (foundTop) setTopic(foundTop);
-  }, [routeExamId, subjectId, chapterId, topicId]);
+    const foundModule = curriculumService.getModuleById(moduleId);
+    if (foundModule) setModule(foundModule);
+    const foundLec = curriculumService.getLectureById(lectureId);
+    if (foundLec) setLecture(foundLec);
+  }, [routeExamId, subjectId, moduleId, lectureId]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  const persistTopicContent = (updatedContent) => {
-    if (!topic) return;
-    const updatedTopic = {
-      ...topic,
+  const persistLectureContent = (updatedContent) => {
+    if (!lecture) return;
+    const updatedLecture = {
+      ...lecture,
       content: {
-        ...topic.content,
+        ...lecture.content,
         ...updatedContent
       }
     };
-    curriculumService.saveTopic(updatedTopic);
-    setTopic(updatedTopic);
+    curriculumService.saveLecture(updatedLecture);
+    setLecture(updatedLecture);
   };
 
   // Convert all content assets into unified items
   const unifiedAssets = useMemo(() => {
-    if (!topic || !topic.content) return [];
+    if (!lecture || !lecture.content) return [];
     const list = [];
 
     // 1. PDF Guides
-    const pdfs = topic.content.pdfList || (topic.content.pdf ? [topic.content.pdf] : []);
+    const pdfs = lecture.content.pdfList || (lecture.content.pdf ? [lecture.content.pdf] : []);
     pdfs.forEach((p, idx) => {
       list.push({
         id: p.id || `pdf-${idx}`,
@@ -237,7 +242,7 @@ export default function AdminContentStudioPage() {
     });
 
     // 1.5 PPT Presentations
-    const ppts = topic.content.pptList || (topic.content.ppt ? [topic.content.ppt] : []);
+    const ppts = lecture.content.pptList || (lecture.content.ppt ? [lecture.content.ppt] : []);
     ppts.forEach((p, idx) => {
       list.push({
         id: p.id || `ppt-${idx}`,
@@ -254,7 +259,7 @@ export default function AdminContentStudioPage() {
     });
 
     // 2. Clinical Diagrams & Images
-    const imgs = topic.content.images || [];
+    const imgs = lecture.content.images || [];
     imgs.forEach((img, idx) => {
       list.push({
         id: img.id || `img-${idx}`,
@@ -272,13 +277,13 @@ export default function AdminContentStudioPage() {
     });
 
     // 3. Video Lecture
-    if (topic.content.video && (topic.content.video.title || topic.content.video.url)) {
-      const v = topic.content.video;
+    if (lecture.content.video && (lecture.content.video.title || lecture.content.video.url)) {
+      const v = lecture.content.video;
       list.push({
         id: v.id || 'video-primary',
         type: 'video',
         typeLabel: 'Video Lecture',
-        title: v.title || `${topic.title} Video Masterclass`,
+        title: v.title || `${lecture.title} Video Masterclass`,
         subtitle: v.url || 'Lecture Video Stream',
         specs: `${v.duration || '35 mins'} • ${v.chapters?.length || 0} Chapters`,
         author: v.instructor || 'Dr. Rajiv Mehta',
@@ -290,7 +295,7 @@ export default function AdminContentStudioPage() {
     }
 
     // 4. Flashcards (Active Recall)
-    const cards = topic.content.flashcards || [];
+    const cards = lecture.content.flashcards || [];
     cards.forEach((fc, idx) => {
       list.push({
         id: fc.id || `card-${idx}`,
@@ -307,7 +312,7 @@ export default function AdminContentStudioPage() {
     });
 
     // 5. Live Classes
-    const lives = topic.content.liveClasses || [];
+    const lives = lecture.content.liveClasses || [];
     lives.forEach((live, idx) => {
       list.push({
         id: live.id || `live-${idx}`,
@@ -323,24 +328,41 @@ export default function AdminContentStudioPage() {
       });
     });
 
-    // 6. Clinical Pearls & Notes
-    if (topic.content.clinicalNotes && topic.content.clinicalNotes.trim()) {
+    // 6. Sub-Topics (lightweight titled sub-sections within this lecture)
+    const subtopics = lecture.content.topics || [];
+    subtopics.forEach((t, idx) => {
+      list.push({
+        id: t.id || `lt-${idx}`,
+        type: 'subtopic',
+        typeLabel: 'Topic',
+        title: t.title || `Topic #${idx + 1}`,
+        subtitle: t.summary || 'Lecture sub-section',
+        specs: `Order #${t.order || idx + 1}`,
+        author: 'Faculty Specialist',
+        status: 'Active',
+        updated: 'In Lecture Outline',
+        raw: t
+      });
+    });
+
+    // 7. Clinical Pearls & Notes
+    if (lecture.content.clinicalNotes && lecture.content.clinicalNotes.trim()) {
       list.push({
         id: 'clinical-notes-primary',
         type: 'notes',
         typeLabel: 'Clinical Pearls',
         title: 'High-Yield Clinical Pearls & Diagnostic Traps',
-        subtitle: topic.content.clinicalNotes.slice(0, 100) + (topic.content.clinicalNotes.length > 100 ? '...' : ''),
+        subtitle: lecture.content.clinicalNotes.slice(0, 100) + (lecture.content.clinicalNotes.length > 100 ? '...' : ''),
         specs: 'Clinical Guideline Pearls',
         author: 'Editorial Board',
         status: 'Published',
         updated: 'Synced with LMS',
-        raw: { text: topic.content.clinicalNotes }
+        raw: { text: lecture.content.clinicalNotes }
       });
     }
 
     return list;
-  }, [topic]);
+  }, [lecture]);
 
   // Toggle single row expand
   const toggleRowExpand = (id) => {
@@ -382,7 +404,7 @@ export default function AdminContentStudioPage() {
       return true;
     });
 
-    const c = { all: base.length, pdf: 0, ppt: 0, image: 0, video: 0, flashcard: 0, live: 0, notes: 0 };
+    const c = { all: base.length, pdf: 0, ppt: 0, image: 0, video: 0, flashcard: 0, live: 0, subtopic: 0, notes: 0 };
     base.forEach(a => {
       if (c[a.type] !== undefined) c[a.type]++;
     });
@@ -426,6 +448,7 @@ export default function AdminContentStudioPage() {
         video: 'Video Lectures',
         flashcard: 'Flashcards',
         live: 'Live Sessions',
+        subtopic: 'Topics',
         notes: 'Clinical Pearls'
       };
       return `Search within ${typeNames[activeTypeFilter] || 'selected type'}...`;
@@ -450,7 +473,7 @@ export default function AdminContentStudioPage() {
     setSelectedContentType(defaultType);
     setUploadedFile(null);
     setUploadProgress(0);
-    
+
     // Reset fields
     setPdfTitle('');
     setPdfFileName('Clinical_Study_Guide.pdf');
@@ -483,7 +506,10 @@ export default function AdminContentStudioPage() {
     setLivePlatform('Zoom Live Interactive');
     setLiveJoinUrl('https://zoom.us/j/9876543210');
 
-    setNotesContent(topic?.content?.clinicalNotes || '');
+    setSubtopicTitle('');
+    setSubtopicSummary('');
+
+    setNotesContent(lecture?.content?.clinicalNotes || '');
 
     setIsAddEditModalOpen(true);
   };
@@ -528,8 +554,11 @@ export default function AdminContentStudioPage() {
       setLiveDuration(asset.raw.duration || '75 mins');
       setLivePlatform(asset.raw.platform || 'Zoom');
       setLiveJoinUrl(asset.raw.joinUrl || '');
+    } else if (asset.type === 'subtopic') {
+      setSubtopicTitle(asset.raw.title || '');
+      setSubtopicSummary(asset.raw.summary || '');
     } else if (asset.type === 'notes') {
-      setNotesContent(topic?.content?.clinicalNotes || '');
+      setNotesContent(lecture?.content?.clinicalNotes || '');
     }
 
     setIsAddEditModalOpen(true);
@@ -541,7 +570,7 @@ export default function AdminContentStudioPage() {
 
     if (selectedContentType === 'pdf') {
       if (!pdfTitle.trim()) return;
-      const existing = topic.content?.pdfList || (topic.content?.pdf ? [topic.content.pdf] : []);
+      const existing = lecture.content?.pdfList || (lecture.content?.pdf ? [lecture.content.pdf] : []);
       if (editingAsset && editingAsset.type === 'pdf') {
         const updatedList = existing.map(p => {
           if (p.id === editingAsset.id) {
@@ -555,7 +584,7 @@ export default function AdminContentStudioPage() {
           }
           return p;
         });
-        persistTopicContent({ pdfList: updatedList });
+        persistLectureContent({ pdfList: updatedList });
         showToast(`PDF "${pdfTitle}" updated successfully!`);
       } else {
         const newPdf = {
@@ -567,14 +596,14 @@ export default function AdminContentStudioPage() {
           updated: 'Just now',
           author: pdfAuthor.trim() || 'Faculty Lead'
         };
-        persistTopicContent({ pdfList: [...existing, newPdf] });
-        showToast(`PDF "${pdfTitle}" uploaded and added to topic!`);
+        persistLectureContent({ pdfList: [...existing, newPdf] });
+        showToast(`PDF "${pdfTitle}" uploaded and added to lecture!`);
         // Expand the newly created asset
         setExpandedRowIds(prev => new Set([...prev, newPdf.id]));
       }
     } else if (selectedContentType === 'ppt') {
       if (!pptTitle.trim()) return;
-      const existing = topic.content?.pptList || (topic.content?.ppt ? [topic.content.ppt] : []);
+      const existing = lecture.content?.pptList || (lecture.content?.ppt ? [lecture.content.ppt] : []);
       if (editingAsset && editingAsset.type === 'ppt') {
         const updatedList = existing.map(p => {
           if (p.id === editingAsset.id) {
@@ -588,7 +617,7 @@ export default function AdminContentStudioPage() {
           }
           return p;
         });
-        persistTopicContent({ pptList: updatedList });
+        persistLectureContent({ pptList: updatedList });
         showToast(`Presentation "${pptTitle}" updated!`);
       } else {
         const newPpt = {
@@ -600,13 +629,13 @@ export default function AdminContentStudioPage() {
           updated: 'Just now',
           author: pptAuthor.trim() || 'Dr. Rajiv Mehta'
         };
-        persistTopicContent({ pptList: [...existing, newPpt] });
+        persistLectureContent({ pptList: [...existing, newPpt] });
         showToast(`Presentation "${pptTitle}" uploaded and added!`);
         setExpandedRowIds(prev => new Set([...prev, newPpt.id]));
       }
     } else if (selectedContentType === 'image') {
       if (!imageTitle.trim()) return;
-      const existing = topic.content?.images || [];
+      const existing = lecture.content?.images || [];
       if (editingAsset && editingAsset.type === 'image') {
         const updatedList = existing.map(img => {
           if (img.id === editingAsset.id) {
@@ -619,7 +648,7 @@ export default function AdminContentStudioPage() {
           }
           return img;
         });
-        persistTopicContent({ images: updatedList });
+        persistLectureContent({ images: updatedList });
         showToast(`Diagram "${imageTitle}" updated!`);
       } else {
         const newImg = {
@@ -628,7 +657,7 @@ export default function AdminContentStudioPage() {
           url: imageUrl.trim() || 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&auto=format&fit=crop&q=80',
           caption: imageCaption.trim() || 'Clinical finding and diagnostic pearl.'
         };
-        persistTopicContent({ images: [...existing, newImg] });
+        persistLectureContent({ images: [...existing, newImg] });
         showToast(`Clinical diagram "${imageTitle}" added!`);
         setExpandedRowIds(prev => new Set([...prev, newImg.id]));
       }
@@ -654,12 +683,12 @@ export default function AdminContentStudioPage() {
         instructor: videoInstructor.trim() || 'Dr. Rajiv Mehta',
         chapters: parsedChapters
       };
-      persistTopicContent({ video: videoData });
+      persistLectureContent({ video: videoData });
       showToast(`Video lecture "${videoTitle}" configured!`);
       setExpandedRowIds(prev => new Set([...prev, 'video-primary']));
     } else if (selectedContentType === 'flashcard') {
       if (!cardQuestion.trim() || !cardAnswer.trim()) return;
-      const existing = topic.content?.flashcards || [];
+      const existing = lecture.content?.flashcards || [];
       if (editingAsset && editingAsset.type === 'flashcard') {
         const updatedList = existing.map(fc => {
           if (fc.id === editingAsset.id) {
@@ -671,7 +700,7 @@ export default function AdminContentStudioPage() {
           }
           return fc;
         });
-        persistTopicContent({ flashcards: updatedList });
+        persistLectureContent({ flashcards: updatedList });
         showToast('Flashcard updated!');
       } else {
         const newCard = {
@@ -679,13 +708,13 @@ export default function AdminContentStudioPage() {
           question: cardQuestion.trim(),
           answer: cardAnswer.trim()
         };
-        persistTopicContent({ flashcards: [...existing, newCard] });
+        persistLectureContent({ flashcards: [...existing, newCard] });
         showToast('Flashcard added to active recall deck!');
         setExpandedRowIds(prev => new Set([...prev, newCard.id]));
       }
     } else if (selectedContentType === 'live') {
       if (!liveTitle.trim()) return;
-      const existing = topic.content?.liveClasses || [];
+      const existing = lecture.content?.liveClasses || [];
       if (editingAsset && editingAsset.type === 'live') {
         const updatedList = existing.map(lc => {
           if (lc.id === editingAsset.id) {
@@ -702,7 +731,7 @@ export default function AdminContentStudioPage() {
           }
           return lc;
         });
-        persistTopicContent({ liveClasses: updatedList });
+        persistLectureContent({ liveClasses: updatedList });
         showToast('Live session updated!');
       } else {
         const newSession = {
@@ -716,12 +745,39 @@ export default function AdminContentStudioPage() {
           joinUrl: liveJoinUrl.trim(),
           status: 'Scheduled'
         };
-        persistTopicContent({ liveClasses: [...existing, newSession] });
+        persistLectureContent({ liveClasses: [...existing, newSession] });
         showToast('Live masterclass scheduled!');
         setExpandedRowIds(prev => new Set([...prev, newSession.id]));
       }
+    } else if (selectedContentType === 'subtopic') {
+      if (!subtopicTitle.trim()) return;
+      const existing = lecture.content?.topics || [];
+      if (editingAsset && editingAsset.type === 'subtopic') {
+        const updatedList = existing.map(t => {
+          if (t.id === editingAsset.id) {
+            return {
+              ...t,
+              title: subtopicTitle.trim(),
+              summary: subtopicSummary.trim()
+            };
+          }
+          return t;
+        });
+        persistLectureContent({ topics: updatedList });
+        showToast(`Topic "${subtopicTitle}" updated!`);
+      } else {
+        const newSubtopic = {
+          id: `lt-${Date.now()}`,
+          title: subtopicTitle.trim(),
+          summary: subtopicSummary.trim(),
+          order: existing.length + 1
+        };
+        persistLectureContent({ topics: [...existing, newSubtopic] });
+        showToast(`Topic "${subtopicTitle}" added to this lecture!`);
+        setExpandedRowIds(prev => new Set([...prev, newSubtopic.id]));
+      }
     } else if (selectedContentType === 'notes') {
-      persistTopicContent({ clinicalNotes: notesContent.trim() });
+      persistLectureContent({ clinicalNotes: notesContent.trim() });
       showToast('Clinical pearls & guideline notes saved!');
       setExpandedRowIds(prev => new Set([...prev, 'clinical-notes-primary']));
     }
@@ -729,21 +785,21 @@ export default function AdminContentStudioPage() {
     setIsAddEditModalOpen(false);
   };
 
-  const backTopicsUrl = routeExamId
-    ? `/admin/exams/${effectiveExamId}/subjects/${subjectId}/chapters/${chapterId}/topics`
-    : `/admin/subjects/${subjectId}/chapters/${chapterId}/topics`;
+  const backLecturesUrl = routeExamId
+    ? `/admin/exams/${effectiveExamId}/subjects/${subjectId}/modules/${moduleId}/lectures`
+    : `/admin/subjects/${subjectId}/modules/${moduleId}/lectures`;
 
-  if (!topic) {
+  if (!lecture) {
     return (
       <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-4">
         <Sparkles className="w-12 h-12 text-slate-300 mx-auto" />
-        <h2 className="text-base font-bold text-slate-800">Topic Not Found</h2>
-        <p className="text-xs text-slate-500">The requested topic could not be located in the curriculum database.</p>
-        <Link 
-          to={backTopicsUrl}
+        <h2 className="text-base font-bold text-slate-800">Lecture Not Found</h2>
+        <p className="text-xs text-slate-500">The requested lecture could not be located in the curriculum database.</p>
+        <Link
+          to={backLecturesUrl}
           className="inline-flex px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold"
         >
-          Back to Topics
+          Back to Lectures
         </Link>
       </div>
     );
@@ -793,6 +849,13 @@ export default function AdminContentStudioPage() {
             <span>LIVE</span>
           </span>
         );
+      case 'subtopic':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-200/80 font-black text-xs uppercase tracking-wider shadow-2xs">
+            <ListTree className="w-3.5 h-3.5 text-teal-600" />
+            <span>TOPIC</span>
+          </span>
+        );
       case 'notes':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-black text-xs uppercase tracking-wider shadow-2xs">
@@ -823,12 +886,12 @@ export default function AdminContentStudioPage() {
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="space-y-3">
           <div>
-            <Link 
-              to={backTopicsUrl}
+            <Link
+              to={backLecturesUrl}
               className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider inline-flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Topics</span>
+              <span>Back to Lectures</span>
             </Link>
           </div>
 
@@ -838,10 +901,10 @@ export default function AdminContentStudioPage() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                {topic.title}
+                {lecture.title}
               </h1>
               <p className="text-xs text-slate-500 mt-1">
-                Track: <strong className="text-slate-700">{exam?.flag} {exam?.name}</strong> • Subject: <strong className="text-slate-700">{subject?.name}</strong> • Unit #{chapter?.chapterNumber || 1}: <strong className="text-slate-700">{chapter?.title}</strong>
+                Track: <strong className="text-slate-700">{exam?.flag} {exam?.name}</strong> • Subject: <strong className="text-slate-700">{subject?.name}</strong> • Unit #{module?.moduleNumber || 1}: <strong className="text-slate-700">{module?.title}</strong>
               </p>
             </div>
           </div>
@@ -905,6 +968,7 @@ export default function AdminContentStudioPage() {
                 <option value="video">Video Lectures ({relativeTypeCounts.video})</option>
                 <option value="flashcard">Flashcards ({relativeTypeCounts.flashcard})</option>
                 <option value="live">Live Sessions ({relativeTypeCounts.live})</option>
+                <option value="subtopic">Topics ({relativeTypeCounts.subtopic})</option>
                 <option value="notes">Clinical Pearls ({relativeTypeCounts.notes})</option>
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1002,8 +1066,8 @@ export default function AdminContentStudioPage() {
                         title={isExpanded ? "Collapse details" : "Expand details"}
                       >
                         <span className={`p-1 rounded-md transition-colors ${
-                          isExpanded 
-                            ? 'bg-indigo-100 text-indigo-700' 
+                          isExpanded
+                            ? 'bg-indigo-100 text-indigo-700'
                             : 'bg-slate-100 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600'
                         }`}>
                           {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -1022,8 +1086,8 @@ export default function AdminContentStudioPage() {
                             ID: {asset.id.toUpperCase().slice(0, 14)}
                           </span>
                         </div>
-                        <h3 
-                          onClick={() => toggleRowExpand(asset.id)} 
+                        <h3
+                          onClick={() => toggleRowExpand(asset.id)}
                           className="font-bold text-slate-900 text-xs sm:text-[13px] hover:text-indigo-600 transition-colors cursor-pointer leading-snug line-clamp-1"
                           title={asset.title}
                         >
@@ -1035,6 +1099,7 @@ export default function AdminContentStudioPage() {
                           {asset.type === 'video' && <Video className="w-3 h-3 text-purple-600 shrink-0" />}
                           {asset.type === 'flashcard' && <Brain className="w-3 h-3 text-amber-600 shrink-0" />}
                           {asset.type === 'live' && <Radio className="w-3 h-3 text-rose-600 shrink-0" />}
+                          {asset.type === 'subtopic' && <ListTree className="w-3 h-3 text-teal-600 shrink-0" />}
                           {asset.type === 'notes' && <Sparkles className="w-3 h-3 text-indigo-600 shrink-0" />}
                           <span className="truncate max-w-xs">{asset.subtitle || 'Clinical learning material'}</span>
                         </div>
@@ -1097,7 +1162,7 @@ export default function AdminContentStudioPage() {
                     <tr className="bg-slate-50/70 border-t border-b border-slate-200/90 animate-in fade-in">
                       <td colSpan={6} className="px-4 py-3">
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
-                          
+
                           {/* Card 1: Specifications & Metadata (5 cols) */}
                           <div className="lg:col-span-5 bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
                             <div>
@@ -1207,6 +1272,13 @@ export default function AdminContentStudioPage() {
                                   </>
                                 )}
 
+                                {asset.type === 'subtopic' && (
+                                  <div className="flex justify-between py-0.5 text-[11px]">
+                                    <span className="text-slate-500">Position:</span>
+                                    <span className="font-bold text-slate-800">Order #{asset.raw.order || 1} in Lecture Outline</span>
+                                  </div>
+                                )}
+
                                 {asset.type === 'notes' && (
                                   <div className="py-0.5 text-[11px]">
                                     <span className="text-slate-500">Category:</span>
@@ -1226,7 +1298,7 @@ export default function AdminContentStudioPage() {
                               <div className="pt-1.5">
                                 {asset.type === 'image' && asset.thumbnail && (
                                   <div className="flex items-center gap-2.5">
-                                    <div 
+                                    <div
                                       onClick={() => setPreviewAsset(asset)}
                                       className="w-16 h-14 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 relative cursor-pointer group shrink-0"
                                     >
@@ -1283,6 +1355,15 @@ export default function AdminContentStudioPage() {
                                     <span className="font-bold text-orange-900 block text-[10px]">Presentation Slide Deck:</span>
                                     <p className="text-slate-600 text-[10px] leading-relaxed line-clamp-2">
                                       Interactive clinical presentation slides optimized for high-yield visual review and faculty lectures.
+                                    </p>
+                                  </div>
+                                )}
+
+                                {asset.type === 'subtopic' && (
+                                  <div className="p-2 bg-teal-50/50 rounded-lg border border-teal-100 text-[11px] space-y-0.5">
+                                    <span className="font-bold text-teal-900 block text-[10px]">Lecture Sub-Section:</span>
+                                    <p className="text-slate-600 text-[10px] leading-relaxed line-clamp-2">
+                                      {asset.raw.summary || 'No summary provided for this topic yet.'}
                                     </p>
                                   </div>
                                 )}
@@ -1355,7 +1436,7 @@ export default function AdminContentStudioPage() {
                       </div>
                     ) : (
                       <>
-                        <p className="text-[11px] text-slate-400">Upload notes, images, videos or flashcards for this topic.</p>
+                        <p className="text-[11px] text-slate-400">Upload notes, images, videos or flashcards for this lecture.</p>
                         <button
                           onClick={() => handleOpenAddModal('pdf')}
                           className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
@@ -1376,15 +1457,15 @@ export default function AdminContentStudioPage() {
       {isAddEditModalOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
           {/* Backdrop Overlay */}
-          <div 
+          <div
             onClick={() => setIsAddEditModalOpen(false)}
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer" 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity cursor-pointer"
           />
 
           {/* Slide-over Drawer Panel */}
           <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-12 pointer-events-none">
             <div className="w-screen max-w-lg sm:max-w-xl bg-white shadow-2xl flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
-              
+
               {/* Drawer Header */}
               <div className="px-6 py-4.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80 shrink-0">
                 <div className="space-y-0.5">
@@ -1395,10 +1476,10 @@ export default function AdminContentStudioPage() {
                     </h2>
                   </div>
                   <p className="text-xs text-slate-500 truncate max-w-xs sm:max-w-sm">
-                    Topic: <strong className="text-slate-800">{topic.title}</strong>
+                    Lecture: <strong className="text-slate-800">{lecture.title}</strong>
                   </p>
                 </div>
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsAddEditModalOpen(false)}
                   className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
@@ -1410,7 +1491,7 @@ export default function AdminContentStudioPage() {
 
               {/* Drawer Scrollable Body Form */}
               <form onSubmit={handleSaveAsset} id="asset-drawer-form" className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
-                
+
                 {/* 1. Content Format / Type Selection Dropdown */}
                 <div className="space-y-1.5">
                   <label className="font-bold text-slate-700 block text-xs">
@@ -1432,6 +1513,7 @@ export default function AdminContentStudioPage() {
                       <option value="video">🎥 Video Lecture Masterclass (.mp4, stream)</option>
                       <option value="flashcard">🧠 Flashcard Q&A (Spaced Repetition)</option>
                       <option value="live">📡 Live Masterclass (Zoom / Interactive)</option>
+                      <option value="subtopic">📝 Topic (Lecture Sub-Section)</option>
                       <option value="notes">✨ Clinical Pearls & Guidelines</option>
                     </select>
                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
@@ -1556,7 +1638,7 @@ export default function AdminContentStudioPage() {
                 )}
 
                 {/* 3. DYNAMIC FIELDS FOR SELECTED CONTENT TYPE */}
-                
+
                 {/* Form: PDF */}
                 {selectedContentType === 'pdf' && (
                   <div className="space-y-3 pt-2 border-t border-slate-100 animate-in fade-in">
@@ -1830,6 +1912,34 @@ export default function AdminContentStudioPage() {
                   </div>
                 )}
 
+                {/* Form: Topic (Lecture Sub-Section) */}
+                {selectedContentType === 'subtopic' && (
+                  <div className="space-y-3 pt-2 border-t border-slate-100 animate-in fade-in">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Topic Title</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Aortic Stenosis Grading & Gorlin Formula"
+                        value={subtopicTitle}
+                        onChange={(e) => setSubtopicTitle(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700">Summary</label>
+                      <textarea
+                        rows={3}
+                        placeholder="Short summary of this sub-section within the lecture..."
+                        value={subtopicSummary}
+                        onChange={(e) => setSubtopicSummary(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-medium text-slate-700"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Form: Clinical Notes */}
                 {selectedContentType === 'notes' && (
                   <div className="space-y-3 pt-2 border-t border-slate-100 animate-in fade-in">
@@ -1874,11 +1984,11 @@ export default function AdminContentStudioPage() {
 
       {/* PREVIEW MODAL */}
       {previewAsset && (
-        <div 
+        <div
           onClick={() => setPreviewAsset(null)}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in cursor-zoom-out"
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl border border-slate-200 space-y-4 p-6 cursor-default"
           >
@@ -1998,6 +2108,16 @@ export default function AdminContentStudioPage() {
                   <span>Join Live Broadcast</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
+              </div>
+            )}
+
+            {previewAsset.type === 'subtopic' && (
+              <div className="p-6 space-y-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                <div>
+                  <span className="text-[10px] font-bold text-teal-600 uppercase">Lecture Sub-Section</span>
+                  <h4 className="text-sm font-black text-slate-900 mt-1">{previewAsset.raw.title}</h4>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed">{previewAsset.raw.summary || 'No summary provided.'}</p>
               </div>
             )}
 

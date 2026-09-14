@@ -435,10 +435,10 @@ export default function FacultySidebar({
                   )}
                 </button>
 
-                {/* Sample Papers (Assigned Chapters PDF Practice) */}
+                {/* Sample Papers (Assigned Modules PDF Practice) */}
                 <button
                   onClick={() => handleTabClick('samplePapers')}
-                  title={!isExpanded ? 'Chapter Sample Papers & PDFs' : undefined}
+                  title={!isExpanded ? 'Module Sample Papers & PDFs' : undefined}
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${

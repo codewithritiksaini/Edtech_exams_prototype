@@ -51,13 +51,13 @@ export default function StudentStudyPlanPage() {
 
   // Reactive Curriculum Data
   const [curriculumSubjects, setCurriculumSubjects] = useState(() => curriculumService.getSubjects(selectedExamTrack));
-  const [curriculumChapters, setCurriculumChapters] = useState(() => curriculumService.getChapters(null, selectedExamTrack));
+  const [curriculumModules, setCurriculumModules] = useState(() => curriculumService.getModules(null, selectedExamTrack));
   const [curriculumSchedule, setCurriculumSchedule] = useState(() => curriculumService.getSchedule(selectedExamTrack));
 
   useEffect(() => {
     const unsubC = curriculumService.subscribeCurriculum(() => {
       setCurriculumSubjects(curriculumService.getSubjects(selectedExamTrack));
-      setCurriculumChapters(curriculumService.getChapters(null, selectedExamTrack));
+      setCurriculumModules(curriculumService.getModules(null, selectedExamTrack));
     });
     const unsubS = curriculumService.subscribeSchedule(() => {
       setCurriculumSchedule(curriculumService.getSchedule(selectedExamTrack));
@@ -70,7 +70,7 @@ export default function StudentStudyPlanPage() {
 
   useEffect(() => {
     setCurriculumSubjects(curriculumService.getSubjects(selectedExamTrack));
-    setCurriculumChapters(curriculumService.getChapters(null, selectedExamTrack));
+    setCurriculumModules(curriculumService.getModules(null, selectedExamTrack));
     setCurriculumSchedule(curriculumService.getSchedule(selectedExamTrack));
   }, [selectedExamTrack]);
 
@@ -100,13 +100,13 @@ export default function StudentStudyPlanPage() {
     });
 
     const sortedWeeks = Object.keys(weekMap).map(Number).sort((a, b) => a - b);
-    const allTopics = curriculumService.getTopics();
+    const allLectures = curriculumService.getLectures();
 
     return sortedWeeks.map((wkNum) => {
       const slots = weekMap[wkNum].sort((a, b) => a.dayNumber - b.dayNumber);
       const firstSlot = slots[0];
       const subject = curriculumSubjects.find((s) => s.id === firstSlot?.subjectId);
-      const chapter = curriculumChapters.find((c) => c.id === firstSlot?.chapterId);
+      const module = curriculumModules.find((c) => c.id === firstSlot?.moduleId);
 
       const days = slots.map((s) => {
         const isMarkedCompleted = completedDaysList.includes(s.dayNumber);
@@ -125,8 +125,8 @@ export default function StudentStudyPlanPage() {
           status = 'available';
         }
 
-        const linkedTopics = (s.topicIds || []).map((tId) => {
-          const top = allTopics.find((t) => t.id === tId);
+        const linkedLectures = (s.lectureIds || []).map((tId) => {
+          const top = allLectures.find((t) => t.id === tId);
           return { id: tId, title: top?.title || tId };
         });
 
@@ -136,12 +136,12 @@ export default function StudentStudyPlanPage() {
           duration: s.estimatedTime || '1.5 hours',
           status,
           score: s.dayNumber === 1 ? '18/20 (90%)' : s.dayNumber === 2 ? '17/20 (85%)' : undefined,
-          topics: linkedTopics,
+          lectures: linkedLectures,
           hasLive: s.hasLive,
           hasTest: s.hasTest,
           subjectId: s.subjectId,
-          chapterId: s.chapterId,
-          firstTopicId: s.topicIds?.[0]
+          moduleId: s.moduleId,
+          firstLectureId: s.lectureIds?.[0]
         };
       });
 
@@ -151,14 +151,14 @@ export default function StudentStudyPlanPage() {
       return {
         weekNumber: wkNum,
         title: subject ? subject.name : `Week ${wkNum} Core Curriculum`,
-        description: chapter ? chapter.title : 'High-Yield Clinical Module',
+        description: module ? module.title : 'High-Yield Clinical Module',
         badge: wkNum === 1 ? 'Active Track' : 'Upcoming Track',
         status: wkNum === 1 ? 'current' : 'upcoming',
         completionRate,
         days
       };
     });
-  }, [curriculumSchedule, curriculumSubjects, curriculumChapters, completedDaysList, selectedExamTrack]);
+  }, [curriculumSchedule, curriculumSubjects, curriculumModules, completedDaysList, selectedExamTrack]);
 
   const handleDayClick = (day) => {
     if (day.status === 'locked') return;
@@ -384,9 +384,9 @@ export default function StudentStudyPlanPage() {
                               {day.title}
                             </h4>
 
-                            {day.topics && day.topics.length > 0 && (
+                            {day.lectures && day.lectures.length > 0 && (
                               <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                {day.topics.map((t, idx) => (
+                                {day.lectures.map((t, idx) => (
                                   <span 
                                     key={idx} 
                                     className="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200/60"

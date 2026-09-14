@@ -218,7 +218,7 @@ export default function DayContentView() {
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-xs font-extrabold text-brand-600 uppercase tracking-wider">
-                      Week {currentDayData.weekNumber} • {currentDayData.subjectName ? `${currentDayData.subjectName} — ${currentDayData.chapterTitle || 'Core Module'}` : 'Clinical Module'}
+                      Week {currentDayData.weekNumber} • {currentDayData.subjectName ? `${currentDayData.subjectName} — ${currentDayData.moduleTitle || 'Core Module'}` : 'Clinical Module'}
                     </span>
                     <span className="text-slate-300">•</span>
                     <span className="text-xs text-slate-500 font-medium flex items-center gap-1">

@@ -29,15 +29,15 @@ import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
 import { peopleService } from '../../services/peopleService';
 
-export default function FacultyTopicsPage() {
-  const { examId: routeExamId, subjectId, chapterId } = useParams();
+export default function FacultyLecturesPage() {
+  const { examId: routeExamId, subjectId, moduleId } = useParams();
   const navigate = useNavigate();
 
   const [subject, setSubject] = useState(() => curriculumService.getSubjectById(subjectId));
   const effectiveExamId = routeExamId || subject?.examId || 'neet-pg';
   const [exam, setExam] = useState(() => catalogService.getExamById(effectiveExamId) || { id: effectiveExamId, name: effectiveExamId.toUpperCase(), flag: '🩺' });
-  const [chapter, setChapter] = useState(() => curriculumService.getChapterById(chapterId));
-  const [topics, setTopics] = useState(() => curriculumService.getTopics(chapterId, subjectId, effectiveExamId));
+  const [module, setModule] = useState(() => curriculumService.getModuleById(moduleId));
+  const [lectures, setLectures] = useState(() => curriculumService.getLectures(moduleId, subjectId, effectiveExamId));
 
   const currentFaculty = peopleService.getCurrentFacultyProfile();
   const assignedSubjectIds = currentFaculty?.assignedSubjects || [];
@@ -65,8 +65,8 @@ export default function FacultyTopicsPage() {
 
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTopic, setEditingTopic] = useState(null);
-  const [deletingTopic, setDeletingTopic] = useState(null);
+  const [editingLecture, setEditingLecture] = useState(null);
+  const [deletingLecture, setDeletingLecture] = useState(null);
 
   // Form State
   const [formTitle, setFormTitle] = useState('');
@@ -80,11 +80,11 @@ export default function FacultyTopicsPage() {
       const sub = curriculumService.getSubjectById(subjectId);
       setSubject(sub);
       const exId = routeExamId || sub?.examId || 'neet-pg';
-      setChapter(curriculumService.getChapterById(chapterId));
-      setTopics(curriculumService.getTopics(chapterId, subjectId, exId));
+      setModule(curriculumService.getModuleById(moduleId));
+      setLectures(curriculumService.getLectures(moduleId, subjectId, exId));
     });
     return unsub;
-  }, [chapterId, subjectId, routeExamId]);
+  }, [moduleId, subjectId, routeExamId]);
 
   useEffect(() => {
     const sub = curriculumService.getSubjectById(subjectId);
@@ -93,20 +93,20 @@ export default function FacultyTopicsPage() {
       const exId = routeExamId || sub.examId || 'neet-pg';
       const foundExam = catalogService.getExamById(exId);
       if (foundExam) setExam(foundExam);
-      setTopics(curriculumService.getTopics(chapterId, subjectId, exId));
+      setLectures(curriculumService.getLectures(moduleId, subjectId, exId));
     }
-    const foundChap = curriculumService.getChapterById(chapterId);
-    if (foundChap) setChapter(foundChap);
-  }, [routeExamId, subjectId, chapterId]);
+    const foundChap = curriculumService.getModuleById(moduleId);
+    if (foundChap) setModule(foundChap);
+  }, [routeExamId, subjectId, moduleId]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  // Filtered and sorted topics
-  const filteredTopics = useMemo(() => {
-    return topics
+  // Filtered and sorted lectures
+  const filteredLectures = useMemo(() => {
+    return lectures
       .filter(t => {
         if (difficultyFilter !== 'all' && t.difficulty !== difficultyFilter) return false;
         if (statusFilter !== 'all' && t.status !== statusFilter) return false;
@@ -114,8 +114,8 @@ export default function FacultyTopicsPage() {
         const q = searchQuery.toLowerCase();
         return t.title.toLowerCase().includes(q);
       })
-      .sort((a, b) => (a.topicNumber || 0) - (b.topicNumber || 0));
-  }, [topics, searchQuery, difficultyFilter, statusFilter]);
+      .sort((a, b) => (a.lectureNumber || 0) - (b.lectureNumber || 0));
+  }, [lectures, searchQuery, difficultyFilter, statusFilter]);
 
   // Drag and Drop handlers
   const handleDragStart = (e, index) => {
@@ -140,13 +140,13 @@ export default function FacultyTopicsPage() {
       return;
     }
 
-    const reordered = [...filteredTopics];
+    const reordered = [...filteredLectures];
     const [draggedItem] = reordered.splice(draggedIndex, 1);
     reordered.splice(targetIndex, 0, draggedItem);
 
     const orderedIds = reordered.map(t => t.id);
-    curriculumService.reorderTopics(chapterId, orderedIds);
-    showToast(`Topic #${targetIndex + 1}: "${draggedItem.title}" reordered.`);
+    curriculumService.reorderLectures(moduleId, orderedIds);
+    showToast(`Lecture #${targetIndex + 1}: "${draggedItem.title}" reordered.`);
 
     setDraggedIndex(null);
     setDragOverIndex(null);
@@ -158,46 +158,46 @@ export default function FacultyTopicsPage() {
   };
 
   const handleOpenCreateModal = () => {
-    setEditingTopic(null);
+    setEditingLecture(null);
     setFormTitle('');
-    setFormNumber(topics.length + 1);
+    setFormNumber(lectures.length + 1);
     setFormDuration('45 mins');
     setFormDifficulty('High-Yield');
     setFormStatus('Published');
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (topic) => {
-    setEditingTopic(topic);
-    setFormTitle(topic.title);
-    setFormNumber(topic.topicNumber || 1);
-    setFormDuration(topic.duration || '45 mins');
-    setFormDifficulty(topic.difficulty || 'High-Yield');
-    setFormStatus(topic.status || 'Published');
+  const handleOpenEditModal = (lecture) => {
+    setEditingLecture(lecture);
+    setFormTitle(lecture.title);
+    setFormNumber(lecture.lectureNumber || 1);
+    setFormDuration(lecture.duration || '45 mins');
+    setFormDifficulty(lecture.difficulty || 'High-Yield');
+    setFormStatus(lecture.status || 'Published');
     setIsModalOpen(true);
   };
 
-  const handleSaveTopic = (e) => {
+  const handleSaveLecture = (e) => {
     e.preventDefault();
     if (!formTitle.trim()) return;
 
-    if (editingTopic) {
-      curriculumService.saveTopic({
-        ...editingTopic,
+    if (editingLecture) {
+      curriculumService.saveLecture({
+        ...editingLecture,
         title: formTitle.trim(),
-        topicNumber: Number(formNumber),
+        lectureNumber: Number(formNumber),
         duration: formDuration.trim() || '45 mins',
         difficulty: formDifficulty,
         status: formStatus
       });
-      showToast(`Topic "${formTitle}" updated!`);
+      showToast(`Lecture "${formTitle}" updated!`);
     } else {
-      curriculumService.saveTopic({
-        chapterId,
+      curriculumService.saveLecture({
+        moduleId,
         subjectId,
         examId: effectiveExamId,
         title: formTitle.trim(),
-        topicNumber: Number(formNumber),
+        lectureNumber: Number(formNumber),
         duration: formDuration.trim() || '45 mins',
         difficulty: formDifficulty,
         status: formStatus,
@@ -210,29 +210,29 @@ export default function FacultyTopicsPage() {
           clinicalNotes: 'Comprehensive clinical pearls, diagnostic criteria, and high-yield examination notes.'
         }
       });
-      showToast(`New topic "${formTitle}" added!`);
+      showToast(`New lecture "${formTitle}" added!`);
     }
 
     setIsModalOpen(false);
   };
 
-  const handleDeleteClick = (topic) => {
-    setDeletingTopic(topic);
+  const handleDeleteClick = (lecture) => {
+    setDeletingLecture(lecture);
   };
 
   const handleConfirmDelete = () => {
-    if (!deletingTopic) return;
-    curriculumService.deleteTopic(deletingTopic.id);
-    showToast(`Topic "${deletingTopic.title}" deleted.`);
-    setDeletingTopic(null);
+    if (!deletingLecture) return;
+    curriculumService.deleteLecture(deletingLecture.id);
+    showToast(`Lecture "${deletingLecture.title}" deleted.`);
+    setDeletingLecture(null);
   };
 
-  const handleMoveOrder = (topicId, direction) => {
-    curriculumService.moveTopicOrder(topicId, direction);
+  const handleMoveOrder = (lectureId, direction) => {
+    curriculumService.moveLectureOrder(lectureId, direction);
   };
 
-  const getContentStudioUrl = (topicId) => {
-    return `/faculty/exams/${effectiveExamId}/subjects/${subjectId}/chapters/${chapterId}/topics/${topicId}/content`;
+  const getContentStudioUrl = (lectureId) => {
+    return `/faculty/exams/${effectiveExamId}/subjects/${subjectId}/modules/${moduleId}/lectures/${lectureId}/content`;
   };
 
   // If subject is not assigned to current faculty, restrict access
@@ -244,7 +244,7 @@ export default function FacultyTopicsPage() {
         </div>
         <h2 className="text-xl font-black text-slate-900 tracking-tight">Access Restricted</h2>
         <p className="text-xs text-slate-500 leading-relaxed">
-          You do not have assigned permissions for this subject. In the faculty portal, you can only view and manage topics for subjects explicitly assigned to your faculty roster.
+          You do not have assigned permissions for this subject. In the faculty portal, you can only view and manage lectures for subjects explicitly assigned to your faculty roster.
         </p>
         <div className="pt-2">
           <Link
@@ -274,11 +274,11 @@ export default function FacultyTopicsPage() {
         <div className="space-y-3">
           <div>
             <Link 
-              to={`/faculty/exams/${effectiveExamId}/subjects/${subjectId}/chapters`}
+              to={`/faculty/exams/${effectiveExamId}/subjects/${subjectId}/modules`}
               className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider inline-flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Chapters</span>
+              <span>Back to Modules</span>
             </Link>
           </div>
 
@@ -289,18 +289,18 @@ export default function FacultyTopicsPage() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-extrabold text-[10px] border border-indigo-100">
-                  Unit {chapter?.chapterNumber || '•'}
+                  Unit {module?.moduleNumber || '•'}
                 </span>
                 <span className="text-xs font-bold text-slate-400">
                   {subject?.name} • {exam?.flag} {exam?.name}
                 </span>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1 ml-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span>Assigned Unit • Full Topic Access</span>
+                  <span>Assigned Unit • Full Lecture Access</span>
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-0.5">
-                {chapter?.title || 'Chapter'} — Topics Roster
+                {module?.title || 'Module'} — Lectures Roster
               </h1>
             </div>
           </div>
@@ -312,7 +312,7 @@ export default function FacultyTopicsPage() {
             className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add Topic</span>
+            <span>+ Add Lecture</span>
           </button>
         </div>
       </div>
@@ -320,23 +320,23 @@ export default function FacultyTopicsPage() {
       {/* KPI Stats Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
-          <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Total Topics</span>
-          <div className="text-2xl font-black text-slate-900">{topics.length}</div>
-          <span className="text-[11px] text-slate-400 font-medium">In this chapter</span>
+          <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Total Lectures</span>
+          <div className="text-2xl font-black text-slate-900">{lectures.length}</div>
+          <span className="text-[11px] text-slate-400 font-medium">In this module</span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
           <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Est. Study Time</span>
           <div className="text-2xl font-black text-slate-900">
-            {topics.length * 45} mins
+            {lectures.length * 45} mins
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">~45m / topic pace</span>
+          <span className="text-[11px] text-slate-400 font-medium">~45m / lecture pace</span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
           <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">High-Yield Concepts</span>
           <div className="text-2xl font-black text-amber-600">
-            {topics.filter(t => t.difficulty === 'High-Yield').length}
+            {lectures.filter(t => t.difficulty === 'High-Yield').length}
           </div>
           <span className="text-[11px] text-slate-400 font-medium">Core exam priority</span>
         </div>
@@ -355,7 +355,7 @@ export default function FacultyTopicsPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search topic title or key concepts..."
+              placeholder="Search lecture title or key concepts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
@@ -383,7 +383,7 @@ export default function FacultyTopicsPage() {
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
             <span className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700">
-              {filteredTopics.length} Topics
+              {filteredLectures.length} Lectures
             </span>
           </div>
 
@@ -411,14 +411,14 @@ export default function FacultyTopicsPage() {
         </div>
       </div>
 
-      {/* TOPICS TABLE VIEW (DEFAULT LIST) */}
+      {/* LECTURES TABLE VIEW (DEFAULT LIST) */}
       {viewMode === 'table' ? (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
               <tr>
-                <th className="py-3 px-4 w-20 text-center">Topic #</th>
-                <th className="py-3 px-4">Topic Title & Clinical Assets</th>
+                <th className="py-3 px-4 w-20 text-center">Lecture #</th>
+                <th className="py-3 px-4">Lecture Title & Clinical Assets</th>
                 <th className="py-3 px-4 text-center">Yield / Level</th>
                 <th className="py-3 px-4 text-center">Duration</th>
                 <th className="py-3 px-4 text-center">Status</th>
@@ -426,7 +426,7 @@ export default function FacultyTopicsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredTopics.map((top, idx) => {
+              {filteredLectures.map((top, idx) => {
                 const pdfCount = top.content?.pdfList?.length || (top.content?.pdf ? 1 : 0);
                 const imgCount = top.content?.images?.length || 0;
                 const hasVideo = Boolean(top.content?.video);
@@ -452,23 +452,23 @@ export default function FacultyTopicsPage() {
                           : 'hover:bg-indigo-50/30'
                     }`}
                   >
-                    {/* Drag Handle & Topic # */}
+                    {/* Drag Handle & Lecture # */}
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           type="button"
                           className="text-slate-300 hover:text-indigo-600 cursor-grab active:cursor-grabbing p-1 rounded hover:bg-slate-100 transition-colors"
-                          title="Drag to reorder topic"
+                          title="Drag to reorder lecture"
                         >
                           <GripVertical className="w-4 h-4" />
                         </button>
                         <span className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 font-black text-xs flex items-center justify-center border border-indigo-100 shadow-2xs shrink-0">
-                          {top.topicNumber || idx + 1}
+                          {top.lectureNumber || idx + 1}
                         </span>
                       </div>
                     </td>
 
-                    {/* Topic Title & Content Assets */}
+                    {/* Lecture Title & Content Assets */}
                     <td className="py-3.5 px-4">
                       <div className="space-y-1.5">
                         <Link
@@ -562,14 +562,14 @@ export default function FacultyTopicsPage() {
                         <button
                           onClick={() => handleOpenEditModal(top)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                          title="Edit Topic Meta"
+                          title="Edit Lecture Meta"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteClick(top)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Delete Topic"
+                          title="Delete Lecture"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -585,7 +585,7 @@ export default function FacultyTopicsPage() {
                           </button>
                           <button
                             onClick={() => handleMoveOrder(top.id, 'down')}
-                            disabled={idx === filteredTopics.length - 1}
+                            disabled={idx === filteredLectures.length - 1}
                             className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 rounded"
                             title="Move Down"
                           >
@@ -609,17 +609,17 @@ export default function FacultyTopicsPage() {
                 );
               })}
 
-              {filteredTopics.length === 0 && (
+              {filteredLectures.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <div className="max-w-xs mx-auto space-y-2">
                       <FileText className="w-8 h-8 text-slate-300 mx-auto" />
-                      <p className="font-bold text-xs text-slate-600">No topics found</p>
+                      <p className="font-bold text-xs text-slate-600">No lectures found</p>
                       <button
                         onClick={handleOpenCreateModal}
                         className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
                       >
-                        + Add Topic
+                        + Add Lecture
                       </button>
                     </div>
                   </td>
@@ -631,7 +631,7 @@ export default function FacultyTopicsPage() {
       ) : (
         /* Grid (Cards) View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredTopics.map((top, idx) => {
+          {filteredLectures.map((top, idx) => {
             const pdfCount = top.content?.pdfList?.length || (top.content?.pdf ? 1 : 0);
             const imgCount = top.content?.images?.length || 0;
             const hasVideo = Boolean(top.content?.video);
@@ -647,7 +647,7 @@ export default function FacultyTopicsPage() {
                 <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
                     <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 font-black text-xs flex items-center justify-center border border-indigo-100 shadow-2xs">
-                      #{top.topicNumber || idx + 1}
+                      #{top.lectureNumber || idx + 1}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       top.status === 'Draft'
@@ -715,14 +715,14 @@ export default function FacultyTopicsPage() {
                     <button
                       onClick={() => handleOpenEditModal(top)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                      title="Edit Topic"
+                      title="Edit Lecture"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteClick(top)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                      title="Delete Topic"
+                      title="Delete Lecture"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -743,7 +743,7 @@ export default function FacultyTopicsPage() {
       )}
 
       {/* ======================================================================= */}
-      {/* MODAL: ADD / EDIT TOPIC                                                 */}
+      {/* MODAL: ADD / EDIT LECTURE                                               */}
       {/* ======================================================================= */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
@@ -755,10 +755,10 @@ export default function FacultyTopicsPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900">
-                    {editingTopic ? 'Edit Topic' : 'Add New Topic'}
+                    {editingLecture ? 'Edit Lecture' : 'Add New Lecture'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Define learning topic title, duration, yield, and sequence
+                    Define learning lecture title, duration, yield, and sequence
                   </p>
                 </div>
               </div>
@@ -770,7 +770,7 @@ export default function FacultyTopicsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveTopic} className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
+            <form onSubmit={handleSaveLecture} className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="font-extrabold text-slate-700 block mb-1">
@@ -786,7 +786,7 @@ export default function FacultyTopicsPage() {
                 </div>
                 <div className="sm:col-span-3">
                   <label className="font-extrabold text-slate-700 block mb-1">
-                    Topic Title <span className="text-rose-500">*</span>
+                    Lecture Title <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -837,7 +837,7 @@ export default function FacultyTopicsPage() {
                   <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
                     <input
                       type="radio"
-                      name="facultyTopicStatus"
+                      name="facultyLectureStatus"
                       value="Published"
                       checked={formStatus === 'Published'}
                       onChange={() => setFormStatus('Published')}
@@ -848,7 +848,7 @@ export default function FacultyTopicsPage() {
                   <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
                     <input
                       type="radio"
-                      name="facultyTopicStatus"
+                      name="facultyLectureStatus"
                       value="Draft"
                       checked={formStatus === 'Draft'}
                       onChange={() => setFormStatus('Draft')}
@@ -871,7 +871,7 @@ export default function FacultyTopicsPage() {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
                 >
-                  {editingTopic ? 'Save Changes' : 'Create Topic'}
+                  {editingLecture ? 'Save Changes' : 'Create Lecture'}
                 </button>
               </div>
             </form>
@@ -882,7 +882,7 @@ export default function FacultyTopicsPage() {
       {/* ======================================================================= */}
       {/* DELETE MODAL                                                            */}
       {/* ======================================================================= */}
-      {deletingTopic && (
+      {deletingLecture && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
@@ -891,16 +891,16 @@ export default function FacultyTopicsPage() {
 
             <div className="text-center space-y-1">
               <h3 className="text-base font-black text-slate-900">
-                Delete Topic?
+                Delete Lecture?
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Are you sure you want to delete <span className="font-bold text-slate-800">"{deletingTopic.title}"</span>? All attached content assets will be permanently removed.
+                Are you sure you want to delete <span className="font-bold text-slate-800">"{deletingLecture.title}"</span>? All attached content assets will be permanently removed.
               </p>
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
-                onClick={() => setDeletingTopic(null)}
+                onClick={() => setDeletingLecture(null)}
                 className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-colors text-xs cursor-pointer"
               >
                 Cancel

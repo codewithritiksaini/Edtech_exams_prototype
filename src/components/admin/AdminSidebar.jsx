@@ -470,10 +470,10 @@ export default function AdminSidebar({
                   )}
                 </button>
 
-                {/* Sample Papers (Chapter-Level Practice PDFs) */}
+                {/* Sample Papers (Module-Level Practice PDFs) */}
                 <button
                   onClick={() => handleTabClick('samplePapers')}
-                  title={!isExpanded ? 'Chapter-Level Sample Papers & PDFs' : undefined}
+                  title={!isExpanded ? 'Module-Level Sample Papers & PDFs' : undefined}
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${

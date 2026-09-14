@@ -59,13 +59,13 @@ const AVAILABLE_COLORS = [
   { id: 'cyan', name: 'Cyan', bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-200', ring: 'ring-cyan-500' }
 ];
 
-export default function ManageSubjectsTab({ onNavigateToChapters }) {
+export default function ManageSubjectsTab({ onNavigateToModules }) {
   const [currentUser] = useState(() => authService.getCurrentUser());
   const [exams, setExams] = useState(() => catalogService.getExams());
   const [selectedExamId, setSelectedExamId] = useState('neet-pg');
   const [subjects, setSubjects] = useState(() => curriculumService.getSubjects());
-  const [chapters, setChapters] = useState(() => curriculumService.getChapters());
-  const [topics, setTopics] = useState(() => curriculumService.getTopics());
+  const [modules, setModules] = useState(() => curriculumService.getModules());
+  const [lectures, setLectures] = useState(() => curriculumService.getLectures());
 
   // View & Filter State
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
@@ -94,8 +94,8 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
   useEffect(() => {
     const unsubCurriculum = curriculumService.subscribeCurriculum(() => {
       setSubjects(curriculumService.getSubjects());
-      setChapters(curriculumService.getChapters());
-      setTopics(curriculumService.getTopics());
+      setModules(curriculumService.getModules());
+      setLectures(curriculumService.getLectures());
     });
     const unsubCatalog = catalogService.subscribe((payload) => {
       setExams(payload.exams);
@@ -136,8 +136,8 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
   // Counts for KPI
   const stats = useMemo(() => {
     const examSubs = subjects.filter(s => s.examId === selectedExamId);
-    const examChaps = chapters.filter(c => c.examId === selectedExamId);
-    const examTops = topics.filter(t => t.examId === selectedExamId);
+    const examChaps = modules.filter(c => c.examId === selectedExamId);
+    const examTops = lectures.filter(t => t.examId === selectedExamId);
     const activeSubs = examSubs.filter(s => s.status === 'Active');
     const draftSubs = examSubs.filter(s => s.status === 'Draft');
 
@@ -145,10 +145,10 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
       subjectsCount: examSubs.length,
       activeCount: activeSubs.length,
       draftCount: draftSubs.length,
-      chaptersCount: examChaps.length,
-      topicsCount: examTops.length
+      modulesCount: examChaps.length,
+      lecturesCount: examTops.length
     };
-  }, [subjects, chapters, topics, selectedExamId]);
+  }, [subjects, modules, lectures, selectedExamId]);
 
   const handleOpenCreateModal = () => {
     setEditingSubject(null);
@@ -203,7 +203,7 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
     curriculumService.deleteSubject(deletingSubject.id);
     setSubjects(curriculumService.getSubjects());
     setDeletingSubject(null);
-    showToast(`Subject "${deletingSubject.name}" and associated chapters removed.`);
+    showToast(`Subject "${deletingSubject.name}" and associated modules removed.`);
   };
 
   const handleToggleStatus = (sub, e) => {
@@ -253,7 +253,7 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
             Subjects & Discipline Setup
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
-            Manage academic medical subjects for each examination track: <span className="font-semibold text-slate-800">Exams → Subjects → Chapters → Topics → Content</span>. Configure curriculum modules, inspect assigned chapters, and adjust publishing status.
+            Manage academic medical subjects for each examination track: <span className="font-semibold text-slate-800">Exams → Subjects → Modules → Lectures → Content</span>. Configure curriculum modules, inspect assigned modules, and adjust publishing status.
           </p>
         </div>
 
@@ -405,8 +405,8 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Assigned Chapters</div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.chaptersCount}</div>
+            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Assigned Modules</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.modulesCount}</div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600 shrink-0">
             <FolderTree className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -415,8 +415,8 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Active Topics</div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.topicsCount}</div>
+            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Active Lectures</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.lecturesCount}</div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
             <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -459,8 +459,8 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredSubjects.map((sub, idx) => {
-                const subChapters = chapters.filter(c => c.subjectId === sub.id);
-                const subTopics = topics.filter(t => t.subjectId === sub.id);
+                const subModules = modules.filter(c => c.subjectId === sub.id);
+                const subLectures = lectures.filter(t => t.subjectId === sub.id);
                 const isExpanded = expandedSubjectId === sub.id;
 
                 return (
@@ -510,17 +510,17 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                         {sub.description || 'Core clinical curriculum module covering diagnostic criteria and licensing vignettes.'}
                       </p>
 
-                      {/* Badges: Chapters & Topics counts */}
+                      {/* Badges: Modules & Lectures counts */}
                       <div className="flex items-center justify-between gap-2 pt-1">
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold">
                             <FolderTree className="w-3.5 h-3.5" />
-                            <span>{subChapters.length} Chapters</span>
+                            <span>{subModules.length} Modules</span>
                           </div>
 
                           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold">
                             <Sparkles className="w-3.5 h-3.5" />
-                            <span>{subTopics.length} Topics</span>
+                            <span>{subLectures.length} Lectures</span>
                           </div>
                         </div>
 
@@ -547,8 +547,8 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                         </div>
                       </div>
 
-                      {/* Quick Chapter Preview Accordion */}
-                      {subChapters.length > 0 && (
+                      {/* Quick Module Preview Accordion */}
+                      {subModules.length > 0 && (
                         <div className="pt-2 border-t border-slate-100">
                           <button
                             type="button"
@@ -557,15 +557,15 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                           >
                             <span className="flex items-center gap-1.5">
                               <Eye className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{isExpanded ? 'Hide Chapter List' : `Preview ${subChapters.length} Chapters`}</span>
+                              <span>{isExpanded ? 'Hide Module List' : `Preview ${subModules.length} Modules`}</span>
                             </span>
                             {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           </button>
 
                           {isExpanded && (
                             <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                              {subChapters.map(chap => {
-                                const chapTopics = topics.filter(t => t.chapterId === chap.id);
+                              {subModules.map(chap => {
+                                const chapLectures = lectures.filter(t => t.moduleId === chap.id);
                                 return (
                                   <div 
                                     key={chap.id}
@@ -573,10 +573,10 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                                   >
                                     <div className="min-w-0">
                                       <div className="font-bold text-slate-800 truncate">
-                                        Ch {chap.chapterNumber || '•'}: {chap.title}
+                                        Ch {chap.moduleNumber || '•'}: {chap.title}
                                       </div>
                                       <div className="text-[10px] text-slate-400">
-                                        {chapTopics.length} topic{chapTopics.length !== 1 ? 's' : ''} inside
+                                        {chapLectures.length} lecture{chapLectures.length !== 1 ? 's' : ''} inside
                                       </div>
                                     </div>
                                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-white text-indigo-700 font-bold border border-slate-200 shrink-0">
@@ -610,16 +610,16 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                         </button>
                       </div>
 
-                      {/* Primary Link: Jump to Chapters & Topics */}
+                      {/* Primary Link: Jump to Modules & Lectures */}
                       <button
                         onClick={() => {
-                          if (onNavigateToChapters) {
-                            onNavigateToChapters(selectedExamId, sub.id);
+                          if (onNavigateToModules) {
+                            onNavigateToModules(selectedExamId, sub.id);
                           }
                         }}
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer group-hover:translate-x-0.5 transition-transform"
                       >
-                        <span>Manage Chapters</span>
+                        <span>Manage Modules</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -655,8 +655,8 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                     <th className="py-3 px-4 w-12 text-center">#</th>
                     <th className="py-3 px-4">Subject & Discipline</th>
                     <th className="py-3 px-4">Subject Code</th>
-                    <th className="py-3 px-4 text-center">Chapters</th>
-                    <th className="py-3 px-4 text-center">Topics</th>
+                    <th className="py-3 px-4 text-center">Modules</th>
+                    <th className="py-3 px-4 text-center">Lectures</th>
                     <th className="py-3 px-4 text-center">Publish Status</th>
                     <th className="py-3 px-4 text-center">Sequence</th>
                     <th className="py-3 px-4 text-right">Actions</th>
@@ -664,8 +664,8 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {filteredSubjects.map((sub, idx) => {
-                    const subChapters = chapters.filter(c => c.subjectId === sub.id);
-                    const subTopics = topics.filter(t => t.subjectId === sub.id);
+                    const subModules = modules.filter(c => c.subjectId === sub.id);
+                    const subLectures = lectures.filter(t => t.subjectId === sub.id);
 
                     return (
                       <tr key={sub.id} className="hover:bg-slate-50/80 transition-colors group">
@@ -695,19 +695,19 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                           </span>
                         </td>
 
-                        {/* Chapters Count */}
+                        {/* Modules Count */}
                         <td className="py-3.5 px-4 text-center">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-100">
                             <FolderTree className="w-3 h-3" />
-                            <span>{subChapters.length}</span>
+                            <span>{subModules.length}</span>
                           </span>
                         </td>
 
-                        {/* Topics Count */}
+                        {/* Lectures Count */}
                         <td className="py-3.5 px-4 text-center">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs">
                             <Sparkles className="w-3 h-3" />
-                            <span>{subTopics.length}</span>
+                            <span>{subLectures.length}</span>
                           </span>
                         </td>
 
@@ -771,14 +771,14 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
                             </button>
                             <button
                               onClick={() => {
-                                if (onNavigateToChapters) {
-                                  onNavigateToChapters(selectedExamId, sub.id);
+                                if (onNavigateToModules) {
+                                  onNavigateToModules(selectedExamId, sub.id);
                                 }
                               }}
                               className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
-                              title="View and manage chapters"
+                              title="View and manage modules"
                             >
-                              <span>Chapters</span>
+                              <span>Modules</span>
                               <ArrowRight className="w-3 h-3" />
                             </button>
                           </div>
@@ -1001,7 +1001,7 @@ export default function ManageSubjectsTab({ onNavigateToChapters }) {
               <h3 className="text-base font-bold text-slate-900">Delete Subject?</h3>
               <p className="text-xs text-slate-500">
                 Are you sure you want to delete <span className="font-bold text-slate-800">"{deletingSubject.name}"</span>?
-                This will cascade delete all its assigned chapters and topics!
+                This will cascade delete all its assigned modules and lectures!
               </p>
             </div>
             <div className="flex items-center gap-3 pt-2">

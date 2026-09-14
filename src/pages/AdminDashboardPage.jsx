@@ -27,7 +27,7 @@ import AdminNavbar from '../components/admin/AdminNavbar';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import ManageExamsTab from '../components/admin/ManageExamsTab';
 import ManageSubjectsTab from '../components/admin/ManageSubjectsTab';
-import ChaptersTopicsTab from '../components/admin/ChaptersTopicsTab';
+import ModulesLecturesTab from '../components/admin/ModulesLecturesTab';
 import ManageScheduleTab from '../components/admin/ManageScheduleTab';
 import ManagePackagesTab from '../components/admin/ManagePackagesTab';
 import ManageFacultyTab from '../components/admin/ManageFacultyTab';
@@ -742,8 +742,8 @@ export default function AdminDashboardPage() {
           {/* TAB 2.1: SUBJECTS & DISCIPLINE DIRECTORY (ADMIN & FACULTY)           */}
           {/* ===================================================================== */}
           {activeTab === 'subjects' && (
-            <ManageSubjectsTab 
-              onNavigateToChapters={(examId, subId) => {
+            <ManageSubjectsTab
+              onNavigateToModules={(examId, subId) => {
                 setNavigatedExamId(examId);
                 setNavigatedSubjectId(subId);
                 setActiveTab('curriculum');
@@ -752,10 +752,10 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ===================================================================== */}
-          {/* TAB 2.2: CHAPTERS, TOPICS & TOPIC CONTENT HUB (ADMIN & FACULTY)      */}
+          {/* TAB 2.2: MODULES, LECTURES & LECTURE CONTENT HUB (ADMIN & FACULTY)   */}
           {/* ===================================================================== */}
           {activeTab === 'curriculum' && (
-            <ChaptersTopicsTab 
+            <ModulesLecturesTab
               initialExamId={navigatedExamId}
               initialSubjectId={navigatedSubjectId}
             />

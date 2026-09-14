@@ -62,8 +62,8 @@ export default function AdminSubjectsPage() {
 
   const [exams, setExams] = useState(() => catalogService.getExams());
   const [subjects, setSubjects] = useState(() => curriculumService.getSubjects());
-  const [chapters, setChapters] = useState(() => curriculumService.getChapters());
-  const [topics, setTopics] = useState(() => curriculumService.getTopics());
+  const [modules, setModules] = useState(() => curriculumService.getModules());
+  const [lectures, setLectures] = useState(() => curriculumService.getLectures());
 
   // If accessed via old route /admin/exams/:examId/subjects, normalize cleanly to /admin/subjects?exam=:examId
   useEffect(() => {
@@ -105,8 +105,8 @@ export default function AdminSubjectsPage() {
   useEffect(() => {
     const unsubCurriculum = curriculumService.subscribeCurriculum(() => {
       setSubjects(curriculumService.getSubjects());
-      setChapters(curriculumService.getChapters());
-      setTopics(curriculumService.getTopics());
+      setModules(curriculumService.getModules());
+      setLectures(curriculumService.getLectures());
     });
     const unsubCatalog = catalogService.subscribe((payload) => {
       setExams(payload.exams);
@@ -456,8 +456,8 @@ export default function AdminSubjectsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredSubjects.map((subject, idx) => {
             const IconComponent = getSubjectIcon(subject.icon);
-            const subjectChapters = chapters.filter(c => c.subjectId === subject.id);
-            const subjectTopics = topics.filter(t => t.subjectId === subject.id);
+            const subjectModules = modules.filter(c => c.subjectId === subject.id);
+            const subjectLectures = lectures.filter(t => t.subjectId === subject.id);
             const colorMeta = AVAILABLE_COLORS.find(c => c.id === subject.color) || AVAILABLE_COLORS[0];
             const exam = exams.find(e => e.id === subject.examId);
             const targetExamId = subject.examId || 'neet-pg';
@@ -528,12 +528,12 @@ export default function AdminSubjectsPage() {
                   {/* Counts Row */}
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
                     <div className="bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/60">
-                      <span className="text-[10px] text-indigo-700 font-bold block uppercase">Chapters</span>
-                      <span className="text-xs font-extrabold text-indigo-900">{subjectChapters.length} Units</span>
+                      <span className="text-[10px] text-indigo-700 font-bold block uppercase">Modules</span>
+                      <span className="text-xs font-extrabold text-indigo-900">{subjectModules.length} Units</span>
                     </div>
                     <div className="bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/60">
-                      <span className="text-[10px] text-emerald-700 font-bold block uppercase">Topics</span>
-                      <span className="text-xs font-extrabold text-emerald-900">{subjectTopics.length} Topics</span>
+                      <span className="text-[10px] text-emerald-700 font-bold block uppercase">Lectures</span>
+                      <span className="text-xs font-extrabold text-emerald-900">{subjectLectures.length} Lectures</span>
                     </div>
                   </div>
                 </div>
@@ -559,10 +559,10 @@ export default function AdminSubjectsPage() {
 
                   {/* LEVEL 3 DRILLDOWN ACTION */}
                   <Link
-                    to={`/admin/subjects/${subject.id}/chapters`}
+                    to={`/admin/subjects/${subject.id}/modules`}
                     className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                   >
-                    <span>Chapters & Topics</span>
+                    <span>Modules & Lectures</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -613,7 +613,7 @@ export default function AdminSubjectsPage() {
                 <th className="py-3 px-4">Exam Track</th>
                 <th className="py-3 px-4">Code</th>
                 <th className="py-3 px-4">Faculty Lead</th>
-                <th className="py-3 px-4 text-center">Chapters</th>
+                <th className="py-3 px-4 text-center">Modules</th>
                 <th className="py-3 px-4 text-center">Status</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
@@ -622,7 +622,7 @@ export default function AdminSubjectsPage() {
               {filteredSubjects.map((subject) => {
                 const IconComponent = getSubjectIcon(subject.icon);
                 const colorMeta = AVAILABLE_COLORS.find(c => c.id === subject.color) || AVAILABLE_COLORS[0];
-                const count = chapters.filter(c => c.subjectId === subject.id).length;
+                const count = modules.filter(c => c.subjectId === subject.id).length;
                 const exam = exams.find(e => e.id === subject.examId);
                 const targetExamId = subject.examId || 'neet-pg';
 
@@ -635,7 +635,7 @@ export default function AdminSubjectsPage() {
                         </div>
                         <div>
                           <Link
-                            to={`/admin/subjects/${subject.id}/chapters`}
+                            to={`/admin/subjects/${subject.id}/modules`}
                             className="font-extrabold hover:text-indigo-600 transition-colors block text-xs"
                           >
                             {subject.name}
@@ -683,11 +683,11 @@ export default function AdminSubjectsPage() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                         <Link
-                          to={`/admin/subjects/${subject.id}/chapters`}
+                          to={`/admin/subjects/${subject.id}/modules`}
                           className="inline-flex items-center gap-1 ml-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold hover:bg-indigo-100 hover:text-indigo-800 transition-colors text-xs"
-                          title="Chapters & Topics"
+                          title="Modules & Lectures"
                         >
-                          <span>Chapters & Topics</span>
+                          <span>Modules & Lectures</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </Link>
                       </div>
@@ -907,8 +907,8 @@ export default function AdminSubjectsPage() {
 
       {/* Delete Subject Confirmation Modal */}
       {deletingSubject && (() => {
-        const subChapters = chapters.filter(c => c.subjectId === deletingSubject.id);
-        const subTopics = topics.filter(t => t.subjectId === deletingSubject.id);
+        const subModules = modules.filter(c => c.subjectId === deletingSubject.id);
+        const subLectures = lectures.filter(t => t.subjectId === deletingSubject.id);
         const deletingExam = exams.find(e => e.id === deletingSubject.examId);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
@@ -943,14 +943,14 @@ export default function AdminSubjectsPage() {
                 </div>
               </div>
 
-              {(subChapters.length > 0 || subTopics.length > 0) && (
+              {(subModules.length > 0 || subLectures.length > 0) && (
                 <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1.5">
                   <div className="font-bold flex items-center gap-1.5 text-amber-950">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                     <span>Associated Syllabus Units Detected</span>
                   </div>
                   <p className="text-[11px] text-amber-800 leading-relaxed">
-                    This module currently contains <strong>{subChapters.length} chapters/units</strong> and <strong>{subTopics.length} clinical topics</strong>. Deleting this subject will also erase all associated chapters and question tags.
+                    This module currently contains <strong>{subModules.length} modules/units</strong> and <strong>{subLectures.length} clinical lectures</strong>. Deleting this subject will also erase all associated modules and question tags.
                   </p>
                 </div>
               )}

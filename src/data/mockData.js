@@ -1591,6 +1591,10 @@ export const testService = {
       name: testData.name,
       courseId: testData.courseId || 'neet-pg',
       course: testData.course || (testData.courseId === 'usmle' ? 'USMLE Step 1 & 2' : testData.courseId === 'plab' ? 'PLAB 1 & 2' : 'NEET PG & NExT 2026'),
+      // Optional scoping down to a specific Subject -> Module -> Lecture (all left undefined for exam-wide mock tests)
+      subjectId: testData.subjectId || null,
+      moduleId: testData.moduleId || null,
+      lectureId: testData.lectureId || null,
       batch: testData.batch || 'All Enrolled Students',
       date: testData.dateTime ? testData.dateTime.split('@')[0]?.trim() : 'Upcoming',
       time: testData.dateTime ? testData.dateTime.split('@')[1]?.trim() : '18:00 IST',

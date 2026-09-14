@@ -177,7 +177,7 @@ export default function AdminOverviewPage() {
                 Academic Curriculum Hierarchy
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Exam ➡️ Subject ➡️ Chapter ➡️ Topic ➡️ Content Studio 5-level flow.
+                Exam ➡️ Subject ➡️ Module ➡️ Lecture ➡️ Content Studio 5-level flow.
               </p>
             </div>
             <div className="pt-4 flex items-center text-xs font-bold text-indigo-600 gap-1">
@@ -198,7 +198,7 @@ export default function AdminOverviewPage() {
                 Study Schedule & Drip Planner
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                4-Week / 28-Day interactive calendar and daily topic mapping.
+                4-Week / 28-Day interactive calendar and daily lecture mapping.
               </p>
             </div>
             <div className="pt-4 flex items-center text-xs font-bold text-emerald-600 gap-1">

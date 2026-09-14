@@ -105,7 +105,7 @@ export default function StudentExamOverviewPage() {
               Curriculum Subjects Directory ({subjects.length})
             </h2>
             <p className="text-xs text-slate-500">
-              Each subject provides sequenced chapters, clinical ECG diagrams, and topic study rooms.
+              Each subject provides sequenced modules, clinical ECG diagrams, and lecture study rooms.
             </p>
           </div>
 
@@ -124,7 +124,7 @@ export default function StudentExamOverviewPage() {
             return (
               <Link
                 key={sub.id}
-                to={`/student/courses/${examId}/subjects/${sub.id}/chapters`}
+                to={`/student/courses/${examId}/subjects/${sub.id}/modules`}
                 className="p-5 rounded-2xl bg-slate-50 hover:bg-brand-50/50 border border-slate-200/80 hover:border-brand-200 transition-all space-y-3 group"
               >
                 <div className="flex items-center justify-between">
@@ -148,7 +148,7 @@ export default function StudentExamOverviewPage() {
                 </div>
 
                 <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
-                  <span>{sub.chaptersCount || 8} Chapters</span>
+                  <span>{sub.modulesCount || 8} Modules</span>
                   <span className="font-bold text-brand-600 group-hover:translate-x-1 transition-transform flex items-center gap-1">
                     <span>Explore</span>
                     <ArrowRight className="w-3.5 h-3.5" />

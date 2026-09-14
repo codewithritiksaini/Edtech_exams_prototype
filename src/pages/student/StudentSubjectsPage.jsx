@@ -91,7 +91,7 @@ export default function StudentSubjectsPage() {
                 {exam.name} — Clinical Subjects
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
-                Master individual specialty units. Click on any subject to explore chapters, clinical ECG diagrams, and topic study rooms.
+                Master individual specialty units. Click on any subject to explore modules, clinical ECG diagrams, and lecture study rooms.
               </p>
             </div>
           </div>
@@ -116,7 +116,7 @@ export default function StudentSubjectsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredSubjects.map((sub) => {
           const prog = progressMap[sub.id] || { progress: 0, completed: 0, total: 8, status: 'Not Started' };
-          const chapters = curriculumService.getChaptersBySubject(sub.id) || [];
+          const modules = curriculumService.getModulesBySubject(sub.id) || [];
 
           return (
             <div
@@ -155,7 +155,7 @@ export default function StudentSubjectsPage() {
                     />
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-slate-400">
-                    <span>{prog.completed} of {chapters.length || prog.total} Chapters Finished</span>
+                    <span>{prog.completed} of {modules.length || prog.total} Modules Finished</span>
                     <span>{sub.estimatedHours || 32} Hours</span>
                   </div>
                 </div>
@@ -164,10 +164,10 @@ export default function StudentSubjectsPage() {
               {/* Action Button */}
               <div className="pt-3 border-t border-slate-100">
                 <Link
-                  to={`/student/courses/${examId}/subjects/${sub.id}/chapters`}
+                  to={`/student/courses/${examId}/subjects/${sub.id}/modules`}
                   className="w-full py-2.5 rounded-xl bg-brand-50 hover:bg-brand-600 text-brand-700 hover:text-white text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs group/btn"
                 >
-                  <span>Open Chapters & Units</span>
+                  <span>Open Modules & Units</span>
                   <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
                 </Link>
               </div>
