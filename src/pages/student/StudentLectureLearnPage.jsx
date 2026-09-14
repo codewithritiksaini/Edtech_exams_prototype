@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -20,10 +20,13 @@ import {
   Share2,
   Bookmark,
   Play,
-  Award
+  Award,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { catalogService } from '../../services/catalogService';
 import { curriculumService } from '../../services/curriculumService';
+import { learningProgressService } from '../../services/learningProgressService';
 
 export default function StudentLectureLearnPage() {
   const { examId = 'neet-pg', subjectId, moduleId, lectureId } = useParams();
@@ -36,7 +39,7 @@ export default function StudentLectureLearnPage() {
 
   // Channel Tabs: 'video' | 'pdf' | 'images' | 'flashcards' | 'live' | 'pearls'
   const [activeChannel, setActiveChannel] = useState('video');
-  const [isCompleted, setIsCompleted] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(() => learningProgressService.isLectureCompleted(lectureId));
   const [toastMessage, setToastMessage] = useState('');
   const [lightboxImage, setLightboxImage] = useState(null);
 
@@ -44,6 +47,17 @@ export default function StudentLectureLearnPage() {
   const [cardIndex, setCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [masteredCards, setMasteredCards] = useState(new Set());
+
+  // Module Lectures and sequential navigation
+  const moduleLectures = useMemo(() => curriculumService.getLecturesByModule(moduleId) || [], [moduleId]);
+  const sortedModuleLectures = useMemo(() => 
+    [...moduleLectures].sort((a, b) => (a.lectureNumber || 0) - (b.lectureNumber || 0)),
+    [moduleLectures]
+  );
+  const currentIndex = sortedModuleLectures.findIndex(l => l.id === lectureId);
+  const prevLecture = currentIndex > 0 ? sortedModuleLectures[currentIndex - 1] : null;
+  const nextLecture = currentIndex !== -1 && currentIndex < sortedModuleLectures.length - 1 ? sortedModuleLectures[currentIndex + 1] : null;
+  const isLocked = !learningProgressService.isLectureUnlocked(moduleId, lectureId, sortedModuleLectures);
 
   useEffect(() => {
     const foundExam = catalogService.getExamById(examId);
@@ -54,18 +68,36 @@ export default function StudentLectureLearnPage() {
     if (foundModule) setModule(foundModule);
     const foundLecture = curriculumService.getLectureById(lectureId);
     if (foundLecture) setLecture(foundLecture);
+    setIsCompleted(learningProgressService.isLectureCompleted(lectureId));
   }, [examId, subjectId, moduleId, lectureId]);
+
+  // Subscribe to lecture progress updates
+  useEffect(() => {
+    const unsub = learningProgressService.subscribeLectures(() => {
+      setIsCompleted(learningProgressService.isLectureCompleted(lectureId));
+    });
+    return unsub;
+  }, [lectureId]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3500);
+    setTimeout(() => setToastMessage(''), 4500);
   };
 
   const handleToggleComplete = () => {
+    if (isLocked) {
+      showToast(`⚠️ Complete previous lectures sequentially first before marking this lecture as mastered.`);
+      return;
+    }
     const nextState = !isCompleted;
     setIsCompleted(nextState);
+    learningProgressService.markLectureCompleted(lectureId, nextState);
     if (nextState) {
-      showToast('🎉 Lecture marked as completed! Progress updated.');
+      if (nextLecture) {
+        showToast(`🎉 Lecture completed! Next lecture "${nextLecture.title}" is now unlocked.`);
+      } else {
+        showToast('🎉 Congratulations! All lectures in this unit are now completed.');
+      }
     } else {
       showToast('Lecture marked as in-progress.');
     }
@@ -156,17 +188,79 @@ export default function StudentLectureLearnPage() {
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={handleToggleComplete}
-            className={`px-5 py-3 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm ${
-              isCompleted
-                ? 'bg-emerald-600 text-white shadow-emerald-600/20'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+            disabled={isLocked}
+            className={`px-5 py-3 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm ${
+              isLocked
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                : isCompleted
+                  ? 'bg-emerald-600 text-white shadow-emerald-600/20 cursor-pointer'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer'
             }`}
           >
             <CheckCircle2 className={`w-4 h-4 ${isCompleted ? 'text-white' : 'text-slate-400'}`} />
-            <span>{isCompleted ? 'Lecture Completed' : 'Mark as Mastered'}</span>
+            <span>{isLocked ? 'Locked for Study' : isCompleted ? 'Lecture Completed' : 'Mark as Mastered'}</span>
           </button>
         </div>
       </div>
+
+      {/* Locked Alert Banner */}
+      {isLocked && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-amber-50 border border-amber-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-black text-amber-900">
+                Sequential Gating Active
+              </h4>
+              <p className="text-xs text-amber-700 mt-0.5">
+                This lecture is locked until you complete Lecture #{prevLecture?.lectureNumber || currentIndex} ({prevLecture?.title || 'previous lecture'}).
+              </p>
+            </div>
+          </div>
+          {prevLecture && (
+            <button
+              onClick={() => navigate(`/student/courses/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures/${prevLecture.id}`)}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 cursor-pointer transition-all shadow-xs"
+            >
+              Go to Lecture #{prevLecture.lectureNumber}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Next Lecture Unlocked Callout Banner */}
+      {isCompleted && nextLecture && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-brand-500/10 to-indigo-500/10 border border-emerald-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-base shrink-0 shadow-sm shadow-emerald-600/30">
+              ✓
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  Current Lecture Completed
+                </span>
+                <span className="text-xs font-bold text-emerald-700">
+                  Next Session Unlocked:
+                </span>
+              </div>
+              <h4 className="text-xs sm:text-sm font-black text-slate-900 mt-0.5">
+                Lecture #{nextLecture.lectureNumber}: {nextLecture.title}
+              </h4>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate(`/student/courses/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures/${nextLecture.id}`)}
+            className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-brand-600/20 cursor-pointer self-start sm:self-auto shrink-0 transition-all active:scale-98"
+          >
+            <span>Proceed to Next Lecture</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* 6-Channel Navigation Tab Bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">

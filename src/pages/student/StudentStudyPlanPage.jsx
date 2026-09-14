@@ -5,7 +5,6 @@ import {
   Clock, 
   Play, 
   CheckCircle2, 
-  Lock, 
   ChevronDown, 
   ChevronRight, 
   BookOpen, 
@@ -14,239 +13,235 @@ import {
   Layers, 
   Sparkles,
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  AlertCircle,
+  X,
+  RotateCw,
+  Video,
+  Image as ImageIcon,
+  Brain,
+  HelpCircle,
+  Check,
+  Eye,
+  Info
 } from 'lucide-react';
-import { studyPlanWeeks } from '../../data/mockData';
-import { curriculumService } from '../../services/curriculumService';
+import { dashboardUserData } from '../../data/mockData';
 import { catalogService } from '../../services/catalogService';
+import { curriculumService } from '../../services/curriculumService';
+import { learningProgressService } from '../../services/learningProgressService';
+import { studyPlan28DaysCurriculum } from '../../data/studyPlanCurriculumData';
 
 export default function StudentStudyPlanPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
-
   const completedDayParam = searchParams.get('completedDay');
-  const examParam = searchParams.get('exam');
 
-  const [selectedExamTrack, setSelectedExamTrack] = useState(() => {
-    if (examParam === 'usmle' || examParam === 'usmle-step1') return 'usmle';
-    if (examParam === 'plab' || examParam === 'plab-ukmla') return 'plab';
-    if (examParam === 'europe' || examParam === 'europe-licensing') return 'europe';
-    return 'neet-pg';
-  });
+  // Enrolled Exam determination from student enrollment data (NO track switcher)
+  const enrolledExamId = dashboardUserData.examCategory || 'neet-pg';
+  const enrolledExamObj = catalogService.getExamById(enrolledExamId) || {
+    id: enrolledExamId,
+    name: dashboardUserData.enrolledCourse || 'NEET PG & NExT 2026',
+    fullName: 'National Eligibility cum Entrance Test for Postgraduate (NEET PG & NExT)'
+  };
+  const enrolledProgramTier = dashboardUserData.packageTier || 'Standard • 6 Month Program';
 
-  // Completed Days store
-  const [completedDaysList, setCompletedDaysList] = useState([1, 2]);
+  // Completed Days store connected to learningProgressService
+  const [completedDaysList, setCompletedDaysList] = useState(() => learningProgressService.getCompletedDays());
+  const [highestUnlockedDay, setHighestUnlockedDay] = useState(() => learningProgressService.getHighestUnlockedDay());
   const [completionBanner, setCompletionBanner] = useState('');
+
+  // Sequential Gating Gatekeeper Modal State
+  const [gatingModalInfo, setGatingModalInfo] = useState(null);
+
+  // Subscribe to learningProgressService reactivity
+  useEffect(() => {
+    const unsub = learningProgressService.subscribe(() => {
+      setCompletedDaysList(learningProgressService.getCompletedDays());
+      setHighestUnlockedDay(learningProgressService.getHighestUnlockedDay());
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (completedDayParam) {
       const dayNum = parseInt(completedDayParam, 10);
-      setCompletedDaysList((prev) => Array.from(new Set([...prev, dayNum])));
-      setCompletionBanner(`🎉 Great job! Day ${dayNum} curriculum milestone marked as Completed.`);
+      setCompletionBanner(`🎉 Outstanding work! Day ${dayNum} curriculum milestone marked as Completed.`);
       const timer = setTimeout(() => setCompletionBanner(''), 6000);
       return () => clearTimeout(timer);
     }
   }, [completedDayParam]);
 
-  // Reactive Curriculum Data
-  const [curriculumSubjects, setCurriculumSubjects] = useState(() => curriculumService.getSubjects(selectedExamTrack));
-  const [curriculumModules, setCurriculumModules] = useState(() => curriculumService.getModules(null, selectedExamTrack));
-  const [curriculumSchedule, setCurriculumSchedule] = useState(() => curriculumService.getSchedule(selectedExamTrack));
+  // Week Accordion state: default active week to open
+  const currentWeekNumber = useMemo(() => {
+    if (highestUnlockedDay <= 7) return 1;
+    if (highestUnlockedDay <= 14) return 2;
+    if (highestUnlockedDay <= 21) return 3;
+    return 4;
+  }, [highestUnlockedDay]);
 
-  useEffect(() => {
-    const unsubC = curriculumService.subscribeCurriculum(() => {
-      setCurriculumSubjects(curriculumService.getSubjects(selectedExamTrack));
-      setCurriculumModules(curriculumService.getModules(null, selectedExamTrack));
-    });
-    const unsubS = curriculumService.subscribeSchedule(() => {
-      setCurriculumSchedule(curriculumService.getSchedule(selectedExamTrack));
-    });
-    return () => {
-      unsubC();
-      unsubS();
-    };
-  }, [selectedExamTrack]);
-
-  useEffect(() => {
-    setCurriculumSubjects(curriculumService.getSubjects(selectedExamTrack));
-    setCurriculumModules(curriculumService.getModules(null, selectedExamTrack));
-    setCurriculumSchedule(curriculumService.getSchedule(selectedExamTrack));
-  }, [selectedExamTrack]);
-
-  // Week Expansion state
-  const [expandedWeeks, setExpandedWeeks] = useState({ 1: true, 2: false, 3: false, 4: false });
+  const [expandedWeeks, setExpandedWeeks] = useState({
+    1: true,
+    2: currentWeekNumber === 2,
+    3: currentWeekNumber === 3,
+    4: currentWeekNumber === 4
+  });
 
   const toggleWeek = (weekNum) => {
-    setExpandedWeeks((prev) => ({
+    setExpandedWeeks(prev => ({
       ...prev,
       [weekNum]: !prev[weekNum]
     }));
   };
 
-  // Dynamically resolve study plan weeks
-  const resolvedStudyPlanWeeks = useMemo(() => {
-    if (!curriculumSchedule || curriculumSchedule.length === 0) {
-      return studyPlanWeeks;
+  // Expandable Day Cards state: current active day is open by default for immediate preview
+  const [expandedDays, setExpandedDays] = useState(() => ({
+    [learningProgressService.getHighestUnlockedDay()]: true
+  }));
+
+  const toggleDay = (dayNumber, e) => {
+    if (e) e.stopPropagation();
+    setExpandedDays(prev => ({
+      ...prev,
+      [dayNumber]: !prev[dayNumber]
+    }));
+  };
+
+  // Find title of current active day for guidance modal
+  const currentDayTitle = useMemo(() => {
+    for (const week of studyPlan28DaysCurriculum) {
+      const found = week.days.find(d => d.dayNumber === highestUnlockedDay);
+      if (found) return found.title;
+    }
+    return `Cardiology & Hemodynamics`;
+  }, [highestUnlockedDay]);
+
+  // Handle Day or Lecture click:
+  // - Completed: open for review
+  // - Current: open to resume
+  // - Upcoming: trigger gating modal explaining requirement
+  const handleContentAction = (day, lecture = null) => {
+    const isDone = completedDaysList.includes(day.dayNumber);
+    const isCurrent = !isDone && day.dayNumber === highestUnlockedDay;
+
+    // 1. Completed Day: Always allow open review
+    if (isDone) {
+      navigate(`/day/${day.dayNumber}`);
+      return;
     }
 
-    const weekMap = {};
-    curriculumSchedule.forEach((slot) => {
-      const wk = slot.weekNumber || 1;
-      if (!weekMap[wk]) {
-        weekMap[wk] = [];
-      }
-      weekMap[wk].push(slot);
+    // 2. Current In-Progress Day: Allow entry to resume study
+    if (isCurrent) {
+      navigate(`/day/${day.dayNumber}`);
+      return;
+    }
+
+    // 3. Upcoming Future Content: Block consumption and display progression modal
+    setGatingModalInfo({
+      attemptedDayNumber: day.dayNumber,
+      attemptedDayTitle: day.title,
+      currentDayNumber: highestUnlockedDay,
+      currentDayTitle: currentDayTitle,
+      attemptedLectureTitle: lecture?.title || null
     });
+  };
 
-    const sortedWeeks = Object.keys(weekMap).map(Number).sort((a, b) => a - b);
-    const allLectures = curriculumService.getLectures();
+  // Quick dev testing tool handlers
+  const handleFastForwardDay = () => {
+    const next = highestUnlockedDay + 1;
+    if (next <= 28) {
+      learningProgressService.setDayCompleted(highestUnlockedDay, true);
+      setCompletionBanner(`⚡ Fast-forwarded! Day ${highestUnlockedDay} completed. Day ${next} is now active.`);
+      setExpandedDays(prev => ({ ...prev, [next]: true }));
+      const targetWk = Math.ceil(next / 7);
+      setExpandedWeeks(prev => ({ ...prev, [targetWk]: true }));
+    }
+  };
 
-    return sortedWeeks.map((wkNum) => {
-      const slots = weekMap[wkNum].sort((a, b) => a.dayNumber - b.dayNumber);
-      const firstSlot = slots[0];
-      const subject = curriculumSubjects.find((s) => s.id === firstSlot?.subjectId);
-      const module = curriculumModules.find((c) => c.id === firstSlot?.moduleId);
-
-      const days = slots.map((s) => {
-        const isMarkedCompleted = completedDaysList.includes(s.dayNumber);
-        let status = 'available';
-        if (s.status === 'Locked') {
-          status = 'locked';
-        } else if (isMarkedCompleted || (selectedExamTrack === 'neet-pg' && s.dayNumber < 3)) {
-          status = 'completed';
-        } else if (selectedExamTrack === 'neet-pg' && s.dayNumber === 3) {
-          status = 'in-progress';
-        } else if (s.status === 'Active') {
-          status = 'available';
-        } else if (s.status === 'Scheduled') {
-          status = 'scheduled';
-        } else {
-          status = 'available';
-        }
-
-        const linkedLectures = (s.lectureIds || []).map((tId) => {
-          const top = allLectures.find((t) => t.id === tId);
-          return { id: tId, title: top?.title || tId };
-        });
-
-        return {
-          dayNumber: s.dayNumber,
-          title: s.dayTitle,
-          duration: s.estimatedTime || '1.5 hours',
-          status,
-          score: s.dayNumber === 1 ? '18/20 (90%)' : s.dayNumber === 2 ? '17/20 (85%)' : undefined,
-          lectures: linkedLectures,
-          hasLive: s.hasLive,
-          hasTest: s.hasTest,
-          subjectId: s.subjectId,
-          moduleId: s.moduleId,
-          firstLectureId: s.lectureIds?.[0]
-        };
-      });
-
-      const completedCount = days.filter((d) => d.status === 'completed').length;
-      const completionRate = `${Math.round((completedCount / (days.length || 1)) * 100)}%`;
-
-      return {
-        weekNumber: wkNum,
-        title: subject ? subject.name : `Week ${wkNum} Core Curriculum`,
-        description: module ? module.title : 'High-Yield Clinical Module',
-        badge: wkNum === 1 ? 'Active Track' : 'Upcoming Track',
-        status: wkNum === 1 ? 'current' : 'upcoming',
-        completionRate,
-        days
-      };
-    });
-  }, [curriculumSchedule, curriculumSubjects, curriculumModules, completedDaysList, selectedExamTrack]);
-
-  const handleDayClick = (day) => {
-    if (day.status === 'locked') return;
-    navigate(`/day/${day.dayNumber}`);
+  const handleResetRoadmap = () => {
+    learningProgressService.resetProgress();
+    setCompletionBanner(`🔄 Roadmap reset to default progression (Days 1 & 2 completed, Day 3 active).`);
+    setExpandedDays({ 3: true });
+    setExpandedWeeks({ 1: true, 2: false, 3: false, 4: false });
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300 pb-16">
       
       {/* Toast Notification */}
       {completionBanner && (
         <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-md flex items-center justify-between animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-200" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-200 shrink-0" />
             <span className="font-bold text-xs sm:text-sm">{completionBanner}</span>
           </div>
           <button 
             onClick={() => setCompletionBanner('')}
-            className="text-white/80 hover:text-white text-xs font-bold"
+            className="text-white/80 hover:text-white text-xs font-bold px-2 py-1"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-100 text-brand-800 text-xs font-bold uppercase tracking-wider mb-2">
-            <Calendar className="w-3.5 h-3.5 text-brand-600" />
-            <span>Drip-Fed Structured Syllabus</span>
+      {/* Header Bar — Enrolled Exam Only */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-bold uppercase tracking-wider border border-brand-200">
+              <Calendar className="w-3.5 h-3.5 text-brand-600" />
+              <span>Drip-Fed Structured Syllabus</span>
+            </div>
+            
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Your Clinical Study Plan
+              </p>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">
+                {enrolledExamObj.name}
+              </h1>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <span className="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200">
+                {enrolledProgramTier}
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-xs text-slate-500 font-medium">
+                Your personalized 28-day clinical preparation roadmap.
+              </span>
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Your Clinical Study Plan
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-3xl">
-            Structured week-by-week clinical curriculum designed by national exam faculties. Click on any unlocked Day to access video lectures, clinical pearls, ECG strips, and active spaced-repetition flashcards.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-3 text-xs bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs self-start sm:self-auto">
-          <span className="flex items-center gap-1 font-semibold text-emerald-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            Completed
-          </span>
-          <span className="flex items-center gap-1 font-semibold text-brand-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-brand-500" />
-            In Progress
-          </span>
-          <span className="flex items-center gap-1 font-semibold text-slate-400">
-            <Lock className="w-3 h-3" />
-            Locked
-          </span>
+          {/* Status Legend: Completed ✓, Current ▶, Upcoming ○ (No Locked Tag) */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 self-start sm:self-auto shrink-0">
+            <div className="flex items-center gap-3.5 text-xs bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-200/80 shadow-2xs font-semibold">
+              <span className="flex items-center gap-1.5 text-emerald-700">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Completed</span>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1.5 text-brand-700">
+                <Play className="w-3.5 h-3.5 fill-current text-brand-600" />
+                <span>Current</span>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1.5 text-slate-500">
+                <span className="w-3 h-3 rounded-full border-2 border-slate-400" />
+                <span>Upcoming</span>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Study Plan Program Track Switcher */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 pl-1 shrink-0 flex items-center gap-1.5 mr-1">
-          <Layers className="w-3.5 h-3.5" />
-          Exam Track:
-        </span>
-        {[
-          { id: 'neet-pg', name: 'NEET PG & NExT', flag: '🇮🇳' },
-          { id: 'usmle', name: 'USMLE Step 1 & 2', flag: '🇺🇸' },
-          { id: 'plab', name: 'PLAB 1 & 2 / UKMLA', flag: '🇬🇧' },
-          { id: 'europe', name: 'Europe Licensing (FSP)', flag: '🇪🇺' }
-        ].map(track => (
-          <button
-            key={track.id}
-            onClick={() => setSelectedExamTrack(track.id)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-              selectedExamTrack === track.id
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-            }`}
-          >
-            <span>{track.flag}</span>
-            <span>{track.name}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Expandable Week Cards */}
-      <div className="space-y-4">
-        {resolvedStudyPlanWeeks.map((week) => {
+      {/* 4-Week Accordion Roadmap — All 28 Days Visible */}
+      <div className="space-y-5">
+        {studyPlan28DaysCurriculum.map((week) => {
           const isExpanded = expandedWeeks[week.weekNumber];
-          const isCurrentWeek = week.status === 'current';
+          const isCurrentWeek = week.weekNumber === currentWeekNumber;
+          const completedInWeek = week.days.filter(d => completedDaysList.includes(d.dayNumber)).length;
+          const weekProgressPct = Math.round((completedInWeek / (week.days.length || 7)) * 100);
 
           return (
             <div
@@ -261,24 +256,24 @@ export default function StudentStudyPlanPage() {
               {/* Week Header Accordion Bar */}
               <div
                 onClick={() => toggleWeek(week.weekNumber)}
-                className="p-5 sm:p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 transition-colors"
+                className="p-5 sm:p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 transition-colors select-none"
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 font-extrabold text-base ${
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 font-black text-base ${
                     isCurrentWeek 
                       ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' 
-                      : 'bg-slate-100 text-slate-500'
+                      : 'bg-slate-100 text-slate-600'
                   }`}>
                     W{week.weekNumber}
                   </div>
 
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base sm:text-lg font-black text-slate-900">
                         Week {week.weekNumber} — {week.title}
                       </h3>
                       {isCurrentWeek && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-800 uppercase tracking-wide">
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-100 text-brand-800 uppercase tracking-wide border border-brand-200">
                           Active Week
                         </span>
                       )}
@@ -290,9 +285,14 @@ export default function StudentStudyPlanPage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <span className="text-xs font-bold text-slate-500 hidden sm:inline">
-                    Progress: {week.completionRate}
-                  </span>
+                  <div className="hidden sm:flex flex-col items-end">
+                    <span className="text-xs font-bold text-slate-700">
+                      Progress: {weekProgressPct}%
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {completedInWeek} of {week.days.length} days completed
+                    </span>
+                  </div>
                   <span className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
                     isExpanded ? 'bg-slate-100 rotate-180' : 'bg-slate-50'
                   }`}>
@@ -301,136 +301,382 @@ export default function StudentStudyPlanPage() {
                 </div>
               </div>
 
-              {/* Week Days List (When Expanded) */}
+              {/* Week Days List — All 7 Days Rendered with Expandable Drawers */}
               {isExpanded && (
-                <div className="border-t border-slate-100 divide-y divide-slate-100 bg-slate-50/40">
+                <div className="border-t border-slate-100 divide-y divide-slate-100 bg-slate-50/30">
                   {week.days.map((day) => {
-                    const isMarkedCompleted = completedDaysList.includes(day.dayNumber);
-                    const isCompleted = day.status === 'completed' || isMarkedCompleted;
-                    const isInProgress = !isCompleted && day.status === 'in-progress';
-                    const isAvailable = !isCompleted && !isInProgress && (day.status === 'available' || day.status === 'scheduled');
-                    const isLocked = !isCompleted && !isInProgress && !isAvailable && day.status === 'locked';
+                    const isCompleted = completedDaysList.includes(day.dayNumber);
+                    const isCurrent = !isCompleted && day.dayNumber === highestUnlockedDay;
+                    const isUpcoming = !isCompleted && !isCurrent;
+                    const isDayExpanded = Boolean(expandedDays[day.dayNumber]);
+
+                    // Aggregate counts for summary pill
+                    const totalLectures = day.modules.reduce((acc, m) => acc + m.lectures.length, 0);
+                    const totalTopics = day.modules.reduce((acc, m) => 
+                      acc + m.lectures.reduce((lAcc, l) => lAcc + l.topics.length, 0), 0
+                    );
 
                     return (
                       <div
                         key={day.dayNumber}
-                        onClick={() => handleDayClick(day)}
-                        className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
-                          isLocked
-                            ? 'opacity-60 bg-slate-50/80 cursor-not-allowed'
-                            : isInProgress
-                              ? 'bg-brand-50/50 hover:bg-brand-50 cursor-pointer border-l-4 border-brand-500'
-                              : 'hover:bg-white cursor-pointer'
+                        className={`transition-all ${
+                          isCompleted
+                            ? 'bg-white'
+                            : isCurrent
+                              ? 'bg-brand-50/40 border-l-4 border-brand-600'
+                              : 'bg-white'
                         }`}
                       >
-                        <div className="flex items-start sm:items-center gap-3.5">
-                          
-                          {/* Status Indicator Icon */}
-                          <div className="shrink-0 mt-0.5 sm:mt-0">
-                            {isCompleted && (
-                              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-2xs">
-                                <CheckCircle2 className="w-5 h-5" />
-                              </div>
-                            )}
-                            {isInProgress && (
-                              <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-xs shadow-brand-500/30 animate-pulse">
-                                <Play className="w-4 h-4 fill-current ml-0.5" />
-                              </div>
-                            )}
-                            {isAvailable && (
-                              <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center border border-brand-200">
-                                <BookOpen className="w-4 h-4" />
-                              </div>
-                            )}
-                            {isLocked && (
-                              <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center">
-                                <Lock className="w-4 h-4" />
-                              </div>
-                            )}
-                          </div>
-
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-bold text-slate-400 uppercase">
-                                Day {day.dayNumber}
-                              </span>
-                              {isInProgress && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-brand-600 text-white uppercase tracking-wider">
-                                  Current Day
-                                </span>
+                        {/* Day Header Row (Summary View) */}
+                        <div
+                          onClick={(e) => toggleDay(day.dayNumber, e)}
+                          className={`p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/80 transition-colors`}
+                        >
+                          <div className="flex items-start sm:items-center gap-3.5">
+                            
+                            {/* 3 Status Icons: Completed (Check), Current (Play), Upcoming (Circle) */}
+                            <div className="shrink-0 mt-0.5 sm:mt-0">
+                              {isCompleted && (
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-2xs border border-emerald-200">
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                                </div>
                               )}
-                              {isCompleted && day.score && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                                  Drill Score: {day.score}
-                                </span>
+                              {isCurrent && (
+                                <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-xs shadow-brand-500/30 animate-pulse">
+                                  <Play className="w-4 h-4 fill-current ml-0.5" />
+                                </div>
                               )}
-                              {day.hasLive && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100 flex items-center gap-1">
-                                  <Radio className="w-3 h-3 text-purple-600" />
-                                  <span>Live Rounds</span>
-                                </span>
-                              )}
-                              {day.hasTest && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100 flex items-center gap-1">
-                                  <FileText className="w-3 h-3 text-amber-600" />
-                                  <span>CBT Test</span>
-                                </span>
+                              {isUpcoming && (
+                                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border border-slate-300">
+                                  <span className="w-2.5 h-2.5 rounded-full border-2 border-slate-400" />
+                                </div>
                               )}
                             </div>
 
-                            <h4 className={`text-sm sm:text-base font-bold mt-0.5 ${
-                              isLocked ? 'text-slate-500' : 'text-slate-900 hover:text-brand-600'
-                            }`}>
-                              {day.title}
-                            </h4>
+                            {/* Main Day Info */}
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-black text-slate-500 uppercase tracking-wider">
+                                  Day {day.dayNumber}
+                                </span>
 
-                            {day.lectures && day.lectures.length > 0 && (
-                              <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                {day.lectures.map((t, idx) => (
+                                {isCurrent && (
+                                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-brand-600 text-white uppercase tracking-wider shadow-2xs">
+                                    ▶ Current Day
+                                  </span>
+                                )}
+
+                                {isCompleted && (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                    ✓ Completed
+                                  </span>
+                                )}
+
+                                {isUpcoming && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                                    ○ Upcoming
+                                  </span>
+                                )}
+
+                                {isCompleted && day.score && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    Drill Score: {day.score}
+                                  </span>
+                                )}
+
+                                {day.hasLive && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100 flex items-center gap-1">
+                                    <Radio className="w-3 h-3 text-purple-600" />
+                                    <span>Live Rounds</span>
+                                  </span>
+                                )}
+
+                                {day.hasTest && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-100 flex items-center gap-1">
+                                    <FileText className="w-3 h-3 text-amber-600" />
+                                    <span>CBT Test</span>
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4 className="text-sm sm:text-base font-black text-slate-900">
+                                {day.title}
+                              </h4>
+
+                              {/* Teaser Pills & Academic Counts */}
+                              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                <span className="text-[11px] font-bold text-brand-700 bg-brand-50/80 px-2 py-0.5 rounded border border-brand-100/80">
+                                  {day.modules.length} {day.modules.length === 1 ? 'Module' : 'Modules'} • {totalLectures} Lectures • {totalTopics} Topics
+                                </span>
+
+                                {day.summaryPills?.map((pill, pIdx) => (
                                   <span 
-                                    key={idx} 
-                                    className="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200/60"
+                                    key={pIdx} 
+                                    className="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200/70"
                                   >
-                                    {t.title || t}
+                                    {pill}
                                   </span>
                                 ))}
                               </div>
-                            )}
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Right Action Button */}
-                        <div className="flex items-center justify-end gap-3 shrink-0">
-                          <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
-                            <Clock className="w-3.5 h-3.5" />
-                            {day.duration}
-                          </span>
+                          {/* Right Controls & Primary Actions */}
+                          <div className="flex items-center justify-end gap-3 shrink-0 pt-2 lg:pt-0">
+                            <span className="text-xs text-slate-400 flex items-center gap-1 font-medium mr-1">
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>{day.duration}</span>
+                            </span>
 
-                          {!isLocked ? (
-                            <div className="flex items-center gap-2">
+                            {/* View Day Content Drawer Toggle Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => toggleDay(day.dayNumber, e)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                                isDayExpanded
+                                  ? 'bg-slate-200 text-slate-800'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                              }`}
+                            >
+                              <span>{isDayExpanded ? 'Collapse Content' : 'View Day Content'}</span>
+                              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDayExpanded ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Primary Action Button (Only appears on opened days: Completed or Current) */}
+                            {!isUpcoming && (
                               <button
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDayClick(day);
+                                  handleContentAction(day);
                                 }}
                                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
                                   isCompleted
                                     ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                                    : isInProgress
-                                      ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/20'
-                                      : 'bg-white hover:bg-brand-50 hover:text-brand-700 text-slate-700 border border-slate-200'
+                                    : 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/20'
                                 }`}
                               >
-                                <span>{isCompleted ? 'Review Day' : isInProgress ? 'Resume Day' : 'Start Study'}</span>
+                                <span>
+                                  {isCompleted ? 'Review Day' : 'Resume Day'}
+                                </span>
                                 <ChevronRight className="w-3.5 h-3.5" />
                               </button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400 font-medium px-2 py-1 bg-slate-100 rounded-lg">
-                              Locked
-                            </span>
-                          )}
+                            )}
+                          </div>
                         </div>
+
+                        {/* ========================================================= */}
+                        {/* EXPANDABLE DAY CONTENT PREVIEW DRAWER                     */}
+                        {/* Full Academic Hierarchy: Modules -> Lectures -> Topics -> Resources */}
+                        {/* ========================================================= */}
+                        {isDayExpanded && (
+                          <div className="border-t border-slate-200/80 bg-gradient-to-b from-slate-50/60 to-slate-100/30 p-4 sm:p-6 space-y-5 animate-in fade-in duration-200">
+                            
+                            {/* Drawer Status Banner */}
+                            <div className={`p-3.5 rounded-2xl flex items-center justify-between gap-3 text-xs ${
+                              isCompleted 
+                                ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                                : isCurrent
+                                  ? 'bg-brand-50 text-brand-900 border border-brand-200'
+                                  : 'bg-white text-slate-700 border border-slate-200 shadow-2xs'
+                            }`}>
+                              <div className="flex items-center gap-2.5">
+                                {isCompleted && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+                                {isCurrent && <Play className="w-4 h-4 fill-current text-brand-600 shrink-0" />}
+                                {isUpcoming && <Info className="w-4 h-4 text-slate-400 shrink-0" />}
+                                
+                                <span className="font-semibold">
+                                  {isCompleted && `✓ Completed Day Milestone — You can freely review all lectures, guides, and questions.`}
+                                  {isCurrent && `▶ Active Learning Day — Complete each required lecture and resource to unlock Day ${day.dayNumber + 1}.`}
+                                  {isUpcoming && `○ Upcoming Academic Curriculum — Complete Day ${highestUnlockedDay} first to unlock this content for study.`}
+                                </span>
+                              </div>
+
+                              <span className="text-[11px] font-bold text-slate-400 hidden sm:inline uppercase tracking-wider">
+                                {day.duration} Total Duration
+                              </span>
+                            </div>
+
+                            {/* Modules List */}
+                            <div className="space-y-4">
+                              {day.modules.map((module) => (
+                                <div 
+                                  key={module.id} 
+                                  className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-3.5"
+                                >
+                                  {/* Module Title Header */}
+                                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                        Module {module.moduleNumber}
+                                      </span>
+                                      <h5 className="text-xs sm:text-sm font-black text-slate-900">
+                                        {module.title}
+                                      </h5>
+                                    </div>
+                                    <span className="text-[11px] text-slate-400 font-medium">
+                                      {module.lectures.length} {module.lectures.length === 1 ? 'Lecture' : 'Lectures'}
+                                    </span>
+                                  </div>
+
+                                  {/* Lectures inside this Module */}
+                                  <div className="space-y-3 pt-1">
+                                    {module.lectures.map((lecture, lIdx) => {
+                                      // Determine individual lecture state
+                                      let lectureStatus = 'upcoming';
+                                      if (isCompleted) {
+                                        lectureStatus = 'completed';
+                                      } else if (isCurrent) {
+                                        if (lIdx === 0) {
+                                          lectureStatus = 'current';
+                                        } else {
+                                          lectureStatus = 'upcoming';
+                                        }
+                                      } else {
+                                        lectureStatus = 'upcoming';
+                                      }
+
+                                      return (
+                                        <div
+                                          key={lecture.id}
+                                          className={`p-4 rounded-xl border transition-all ${
+                                            lectureStatus === 'completed'
+                                              ? 'bg-slate-50/50 border-slate-200'
+                                              : lectureStatus === 'current'
+                                                ? 'bg-brand-50/30 border-brand-200 ring-1 ring-brand-500/10'
+                                                : 'bg-white border-slate-200/90'
+                                          }`}
+                                        >
+                                          {/* Lecture Card Header */}
+                                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                            <div className="space-y-1">
+                                              <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                  Lecture {lecture.lectureNumber}
+                                                </span>
+                                                <span className="text-slate-300">•</span>
+                                                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                                                  <Clock className="w-3 h-3 text-slate-400" />
+                                                  {lecture.duration}
+                                                </span>
+                                                <span className="text-slate-300">•</span>
+                                                <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                                  {lecture.difficulty || 'High-Yield'}
+                                                </span>
+
+                                                {/* Lecture Status Tag */}
+                                                {lectureStatus === 'completed' && (
+                                                  <span className="text-[10px] font-extrabold px-2 py-0.2 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                                    ✓ Completed
+                                                  </span>
+                                                )}
+                                                {lectureStatus === 'current' && (
+                                                  <span className="text-[10px] font-extrabold px-2 py-0.2 rounded-full bg-brand-600 text-white">
+                                                    ▶ Ready to Study
+                                                  </span>
+                                                )}
+                                                {lectureStatus === 'upcoming' && (
+                                                  <span className="text-[10px] font-semibold px-2 py-0.2 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                                                    ○ Upcoming • Available after Day {highestUnlockedDay}
+                                                  </span>
+                                                )}
+                                              </div>
+
+                                              <h6 className="text-xs sm:text-sm font-bold text-slate-900">
+                                                {lecture.title}
+                                              </h6>
+                                            </div>
+
+                                            {/* Action Button (Only for Open/Current/Completed Lectures) */}
+                                            {lectureStatus !== 'upcoming' && (
+                                              <div className="shrink-0 self-start sm:self-auto">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleContentAction(day, lecture)}
+                                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs ${
+                                                    lectureStatus === 'completed'
+                                                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                                      : 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/20'
+                                                  }`}
+                                                >
+                                                  <span>
+                                                    {lectureStatus === 'completed' ? 'Review Lecture' : 'Start Lecture'}
+                                                  </span>
+                                                  <ChevronRight className="w-3 h-3" />
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* Topics Covered (Bullet List) */}
+                                          {lecture.topics && lecture.topics.length > 0 && (
+                                            <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1.5">
+                                              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                                                Topics Covered:
+                                              </p>
+                                              <ul className="grid grid-cols-1 md:grid-cols-2 gap-1.5 text-xs text-slate-600">
+                                                {lecture.topics.map((t, tIdx) => (
+                                                  <li key={tIdx} className="flex items-start gap-1.5">
+                                                    <span className="text-brand-500 font-bold">•</span>
+                                                    <span>{t}</span>
+                                                  </li>
+                                                ))}
+                                              </ul>
+                                            </div>
+                                          )}
+
+                                          {/* Resource Badges */}
+                                          {lecture.resources && lecture.resources.length > 0 && (
+                                            <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1.5">
+                                              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                                                Learning Resources:
+                                              </p>
+                                              <div className="flex flex-wrap items-center gap-1.5">
+                                                {lecture.resources.map((res, rIdx) => {
+                                                  let IconComp = FileText;
+                                                  let colorClasses = 'bg-rose-50 text-rose-700 border-rose-200';
+                                                  
+                                                  if (res.type === 'video') {
+                                                    IconComp = Video;
+                                                    colorClasses = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                                                  } else if (res.type === 'images') {
+                                                    IconComp = ImageIcon;
+                                                    colorClasses = 'bg-sky-50 text-sky-700 border-sky-200';
+                                                  } else if (res.type === 'flashcards') {
+                                                    IconComp = Brain;
+                                                    colorClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                                                  } else if (res.type === 'live') {
+                                                    IconComp = Radio;
+                                                    colorClasses = 'bg-purple-50 text-purple-700 border-purple-200';
+                                                  } else if (res.type === 'test') {
+                                                    IconComp = CheckCircle2;
+                                                    colorClasses = 'bg-amber-50 text-amber-700 border-amber-200';
+                                                  }
+
+                                                  return (
+                                                    <span
+                                                      key={rIdx}
+                                                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${colorClasses}`}
+                                                    >
+                                                      <IconComp className="w-3.5 h-3.5 shrink-0" />
+                                                      <span>{res.label}</span>
+                                                    </span>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          )}
+
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                          </div>
+                        )}
 
                       </div>
                     );
@@ -442,6 +688,115 @@ export default function StudentStudyPlanPage() {
           );
         })}
       </div>
+
+      {/* Sequential Progression Modal Alert (When Upcoming Content is Clicked) */}
+      {gatingModalInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-slate-200 shadow-2xl space-y-5 animate-in zoom-in-95">
+            <div className="flex items-start justify-between">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-6 h-6 text-amber-600" />
+              </div>
+              <button
+                onClick={() => setGatingModalInfo(null)}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                Upcoming Learning Content
+              </h3>
+              
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Complete your current day first before starting this content for active study.
+              </p>
+
+              {/* Active Clinical Milestone */}
+              <div className="p-3.5 rounded-2xl bg-brand-50 border border-brand-200 space-y-1">
+                <div className="text-[10px] font-black uppercase tracking-wider text-brand-700">
+                  Active Clinical Milestone:
+                </div>
+                <div className="text-xs font-bold text-brand-950">
+                  Day {gatingModalInfo.currentDayNumber} — {gatingModalInfo.currentDayTitle}
+                </div>
+              </div>
+
+              {/* Attempted Content */}
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-0.5 text-xs text-slate-600">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Requested Target:
+                </div>
+                <div className="font-bold text-slate-800">
+                  Day {gatingModalInfo.attemptedDayNumber} — {gatingModalInfo.attemptedDayTitle}
+                </div>
+                {gatingModalInfo.attemptedLectureTitle && (
+                  <div className="text-[11px] text-slate-500 italic">
+                    Lecture: {gatingModalInfo.attemptedLectureTitle}
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-500 pt-1 leading-relaxed">
+                MedPrep Pro enforces strict sequential mastery so that candidates retain core physiology and pharmacology before advancing to higher-order clinical cases.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setGatingModalInfo(null)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-all"
+              >
+                Close
+              </button>
+
+              <button
+                onClick={() => {
+                  const targetDay = gatingModalInfo.currentDayNumber;
+                  setGatingModalInfo(null);
+                  navigate(`/day/${targetDay}`);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-brand-600/20 cursor-pointer transition-all"
+              >
+                <span>Go to Day {gatingModalInfo.currentDayNumber}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dev / Testing Quick-Bar */}
+      <div className="bg-slate-100/80 rounded-2xl p-4 border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 text-slate-600 font-medium">
+          <Sparkles className="w-4 h-4 text-brand-600 shrink-0" />
+          <span>Study Plan Simulator • Highest Unlocked Day: <strong className="text-slate-900">Day {highestUnlockedDay}</strong></span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleFastForwardDay}
+            className="px-3 py-1.5 rounded-xl bg-white hover:bg-brand-50 text-brand-700 border border-slate-200 font-bold transition-all flex items-center gap-1 cursor-pointer"
+            title="Complete current day and unlock the next day"
+          >
+            <span>Advance Day (+1)</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleResetRoadmap}
+            className="p-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition-all cursor-pointer"
+            title="Reset to Day 3 active"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
     </div>
   );
 }

@@ -440,6 +440,206 @@ export const INITIAL_LECTURES = [
     }
   },
 
+  {
+    id: 'lec-valvular-mitral',
+    examId: 'neet-pg',
+    subjectId: 'sub-neet-cardio',
+    moduleId: 'mod-neet-valvular',
+    title: 'Mitral Stenosis & Mitral Regurgitation: Murmurs, PV Loops & Hemodynamics',
+    lectureNumber: 2,
+    duration: '45 mins',
+    difficulty: 'High-Yield',
+    status: 'Published',
+    content: {
+      pdfList: [
+        {
+          id: 'pdf-valvular-2',
+          fileName: 'Mitral_Valve_Pathology_and_Auscultation_Mastery.pdf',
+          title: 'Mitral Stenosis (Opening Snap) vs MR (Holosystolic Murmur) Clinical Protocol',
+          pages: 24,
+          size: '5.1 MB',
+          updated: 'Recently updated',
+          author: 'Dr. Siddharth V. (MD, DM Cardiology)'
+        }
+      ],
+      images: [
+        {
+          id: 'img-valvular-3',
+          title: 'Mitral Valve Opening Snap and Diastolic Rumble Timing',
+          url: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?w=900&auto=format&fit=crop&q=80',
+          caption: 'Fig 3: A2-to-opening snap (A2-OS) interval narrows with increasing severity of mitral stenosis.'
+        },
+        {
+          id: 'img-valvular-4',
+          title: 'Color Doppler Echocardiography of Severe Mitral Regurgitation Jet',
+          url: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=900&auto=format&fit=crop&q=80',
+          caption: 'Fig 4: Eccentric regurgitant jet reaching posterior wall of left atrium with vena contracta > 0.7 cm.'
+        }
+      ],
+      video: {
+        title: 'Mitral Stenosis vs Regurgitation: Pressure Tracings & Auscultation Pearls',
+        duration: '42:15',
+        instructor: 'Dr. Siddharth V.',
+        url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        thumbnail: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?w=900&auto=format&fit=crop&q=80',
+        chapters: [
+          { time: '00:00', label: 'Rheumatic Fever Pathogenesis & MacCallum Plaques' },
+          { time: '14:20', label: 'Hemodynamic Consequences: Left Atrial Dilation & Pulmonary HTN' },
+          { time: '28:40', label: 'Auscultation Pearls: Dynamic Maneuvers (Handgrip vs Valsalva)' }
+        ]
+      },
+      flashcards: [
+        {
+          id: 'fc-mitral-1',
+          question: 'What auscultatory finding determines the severity of Mitral Stenosis?',
+          answer: 'The A2-to-Opening Snap (A2-OS) interval: A shorter interval indicates higher left atrial pressure and more severe stenosis.'
+        },
+        {
+          id: 'fc-mitral-2',
+          question: 'How does handgrip (isometric exercise) affect the murmur of Mitral Regurgitation?',
+          answer: 'Handgrip increases systemic vascular resistance (afterload), which increases regurgitant flow across the mitral valve, accentuating the holosystolic murmur.'
+        },
+        {
+          id: 'fc-mitral-3',
+          question: 'What is Ortner syndrome in severe long-standing Mitral Stenosis?',
+          answer: 'Hoarseness of voice caused by compression of the left recurrent laryngeal nerve between an enlarged left atrium / pulmonary trunk and the aortic arch.'
+        }
+      ],
+      liveClasses: [],
+      topics: [
+        { id: 'lt-mitral-1', title: 'A2-OS Interval Analysis & Wilkins Score', order: 1, summary: 'Wilkins score echocardiographic assessment for PMBV candidacy.' },
+        { id: 'lt-mitral-2', title: 'Holosystolic Murmurs: MR vs TR vs VSD', order: 2, summary: 'Differentiating apical vs parasternal holosystolic murmurs with Carvallo and Handgrip.' }
+      ],
+      clinicalNotes: 'Severe mitral stenosis has valve area < 1.0 cm2 and mean pressure gradient > 10 mmHg. Anticoagulation is indicated if atrial fibrillation or prior thromboembolism is present.'
+    }
+  },
+
+  {
+    id: 'lec-valvular-mvp-tricuspid',
+    examId: 'neet-pg',
+    subjectId: 'sub-neet-cardio',
+    moduleId: 'mod-neet-valvular',
+    title: 'Mitral Valve Prolapse & Tricuspid Regurgitation (Carvallo Sign)',
+    lectureNumber: 3,
+    duration: '35 mins',
+    difficulty: 'Core Clinical',
+    status: 'Published',
+    content: {
+      pdfList: [
+        {
+          id: 'pdf-valvular-3',
+          fileName: 'MVP_Tricuspid_and_Pulmonary_Valvular_Disorders.pdf',
+          title: 'Myxomatous Degeneration, Mid-Systolic Clicks & Right-Sided Valve Lesions',
+          pages: 18,
+          size: '3.9 MB',
+          updated: 'Recently updated',
+          author: 'Dr. Anita Sharma, MD'
+        }
+      ],
+      images: [
+        {
+          id: 'img-valvular-5',
+          title: 'Dynamic Auscultation Changes in Mitral Valve Prolapse',
+          url: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=900&auto=format&fit=crop&q=80',
+          caption: 'Fig 5: Standing/Valsalva decreases preload, causing the click and murmur to occur earlier in systole.'
+        }
+      ],
+      video: {
+        title: 'MVP Auscultation Dynamics & Right-Sided Heart Murmurs Masterclass',
+        duration: '34:50',
+        instructor: 'Dr. Anita Sharma, MD',
+        url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        thumbnail: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=900&auto=format&fit=crop&q=80',
+        chapters: [
+          { time: '00:00', label: 'Connective Tissue Disorders (Marfan & Ehlers-Danlos)' },
+          { time: '11:15', label: 'Mid-Systolic Click & Late-Systolic Murmur Physics' },
+          { time: '23:00', label: "Carvallo's Sign in Tricuspid Regurgitation vs MR" }
+        ]
+      },
+      flashcards: [
+        {
+          id: 'fc-mvp-1',
+          question: 'What maneuver moves the mid-systolic click and murmur of MVP closer to S1?',
+          answer: 'Any maneuver that decreases left ventricular volume (e.g., sudden standing or the strain phase of the Valsalva maneuver).'
+        },
+        {
+          id: 'fc-mvp-2',
+          question: 'What is Carvallo sign and what condition does it differentiate?',
+          answer: 'Carvallo sign is an increase in murmur intensity during inspiration; it is positive in Tricuspid Regurgitation and differentiates it from Mitral Regurgitation.'
+        }
+      ],
+      liveClasses: [],
+      topics: [
+        { id: 'lt-mvp-1', title: 'Barlow Syndrome & Myxomatous Degeneration', order: 1, summary: 'Redundant leaflets prolapsing into left atrium during systole.' },
+        { id: 'lt-mvp-2', title: 'Carvallo Sign and Dynamic Respiration Pearls', order: 2, summary: 'Inspiratory augmentation of right-sided murmurs due to increased venous return.' }
+      ],
+      clinicalNotes: 'Tricuspid regurgitation is most commonly secondary (functional) due to right ventricular dilation from pulmonary hypertension.'
+    }
+  },
+
+  {
+    id: 'lec-valvular-prosthetic-endo',
+    examId: 'neet-pg',
+    subjectId: 'sub-neet-cardio',
+    moduleId: 'mod-neet-valvular',
+    title: 'Infective Endocarditis & Prosthetic Heart Valve Complications',
+    lectureNumber: 4,
+    duration: '50 mins',
+    difficulty: 'High-Yield',
+    status: 'Published',
+    content: {
+      pdfList: [
+        {
+          id: 'pdf-valvular-4',
+          fileName: 'Infective_Endocarditis_Duke_Criteria_and_Prosthetic_Valves.pdf',
+          title: 'Modified Duke Criteria, Valve Thrombosis & Anticoagulation Protocols',
+          pages: 28,
+          size: '6.2 MB',
+          updated: 'Recently updated',
+          author: 'Dr. Siddharth V. & Dr. Rajiv Mehta'
+        }
+      ],
+      images: [
+        {
+          id: 'img-valvular-6',
+          title: 'Transesophageal Echocardiogram (TEE) of Large Aortic Valve Vegetation',
+          url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=900&auto=format&fit=crop&q=80',
+          caption: 'Fig 6: TEE demonstrating oscillating intracardiac mass on aortic valve with leaflet perforation.'
+        }
+      ],
+      video: {
+        title: 'Duke Diagnostic Criteria, Blood Culture Regimens & Surgical Indications',
+        duration: '48:30',
+        instructor: 'Dr. Siddharth V.',
+        url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        thumbnail: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=900&auto=format&fit=crop&q=80',
+        chapters: [
+          { time: '00:00', label: 'Microbiology: Staph aureus, Viridans Streptococci & Enterococci' },
+          { time: '16:45', label: 'Major vs Minor Duke Criteria Deep Dive' },
+          { time: '32:10', label: 'Mechanical vs Bioprosthetic Valve Management & INR Targets' }
+        ]
+      },
+      flashcards: [
+        {
+          id: 'fc-endo-1',
+          question: 'What is the recommended target INR for a mechanical mitral valve prosthesis?',
+          answer: 'Target INR is 3.0 (range 2.5 - 3.5), higher than a mechanical aortic valve (target 2.5) due to lower velocity flow.'
+        },
+        {
+          id: 'fc-endo-2',
+          question: 'What are the classic Duke Major Criteria for Infective Endocarditis?',
+          answer: '1) Persistently positive blood cultures with typical organisms; 2) Evidence of endocardial involvement on echocardiogram (vegetation, abscess, new partial dehiscence of prosthetic valve) or new valvular regurgitation.'
+        }
+      ],
+      liveClasses: [],
+      topics: [
+        { id: 'lt-endo-1', title: 'Duke Diagnostic Algorithm & Culture-Negative IE', order: 1, summary: 'Bartonella, Coxiella burnetii, and HACEK organisms in culture-negative endocarditis.' },
+        { id: 'lt-endo-2', title: 'Prosthetic Valve Thrombosis vs Pannus Formation', order: 2, summary: 'Differentiating acute valve thrombosis from chronic fibrous pannus ingrowth.' }
+      ],
+      clinicalNotes: 'Urgent valve replacement surgery is indicated in IE complicated by acute severe aortic or mitral regurgitation with pulmonary edema or cardiogenic shock.'
+    }
+  },
+
   // Under Module: Heart Failure
   {
     id: 'lec-hf-gdmt',
@@ -1353,9 +1553,20 @@ class CurriculumService {
       const stored = localStorage.getItem(STORAGE_KEY_SCHEDULE);
       if (stored) {
         let parsed = JSON.parse(stored);
+        let updated = false;
+
+        // Clean up rogue/mismatched slot where Day 9 was assigned to dayNumber 4
+        const cleaned = parsed.filter(slot => {
+          if (Number(slot.dayNumber) === 4 && slot.dayTitle && slot.dayTitle.includes('Day 9')) {
+            updated = true;
+            return false;
+          }
+          return true;
+        });
+        parsed = cleaned;
+
         const existingIds = new Set(parsed.map(s => s.id));
         const missing = INITIAL_SCHEDULE.filter(s => !existingIds.has(s.id));
-        let updated = false;
 
         parsed = parsed.map(slot => {
           const init = INITIAL_SCHEDULE.find(i => i.id === slot.id);
@@ -2095,7 +2306,7 @@ class CurriculumService {
       slot = this.schedule.find(s => String(s.dayNumber) === String(dayId));
     }
 
-    const fallbackMock = dayContentStore[String(dayId)] || dayContentStore['1'] || {};
+    const fallbackMock = dayContentStore[String(dayId)] || {};
 
     // If slot has linked lectures with content, aggregate them
     if (slot && slot.lectureIds && slot.lectureIds.length > 0) {
@@ -2119,42 +2330,49 @@ class CurriculumService {
             } else if (l.content.pdf) {
               aggregatedPdfs.push(l.content.pdf);
             }
-            if (l.content.images && l.content.images.length > 0) {
+            if (Array.isArray(l.content.images) && l.content.images.length > 0) {
               aggregatedImages.push(...l.content.images);
             }
             if (!primaryVideo && l.content.video) {
               primaryVideo = l.content.video;
             }
-            if (l.content.flashcards && l.content.flashcards.length > 0) {
+            if (Array.isArray(l.content.flashcards) && l.content.flashcards.length > 0) {
               aggregatedCards.push(...l.content.flashcards);
             }
           }
         });
 
-        // Fallbacks if lecture has empty asset buckets so preview is never blank
-        if (aggregatedPdfs.length === 0 && fallbackMock.pdf) {
+        // Fallbacks if lecture has empty asset buckets and fallbackMock has scheduled asset
+        if (aggregatedPdfs.length === 0 && fallbackMock.pdf && (!fallbackMock.activeTabs || fallbackMock.activeTabs.includes('notes'))) {
           aggregatedPdfs.push(fallbackMock.pdf);
         }
-        if (aggregatedImages.length === 0 && fallbackMock.images) {
+        if (aggregatedImages.length === 0 && Array.isArray(fallbackMock.images) && fallbackMock.images.length > 0 && (!fallbackMock.activeTabs || fallbackMock.activeTabs.includes('images'))) {
           aggregatedImages.push(...fallbackMock.images);
         }
-        if (!primaryVideo && fallbackMock.video) {
+        if (!primaryVideo && fallbackMock.video && (!fallbackMock.activeTabs || fallbackMock.activeTabs.includes('video'))) {
           primaryVideo = fallbackMock.video;
         }
-        if (aggregatedCards.length === 0 && fallbackMock.flashcards) {
+        if (aggregatedCards.length === 0 && Array.isArray(fallbackMock.flashcards) && fallbackMock.flashcards.length > 0 && (!fallbackMock.activeTabs || fallbackMock.activeTabs.includes('flashcards'))) {
           aggregatedCards.push(...fallbackMock.flashcards);
         }
 
-        const primaryPdf = aggregatedPdfs[0] || fallbackMock.pdf || null;
+        const primaryPdf = aggregatedPdfs[0] || (fallbackMock.activeTabs?.includes('notes') ? fallbackMock.pdf : null) || null;
 
-        // Compute active tabs based on available assets
+        // Compute active tabs based on available assets scheduled by admin/faculty
         const activeTabs = [];
         if (aggregatedPdfs.length > 0) activeTabs.push('notes');
         if (aggregatedImages.length > 0) activeTabs.push('images');
         if (primaryVideo) activeTabs.push('video');
         if (aggregatedCards.length > 0) activeTabs.push('flashcards');
-        if (slot.hasLive || fallbackMock.live?.hasSession) activeTabs.push('live');
-        if (slot.hasTest) activeTabs.push('test');
+
+        const isLiveScheduled = Boolean(
+          slot.hasLive || 
+          (slot.hasLive !== false && fallbackMock.live?.hasSession === true && (!fallbackMock.activeTabs || fallbackMock.activeTabs.includes('live')))
+        );
+        if (isLiveScheduled) activeTabs.push('live');
+        if (slot.hasTest || fallbackMock.hasTest) activeTabs.push('test');
+
+        const resolvedActiveTabs = fallbackMock.activeTabs || (activeTabs.length > 0 ? activeTabs : ['video', 'notes']);
 
         return {
           dayNumber: Number(dayId),
@@ -2167,7 +2385,7 @@ class CurriculumService {
           moduleTitle: module?.title || slot.moduleTitle || 'Clinical Module',
           lectureTitle: primaryLecture.title,
           lectures: linkedLectures,
-          activeTabs: activeTabs.length > 0 ? activeTabs : ['notes', 'images', 'video', 'flashcards', 'live'],
+          activeTabs: resolvedActiveTabs,
           pdf: primaryPdf,
           notesPdf: primaryPdf,
           pdfList: aggregatedPdfs,
@@ -2176,10 +2394,10 @@ class CurriculumService {
           video: primaryVideo,
           videoData: primaryVideo,
           flashcards: aggregatedCards,
-          hasLive: Boolean(slot.hasLive),
-          hasTest: Boolean(slot.hasTest),
+          hasLive: isLiveScheduled,
+          hasTest: Boolean(slot.hasTest || fallbackMock.hasTest),
           live: {
-            hasSession: Boolean(slot.hasLive),
+            hasSession: isLiveScheduled,
             title: `Live Clinical Grand Rounds: ${primaryLecture.title}`,
             faculty: slot.facultyName || subject?.assignedFacultyName || 'Dr. Siddharth V. (MD Cardiology)',
             duration: '60 mins',

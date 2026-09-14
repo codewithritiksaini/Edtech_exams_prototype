@@ -52,6 +52,7 @@ import StudentLectureLearnPage from './pages/student/StudentLectureLearnPage';
 import StudentDashboardPage from './pages/student/StudentDashboardPage';
 import StudentStudyPlanPage from './pages/student/StudentStudyPlanPage';
 import StudentLiveSessionsPage from './pages/student/StudentLiveSessionsPage';
+import StudentLiveRoomPage from './pages/student/StudentLiveRoomPage';
 import StudentTestsPage from './pages/student/StudentTestsPage';
 import StudentProgressPage from './pages/student/StudentProgressPage';
 import StudentSettingsPage from './pages/student/StudentSettingsPage';
@@ -72,6 +73,7 @@ export default function App() {
                     location.pathname.startsWith('/student') || 
                     location.pathname.startsWith('/day') || 
                     location.pathname.startsWith('/test') ||
+                    location.pathname.startsWith('/live-session') ||
                     location.pathname.startsWith('/faculty') ||
                     location.pathname.startsWith('/admin') ||
                     location.pathname === '/login';
@@ -123,6 +125,10 @@ export default function App() {
           <Route 
             path="/day/:dayId" 
             element={<DayContentView />} 
+          />
+          <Route 
+            path="/live-session/:sessionId" 
+            element={<StudentLiveRoomPage />} 
           />
           <Route 
             path="/test/:testId" 
@@ -234,8 +240,9 @@ export default function App() {
             {/* Level 0: My Courses Directory */}
             <Route path="/student/courses" element={<StudentCoursesPage />} />
 
-            {/* Level 1: Exam Track Overview */}
+            {/* Level 1: Exam Track Overview — Commented out for now as curriculum is shown directly on My Courses page
             <Route path="/student/courses/:examId" element={<StudentExamOverviewPage />} />
+            */}
 
             {/* Level 2: Subjects */}
             <Route path="/student/courses/:examId/subjects" element={<StudentSubjectsPage />} />

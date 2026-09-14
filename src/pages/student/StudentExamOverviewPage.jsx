@@ -1,3 +1,10 @@
+// =============================================================================
+// STUDENT EXAM OVERVIEW PAGE (/student/courses/:examId)
+// NOTE: Temporarily commented out from routes in App.jsx and My Courses page
+// because the full Course Curriculum & Subjects are now displayed directly 
+// on the main My Courses page (/student/courses).
+// =============================================================================
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 

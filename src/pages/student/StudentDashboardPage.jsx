@@ -34,6 +34,7 @@ import {
 } from '../../data/mockData';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
+import { learningProgressService } from '../../services/learningProgressService';
 
 export default function StudentDashboardPage() {
   const navigate = useNavigate();
@@ -46,6 +47,18 @@ export default function StudentDashboardPage() {
   // Completion toast state
   const [completionBanner, setCompletionBanner] = useState('');
   const [selectedLiveSession, setSelectedLiveSession] = useState(null);
+
+  // Dynamic Current Learning Position (Sequential LMS Tracking)
+  const [learningPosition, setLearningPosition] = useState(() => 
+    learningProgressService.getCurrentLearningPosition()
+  );
+
+  useEffect(() => {
+    const unsub = learningProgressService.subscribe(() => {
+      setLearningPosition(learningProgressService.getCurrentLearningPosition());
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (completedDayParam) {
@@ -168,30 +181,32 @@ export default function StudentDashboardPage() {
       {/* 4 Quick Access KPI Cards */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         
-        {/* 1. Continue Learning */}
+        {/* 1. Continue Learning (Sequential LMS Position) */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group">
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-brand-50 text-brand-700 border border-brand-200">
-                NEXT UP
+                CURRENT MILESTONE
               </span>
-              <span className="text-xs text-brand-600 font-bold">Day 3</span>
+              <span className="text-xs text-brand-600 font-bold">
+                Day {learningPosition?.dayNumber || 3}
+              </span>
             </div>
             <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
-              Cardiac Arrhythmias & ECG Interpretation
+              {learningPosition?.dayTitle || 'Cardiac Arrhythmias & ECG Interpretation'}
             </h4>
             <p className="text-xs text-slate-500 mt-1">
-              Narrow vs wide complex tachycardia and AV conduction blocks.
+              Active Resource: <strong className="text-slate-800">{learningPosition?.resourceTitle || 'Video Lecture'}</strong>
             </p>
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
             <span className="text-xs text-brand-600 font-bold flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
-              In Progress
+              In Progress ({learningPosition?.progress || 0}%)
             </span>
             <button
-              onClick={() => navigate('/day/3')}
+              onClick={() => navigate(`/day/${learningPosition?.dayNumber || 3}?tab=${learningPosition?.resourceKey || 'video'}`)}
               className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1 group/btn cursor-pointer"
             >
               <span>Resume</span>
