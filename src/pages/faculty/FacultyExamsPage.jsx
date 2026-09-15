@@ -540,7 +540,7 @@ export default function FacultyExamsPage() {
       {/* 15-PARAMETER MODAL: ADD / EDIT EXAM TRACK                               */}
       {/* ======================================================================= */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 -top-10 z-50 flex items-center justify-center pt-6 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
@@ -594,7 +594,7 @@ export default function FacultyExamsPage() {
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer"
                   >
                     {COUNTRIES_LIST.map(country => (
-                      <option key={country} value={country}>{country}</option>
+                      <option key={country.code} value={country.name}>{country.name}</option>
                     ))}
                   </select>
                 </div>

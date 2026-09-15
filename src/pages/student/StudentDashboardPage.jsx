@@ -1,65 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { 
-  Stethoscope, 
-  Calendar, 
-  Clock, 
-  Flame, 
-  Play, 
-  CheckCircle2, 
-  Lock, 
-  ArrowRight, 
-  Award, 
-  Video, 
-  FileText, 
-  Brain, 
-  Sparkles, 
-  Users, 
-  Radio, 
-  BarChart3, 
-  CalendarCheck2, 
-  ChevronRight, 
-  BookOpen, 
-  Layers, 
-  GraduationCap,
-  ShieldCheck,
-  TrendingUp,
-  AlertCircle
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import LiveSessionModal from '../../components/LiveSessionModal';
-import { 
-  dashboardUserData, 
-  dashboardLiveSessions, 
-  testService 
-} from '../../data/mockData';
+import TestDetailsModal from '../../components/student/dashboard/TestDetailsModal';
+import DashboardHero from '../../components/student/dashboard/DashboardHero';
+import ContinueLearningCard from '../../components/student/dashboard/ContinueLearningCard';
+import NextLiveSessionCard from '../../components/student/dashboard/NextLiveSessionCard';
+import AssessmentCard from '../../components/student/dashboard/AssessmentCard';
+import WeekPaceCard from '../../components/student/dashboard/WeekPaceCard';
+import TodayProgress from '../../components/student/dashboard/TodayProgress';
+import TodaySchedule from '../../components/student/dashboard/TodaySchedule';
+import UpNextTimeline from '../../components/student/dashboard/UpNextTimeline';
+import ExploreProgram from '../../components/student/dashboard/ExploreProgram';
+
+import { dashboardUserData } from '../../data/mockData';
 import { curriculumService } from '../../services/curriculumService';
 import { catalogService } from '../../services/catalogService';
-import { learningProgressService } from '../../services/learningProgressService';
+import { 
+  learningProgressService, 
+  RESOURCE_TITLES 
+} from '../../services/learningProgressService';
+import { 
+  liveSessionsService, 
+  SESSION_STATUS, 
+  getLiveSessionStatus, 
+  toggleSessionReminder, 
+  isReminderSet,
+  getSessionTimes 
+} from '../../services/liveSessionsService';
+import { 
+  cbtTestService, 
+  CBT_STATUS, 
+  getTestStatus,
+  getTestTimes 
+} from '../../services/cbtTestService';
 
 export default function StudentDashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
 
-  const enrolledPlan = searchParams.get('plan') || dashboardUserData.packageTier;
+  // 1. Enrollment Context
+  const enrolledExamId = dashboardUserData.examCategory || 'neet-pg';
+  const enrolledExamObj = catalogService.getExamById(enrolledExamId);
+  const enrolledCourse = enrolledExamObj?.name || dashboardUserData.enrolledCourse || 'NEET PG & NExT 2026';
+  const enrolledPlan = searchParams.get('plan') || dashboardUserData.packageTier || 'Standard Package (6 Months)';
   const completedDayParam = searchParams.get('completedDay');
 
-  // Completion toast state
+  // Completion toast notification
   const [completionBanner, setCompletionBanner] = useState('');
-  const [selectedLiveSession, setSelectedLiveSession] = useState(null);
-
-  // Dynamic Current Learning Position (Sequential LMS Tracking)
-  const [learningPosition, setLearningPosition] = useState(() => 
-    learningProgressService.getCurrentLearningPosition()
-  );
-
-  useEffect(() => {
-    const unsub = learningProgressService.subscribe(() => {
-      setLearningPosition(learningProgressService.getCurrentLearningPosition());
-    });
-    return unsub;
-  }, []);
-
   useEffect(() => {
     if (completedDayParam) {
       const dayNum = parseInt(completedDayParam, 10);
@@ -69,371 +57,425 @@ export default function StudentDashboardPage() {
     }
   }, [completedDayParam]);
 
-  // Reactive Tests Store
-  const [testsList, setTestsList] = useState(() => testService.getTests());
-
+  // 2. Real-Time Reactive Clock (5-second interval for countdowns & live/test status switches)
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   useEffect(() => {
-    const handleTestsUpdate = () => {
-      setTestsList(testService.getTests());
-    };
-    window.addEventListener('medprep-tests-updated', handleTestsUpdate);
-    return () => window.removeEventListener('medprep-tests-updated', handleTestsUpdate);
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 5000);
+    return () => clearInterval(timer);
   }, []);
 
-  const activeTest = testsList.find((t) => t.id === 'test-cardio-01') || testsList[0];
+  // 3. Learning Progress Service Integration
+  const [highestUnlockedDay, setHighestUnlockedDay] = useState(() => 
+    learningProgressService.getHighestUnlockedDay()
+  );
+  const [completedDaysList, setCompletedDaysList] = useState(() => 
+    learningProgressService.getCompletedDays()
+  );
 
-  const exams = catalogService.getExams();
-  const activeExam = exams[0] || { id: 'neet-pg', name: 'NEET PG & NExT Elite' };
+  useEffect(() => {
+    const unsubProgress = learningProgressService.subscribe(() => {
+      setHighestUnlockedDay(learningProgressService.getHighestUnlockedDay());
+      setCompletedDaysList(learningProgressService.getCompletedDays());
+    });
+    const unsubLectures = learningProgressService.subscribeLectures(() => {
+      setHighestUnlockedDay(learningProgressService.getHighestUnlockedDay());
+      setCompletedDaysList(learningProgressService.getCompletedDays());
+    });
+    return () => {
+      unsubProgress();
+      unsubLectures();
+    };
+  }, []);
+
+  // Current Day Resolved Content & Sequence
+  const currentDayData = useMemo(() => {
+    return curriculumService.getDayResolvedContent(highestUnlockedDay, enrolledExamId);
+  }, [highestUnlockedDay, enrolledExamId]);
+
+  const mandatorySequence = useMemo(() => {
+    return learningProgressService.getMandatorySequence(currentDayData);
+  }, [currentDayData]);
+
+  const completedResourcesCount = useMemo(() => {
+    if (!currentDayData || mandatorySequence.length === 0) return 0;
+    return mandatorySequence.filter(key => 
+      learningProgressService.isResourceCompleted(highestUnlockedDay, key, currentDayData)
+    ).length;
+  }, [highestUnlockedDay, currentDayData, mandatorySequence, completedDaysList]);
+
+  const totalMandatoryCount = mandatorySequence.length || 4;
+  const isCurrentDayDone = useMemo(() => {
+    return learningProgressService.isDayCompleted(highestUnlockedDay, currentDayData);
+  }, [highestUnlockedDay, currentDayData, completedDaysList]);
+
+  const dayProgressPct = totalMandatoryCount > 0 
+    ? Math.round((completedResourcesCount / totalMandatoryCount) * 100) 
+    : 0;
+
+  const currentResourceKey = useMemo(() => {
+    return learningProgressService.getCurrentActiveResource(highestUnlockedDay, currentDayData);
+  }, [highestUnlockedDay, currentDayData, completedDaysList]);
+
+  const currentResourceTitle = RESOURCE_TITLES[currentResourceKey] || 'Video Lecture';
+
+  // 4. Live Sessions Service Integration
+  const [sessions, setSessions] = useState(() => liveSessionsService.getAllSessions());
+  const [reminderVersion, setReminderVersion] = useState(0);
+  const [selectedLiveSession, setSelectedLiveSession] = useState(null);
+
+  useEffect(() => {
+    const unsub = liveSessionsService.subscribe((updated) => {
+      setSessions([...updated]);
+    });
+    const handleReminders = () => setReminderVersion(v => v + 1);
+    window.addEventListener('medprep-live-reminders-updated', handleReminders);
+    return () => {
+      unsub();
+      window.removeEventListener('medprep-live-reminders-updated', handleReminders);
+    };
+  }, []);
+
+  // Filter sessions strictly for enrolled exam
+  const enrolledSessions = useMemo(() => {
+    return sessions.filter(s => !s.examId || s.examId === enrolledExamId);
+  }, [sessions, enrolledExamId]);
+
+  // Featured Next Live Session (Priority: Live Now -> Next Upcoming -> null)
+  const nextLiveSession = useMemo(() => {
+    if (!enrolledSessions || enrolledSessions.length === 0) return null;
+
+    // 1. Live Now
+    const liveNow = enrolledSessions.find(s => getLiveSessionStatus(s, currentTime) === SESSION_STATUS.LIVE);
+    if (liveNow) return liveNow;
+
+    // 2. Nearest Upcoming session
+    const upcoming = enrolledSessions
+      .filter(s => getLiveSessionStatus(s, currentTime) === SESSION_STATUS.UPCOMING)
+      .sort((a, b) => getSessionTimes(a).startTime.getTime() - getSessionTimes(b).startTime.getTime());
+
+    // Prefer upcoming session linked to current week / study day
+    const linkedToCurrentDay = upcoming.find(s => s.studyPlan?.dayNumber === highestUnlockedDay);
+    if (linkedToCurrentDay) return linkedToCurrentDay;
+
+    return upcoming[0] || null;
+  }, [enrolledSessions, currentTime, highestUnlockedDay]);
+
+  const isNextLiveReminderSet = useMemo(() => {
+    if (!nextLiveSession) return false;
+    return isReminderSet(nextLiveSession.id);
+  }, [nextLiveSession, reminderVersion]);
+
+  // 5. CBT Test Service Integration
+  const [testsList, setTestsList] = useState(() => cbtTestService.getAllTests(enrolledExamId));
+  const [selectedTestForDetails, setSelectedTestForDetails] = useState(null);
+
+  useEffect(() => {
+    const unsubTests = cbtTestService.subscribe(() => {
+      setTestsList(cbtTestService.getAllTests(enrolledExamId));
+    });
+    const handleTestsEvent = () => setTestsList(cbtTestService.getAllTests(enrolledExamId));
+    window.addEventListener('medprep-tests-updated', handleTestsEvent);
+    return () => {
+      unsubTests();
+      window.removeEventListener('medprep-tests-updated', handleTestsEvent);
+    };
+  }, [enrolledExamId]);
+
+  // Filter tests strictly for enrolled exam track
+  const enrolledTests = useMemo(() => {
+    return testsList.filter(t => !t.examTrack || t.examTrack === enrolledExamId || t.courseId === enrolledExamId);
+  }, [testsList, enrolledExamId]);
+
+  // Featured Test Selection (Priority: Active Attempt -> Available Now -> Nearest Upcoming -> Completed -> Expired)
+  const featuredTest = useMemo(() => {
+    if (!enrolledTests || enrolledTests.length === 0) return null;
+
+    // 1. In progress or paused attempt
+    const inProgress = enrolledTests.find(t => {
+      const st = getTestStatus(t, currentTime);
+      return st === CBT_STATUS.IN_PROGRESS || st === CBT_STATUS.PAUSED;
+    });
+    if (inProgress) return inProgress;
+
+    // 2. Available now
+    const available = enrolledTests.find(t => getTestStatus(t, currentTime) === CBT_STATUS.AVAILABLE);
+    if (available) return available;
+
+    // 3. Nearest upcoming test
+    const upcoming = enrolledTests
+      .filter(t => getTestStatus(t, currentTime) === CBT_STATUS.UPCOMING)
+      .sort((a, b) => getTestTimes(a).startTime.getTime() - getTestTimes(b).startTime.getTime());
+    if (upcoming.length > 0) return upcoming[0];
+
+    // 4. Completed test
+    const completed = enrolledTests.find(t => getTestStatus(t, currentTime) === CBT_STATUS.SUBMITTED);
+    if (completed) return completed;
+
+    // 5. Fallback
+    return enrolledTests[0] || null;
+  }, [enrolledTests, currentTime]);
+
+  // 6. Week Pace Tracking
+  const weekNumber = useMemo(() => {
+    if (highestUnlockedDay <= 7) return 1;
+    if (highestUnlockedDay <= 14) return 2;
+    if (highestUnlockedDay <= 21) return 3;
+    return 4;
+  }, [highestUnlockedDay]);
+
+  const weekDayOffset = (weekNumber - 1) * 7;
+  const completedIndicesThisWeek = useMemo(() => {
+    const indices = [];
+    for (let i = 0; i < 7; i++) {
+      const dNum = weekDayOffset + i + 1;
+      if (completedDaysList.includes(dNum)) {
+        indices.push(i);
+      }
+    }
+    return indices;
+  }, [completedDaysList, weekDayOffset]);
+
+  const activeDayIndexInWeek = Math.min(6, Math.max(0, highestUnlockedDay - weekDayOffset - 1));
+
+  // 7. Today's Schedule Items (Derived from actual Day Content resources)
+  const todayScheduleItems = useMemo(() => {
+    const timeSlots = ['09:30 AM', '11:00 AM', '02:00 PM', '04:30 PM', '06:00 PM'];
+    
+    return mandatorySequence.map((key, idx) => {
+      const isDone = learningProgressService.isResourceCompleted(highestUnlockedDay, key, currentDayData);
+      const isCurrent = !isDone && key === currentResourceKey;
+
+      let desc = 'Required clinical module';
+      if (key === 'video') desc = currentDayData?.video?.duration ? `${currentDayData.video.duration} clinical video lecture` : 'Clinical video masterclass';
+      else if (key === 'notes') desc = currentDayData?.pdf?.pages ? `${currentDayData.pdf.pages} page high-yield notes` : 'Clinical PDF guidebook';
+      else if (key === 'images') desc = Array.isArray(currentDayData?.images) ? `${currentDayData.images.length} diagnostic charts & ECGs` : 'Diagnostic image drills';
+      else if (key === 'flashcards') desc = Array.isArray(currentDayData?.flashcards) ? `${currentDayData.flashcards.length} active recall cards` : 'Spaced repetition cards';
+      else if (key === 'test') desc = 'End-of-day checkpoint quiz';
+
+      return {
+        id: `res-${key}`,
+        key,
+        title: RESOURCE_TITLES[key] || key,
+        subtitle: desc,
+        timeSlot: timeSlots[idx] || '03:00 PM',
+        status: isDone ? 'COMPLETED' : isCurrent ? 'CURRENT' : 'UPCOMING'
+      };
+    });
+  }, [mandatorySequence, highestUnlockedDay, currentDayData, currentResourceKey, completedDaysList]);
+
+  // Section 16: Check if today actually has a scheduled Live Session
+  const todayLiveSession = useMemo(() => {
+    const hasLive = Boolean(currentDayData?.hasLive && currentDayData?.live?.hasSession !== false);
+    if (!hasLive) return null;
+
+    // Find linked session in liveSessionsService
+    const matched = enrolledSessions.find(s => s.studyPlan?.dayNumber === highestUnlockedDay);
+    if (matched) return matched;
+
+    // If day is marked as having live but no specific session object, build clean representation
+    return {
+      id: `live-day-${highestUnlockedDay}`,
+      title: currentDayData?.live?.title || `Live Clinical Grand Rounds (Day ${highestUnlockedDay})`,
+      faculty: currentDayData?.live?.faculty || 'Dr. Siddharth V. (AIIMS New Delhi)',
+      formattedTime: currentDayData?.live?.time ? `Tonight • ${currentDayData.live.time}` : 'Tonight • 8:00 PM IST',
+      college: 'Lead Clinical Mentor',
+      meetingLink: 'https://meet.google.com/medprep-stemi-live'
+    };
+  }, [currentDayData, highestUnlockedDay, enrolledSessions]);
+
+  // 8. Up Next Timeline (3–5 actual upcoming chronological items)
+  const upNextItems = useMemo(() => {
+    const list = [];
+
+    // Item 1: Next Live Session (if upcoming tonight or tomorrow)
+    if (nextLiveSession && getLiveSessionStatus(nextLiveSession, currentTime) === SESSION_STATUS.UPCOMING) {
+      list.push({
+        type: 'live',
+        when: nextLiveSession.formattedTime ? nextLiveSession.formattedTime.split('•')[0].trim() : 'Tonight • 8:00 PM',
+        title: nextLiveSession.title,
+        subtitle: `${nextLiveSession.faculty} • Live Masterclass`,
+        badge: 'Live Session',
+        link: '/student/live-sessions',
+        linkText: 'View Class'
+      });
+    }
+
+    // Item 2: Tomorrow's Study Day (Day N+1)
+    const nextDayNum = highestUnlockedDay + 1;
+    const nextDayData = curriculumService.getDayResolvedContent(nextDayNum, enrolledExamId);
+    list.push({
+      type: 'day',
+      when: 'Tomorrow',
+      title: nextDayData ? `Day ${nextDayNum}: ${nextDayData.title}` : `Day ${nextDayNum}: Clinical Milestone`,
+      subtitle: nextDayData?.subjectName || 'Cardiology & Clinical Hemodynamics',
+      badge: 'Study Day',
+      link: `/day/${nextDayNum}`,
+      linkText: 'Preview Day'
+    });
+
+    // Item 3: Upcoming Assessment (CBT Test)
+    const upcomingTest = enrolledTests.find(t => getTestStatus(t, currentTime) === CBT_STATUS.UPCOMING);
+    if (upcomingTest) {
+      list.push({
+        type: 'test',
+        when: upcomingTest.formattedWindow ? upcomingTest.formattedWindow.split('•')[0].trim() : 'Scheduled Mock',
+        title: upcomingTest.name || upcomingTest.title,
+        subtitle: `${upcomingTest.totalQuestions || 20} Questions • ${upcomingTest.durationMinutes || 45} mins`,
+        badge: 'Assessment',
+        link: '/student/tests',
+        linkText: 'Test Center'
+      });
+    }
+
+    return list.slice(0, 4);
+  }, [nextLiveSession, highestUnlockedDay, enrolledExamId, enrolledTests, currentTime]);
+
+  // Event Handlers
+  const handleResumeResource = (resKey = currentResourceKey) => {
+    // Navigate to current valid resource without bypassing sequential gating
+    navigate(`/day/${highestUnlockedDay}?tab=${resKey || 'video'}`);
+  };
+
+  const handleStartTest = (test) => {
+    cbtTestService.startAttempt(test.id);
+    navigate(`/test/${test.id}`);
+  };
+
+  const handleResumeTest = (test) => {
+    navigate(`/test/${test.id}`);
+  };
+
+  const handleViewTestResult = (test) => {
+    navigate(`/test/${test.id}`);
+  };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
+    <div className="max-w-7xl mx-auto space-y-7 animate-in fade-in duration-300 pb-12">
       
-      {/* Return Notification Banner */}
+      {/* Return / Milestone Completion Toast Banner */}
       {completionBanner && (
-        <div className="bg-emerald-600 text-white p-4 sm:p-5 rounded-2xl shadow-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+        <div className="bg-emerald-600 text-white p-4 sm:p-5 rounded-2xl shadow-md flex items-center justify-between animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🏆</span>
             <div>
               <p className="font-bold text-sm sm:text-base">{completionBanner}</p>
-              <p className="text-xs text-emerald-100 mt-0.5">Spaced repetition schedule updated. High-yield flashcards added to retention queue.</p>
+              <p className="text-xs text-emerald-100 mt-0.5">
+                Spaced repetition schedule updated. High-yield flashcards added to retention queue.
+              </p>
             </div>
           </div>
           <button 
             onClick={() => setCompletionBanner('')}
-            className="text-white/80 hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-700/50 hover:bg-emerald-700 transition-colors"
+            className="text-white/80 hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-700/50 hover:bg-emerald-700 transition-colors cursor-pointer"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Hero Welcome Banner */}
-      <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs relative overflow-hidden text-slate-900">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
+      {/* 1. Hero Welcome Section */}
+      <DashboardHero
+        userName={dashboardUserData.name}
+        enrolledCourse={enrolledCourse}
+        enrolledPlan={enrolledPlan}
+        candidateId="MBBS Candidate MED-2026-904"
+        daysLeft={dashboardUserData.daysLeft}
+        overallProgress={dashboardUserData.overallProgress}
+        streakDays={14}
+        targetExamDate={dashboardUserData.targetExamDate}
+        currentSystem={`Week ${weekNumber} • Cardiology & Hemodynamics`}
+      />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Enrolled: {enrolledPlan}</span>
-              </div>
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-bold">
-                <ShieldCheck className="w-3.5 h-3.5 text-brand-600" />
-                <span>MBBS Candidate MED-2026-904</span>
-              </span>
-            </div>
+      {/* 2. PRIMARY ACTION: Continue Learning Card */}
+      <ContinueLearningCard
+        dayNumber={highestUnlockedDay}
+        subjectName={currentDayData?.subjectName || 'Cardiology & Hemodynamics'}
+        dayTitle={currentDayData?.title || 'Cardiac Arrhythmias & ECG Interpretation'}
+        completedCount={completedResourcesCount}
+        totalCount={totalMandatoryCount}
+        progressPct={dayProgressPct}
+        currentResourceTitle={currentResourceTitle}
+        currentResourceKey={currentResourceKey}
+        isDayDone={isCurrentDayDone}
+        onResume={() => handleResumeResource(currentResourceKey)}
+      />
 
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
-              Welcome back, <span className="text-brand-600">{dashboardUserData.name}</span>
-            </h1>
-
-            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-              Your personalized clinical study space for <strong className="text-slate-800">{activeExam.name}</strong>. 
-              Week 1 Cardiology & Hemodynamics is currently active. 
-            </p>
-          </div>
-
-          {/* Days remaining countdown pill */}
-          <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 shrink-0">
-            <div className="text-center px-2">
-              <div className="text-2xl sm:text-3xl font-black text-amber-600 font-sans">
-                {dashboardUserData.daysLeft}
-              </div>
-              <span className="text-[11px] text-slate-500 font-semibold block uppercase tracking-wider">Days Left</span>
-            </div>
-            <div className="w-px h-10 bg-slate-200" />
-            <div className="text-center px-2">
-              <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-sans">
-                {dashboardUserData.overallProgress}%
-              </div>
-              <span className="text-[11px] text-slate-500 font-semibold block uppercase tracking-wider">Complete</span>
-            </div>
-            <div className="w-px h-10 bg-slate-200" />
-            <div className="text-center px-2">
-              <div className="text-2xl sm:text-3xl font-black text-brand-600 font-sans flex items-center justify-center gap-1">
-                <Flame className="w-6 h-6 text-amber-500 fill-amber-500 animate-pulse" />
-                <span>14</span>
-              </div>
-              <span className="text-[11px] text-slate-500 font-semibold block uppercase tracking-wider">Day Streak</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Overall Progress Bar */}
-        <div className="mt-8 pt-6 border-t border-slate-100">
-          <div className="flex flex-wrap items-center justify-between text-xs text-slate-600 mb-2 gap-2">
-            <span className="font-semibold flex items-center gap-2">
-              <span>Curriculum Progression</span>
-              <span className="text-slate-400">({dashboardUserData.overallProgress}% Complete)</span>
-            </span>
-            <span className="text-brand-600 font-bold">Target Exam: {dashboardUserData.targetExamDate}</span>
-          </div>
-          <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-brand-600 via-brand-500 to-emerald-500 rounded-full transition-all duration-500" 
-              style={{ width: `${dashboardUserData.overallProgress}%` }}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* 4 Quick Access KPI Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {/* 3. Three-Card Action Grid: Live Session, Assessment, Week Pace */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         
-        {/* 1. Continue Learning (Sequential LMS Position) */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-brand-50 text-brand-700 border border-brand-200">
-                CURRENT MILESTONE
-              </span>
-              <span className="text-xs text-brand-600 font-bold">
-                Day {learningPosition?.dayNumber || 3}
-              </span>
-            </div>
-            <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
-              {learningPosition?.dayTitle || 'Cardiac Arrhythmias & ECG Interpretation'}
-            </h4>
-            <p className="text-xs text-slate-500 mt-1">
-              Active Resource: <strong className="text-slate-800">{learningPosition?.resourceTitle || 'Video Lecture'}</strong>
-            </p>
-          </div>
+        {/* Card A: Next Live Session */}
+        <NextLiveSessionCard
+          session={nextLiveSession}
+          currentTime={currentTime}
+          isReminderActive={isNextLiveReminderSet}
+          onToggleReminder={(s) => toggleSessionReminder(s.id)}
+          onJoinSession={(s) => setSelectedLiveSession(s)}
+          onBrowseSessions={() => navigate('/student/live-sessions')}
+        />
 
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs text-brand-600 font-bold flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
-              In Progress ({learningPosition?.progress || 0}%)
-            </span>
-            <button
-              onClick={() => navigate(`/day/${learningPosition?.dayNumber || 3}?tab=${learningPosition?.resourceKey || 'video'}`)}
-              className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1 group/btn cursor-pointer"
-            >
-              <span>Resume</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
-            </button>
-          </div>
-        </div>
+        {/* Card B: Scheduled Assessment */}
+        <AssessmentCard
+          test={featuredTest}
+          currentTime={currentTime}
+          onStartTest={handleStartTest}
+          onResumeTest={handleResumeTest}
+          onViewResult={handleViewTestResult}
+          onViewDetails={(t) => setSelectedTestForDetails(t)}
+          onBrowseTests={() => navigate('/student/tests')}
+        />
 
-        {/* 2. Next Live Session */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-                LIVE TONIGHT
-              </span>
-              <span className="text-xs text-slate-500 font-semibold">8:00 PM IST</span>
-            </div>
-            <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
-              STEMI & Acute ECG Grand Rounds
-            </h4>
-            <p className="text-xs text-slate-500 mt-1">
-              Taught by Dr. Siddharth V. (AIIMS New Delhi Faculty).
-            </p>
-          </div>
+        {/* Card C: Week Pace Tracker */}
+        <WeekPaceCard
+          weekNumber={weekNumber}
+          completedDaysCount={completedIndicesThisWeek.length}
+          totalDaysInWeek={7}
+          activeDayIndex={activeDayIndexInWeek}
+          completedIndices={completedIndicesThisWeek}
+          onNavigateStudyPlan={() => navigate('/student/study-plan')}
+        />
 
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">340+ Registered</span>
-            <button
-              onClick={() => setSelectedLiveSession(dashboardLiveSessions[0])}
-              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <Radio className="w-3.5 h-3.5" />
-              <span>Join</span>
-            </button>
-          </div>
-        </div>
+      </div>
 
-        {/* 3. Upcoming Test Card */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                activeTest.status === 'Completed'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  : 'bg-amber-50 text-amber-800 border-amber-200'
-              }`}>
-                {activeTest.status === 'Completed' ? 'TEST COMPLETED' : 'SCHEDULED ASSESSMENT'}
-              </span>
-              <span className="text-xs text-slate-500 font-semibold">{activeTest.duration}</span>
-            </div>
-            <h4 className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
-              {activeTest.name}
-            </h4>
-            <p className="text-xs text-slate-500 mt-1">
-              {activeTest.status === 'Completed' ? (
-                <span className="text-emerald-700 font-semibold">
-                  Your Score: {activeTest.score} ({activeTest.percentile || '94.2%ile'}) • PASSED
-                </span>
-              ) : (
-                <span>{activeTest.questionsCount || 20} clinical vignette questions • +5 / -1 marking.</span>
-              )}
-            </p>
-          </div>
+      {/* 4. Compact Today's Progress */}
+      <TodayProgress
+        completedCount={completedResourcesCount}
+        totalCount={totalMandatoryCount}
+        studyTime={currentDayData?.estimatedTime || '1.5 hrs'}
+        dayProgressPct={dayProgressPct}
+      />
 
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs">
-              {activeTest.status === 'Completed' ? (
-                <span className="text-emerald-600 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Result Ready</span>
-                </span>
-              ) : (
-                <span className="text-emerald-600 font-bold flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>{activeTest.startsIn || 'Live Window Active'}</span>
-                </span>
-              )}
-            </div>
+      {/* 5. Today's Learning Schedule (Derived from active day's resources + Live Session only if today has one) */}
+      <TodaySchedule
+        dayNumber={highestUnlockedDay}
+        targetHours={currentDayData?.estimatedTime || '3.5 hours'}
+        items={todayScheduleItems}
+        liveSession={todayLiveSession}
+        onResumeResource={(resKey) => handleResumeResource(resKey)}
+        onJoinLiveSession={(s) => setSelectedLiveSession(s)}
+      />
 
-            <button
-              onClick={() => navigate(`/test/${activeTest.id}`)}
-              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1 cursor-pointer ${
-                activeTest.status === 'Completed'
-                  ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
-                  : 'bg-brand-600 hover:bg-brand-500 text-white'
-              }`}
-            >
-              <span>{activeTest.status === 'Completed' ? 'Review Answers' : 'View & Start'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+      {/* 6. Up Next Timeline (3–5 upcoming items) */}
+      <UpNextTimeline items={upNextItems} />
 
-        {/* 4. This Week's Progress */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                WEEK 1 PACE
-              </span>
-              <span className="text-xs font-bold text-slate-700">Goal: 7/7 Days</span>
-            </div>
-            <h4 className="text-sm font-bold text-slate-900">
-              4 of 7 Days Completed
-            </h4>
-            <p className="text-xs text-slate-500 mt-1">
-              Daily study pace is on track for the Sunday Grand Mock Test.
-            </p>
-          </div>
+      {/* 7. Explore Your Program (Compact navigation footer) */}
+      <ExploreProgram />
 
-          {/* Visual Day Bubbles (Mon-Sun) */}
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((dayChar, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-slate-400 font-semibold">{dayChar}</span>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                  i < 2 
-                    ? 'bg-emerald-500 text-white' 
-                    : i === 2 
-                      ? 'bg-brand-600 text-white ring-2 ring-brand-300' 
-                      : 'bg-slate-100 text-slate-400'
-                }`}>
-                  {i < 2 ? '✓' : i === 2 ? '3' : '•'}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </section>
-
-      {/* Today's Schedule & Clinical Milestones */}
-      <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-          <div>
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <CalendarCheck2 className="w-5 h-5 text-brand-600" />
-              <span>Today's Clinical Study Schedule & Milestones</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Target 3.5 hours active recall • 3 key milestones scheduled today
-            </p>
-          </div>
-          <Link 
-            to="/student/study-plan"
-            className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
-          >
-            <span>View Full 28-Day Plan</span>
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-              ✓
-            </div>
-            <div className="space-y-1">
-              <div className="text-[10px] font-bold text-emerald-800 uppercase">Completed • 09:30 AM</div>
-              <h4 className="text-xs font-bold text-slate-900">Valvular Murmurs Auscultation</h4>
-              <p className="text-[11px] text-slate-600">30 min video breakdown & phonocardiograms.</p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-brand-50/60 border border-brand-200/80 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-xs shrink-0 animate-pulse">
-              ▶
-            </div>
-            <div className="space-y-1">
-              <div className="text-[10px] font-bold text-brand-700 uppercase">Active Now • 02:00 PM</div>
-              <h4 className="text-xs font-bold text-slate-900">ECG Arrhythmias Drill (Day 3)</h4>
-              <p className="text-[11px] text-slate-600">Complete 25 high-yield flashcards.</p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-red-50/60 border border-red-200/80 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-              🔴
-            </div>
-            <div className="space-y-1">
-              <div className="text-[10px] font-bold text-red-700 uppercase">Tonight • 08:00 PM</div>
-              <h4 className="text-xs font-bold text-slate-900">Live STEMI Grand Rounds</h4>
-              <p className="text-[11px] text-slate-600">With Dr. Siddharth V. (AIIMS Lead).</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Quick Portal Navigation Grid */}
-      <section className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-lg">
-        <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-brand-500/20 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-widest text-brand-400">EXPLORE PORTAL</span>
-            <h3 className="text-xl sm:text-2xl font-black">Comprehensive 5-Level Learning Matrix</h3>
-            <p className="text-xs text-slate-300 max-w-xl">
-              Access the complete hierarchy from national exam tracks down to module lectures and the interactive Lecture Study Room.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              to="/student/courses"
-              className="px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Browse All Subjects</span>
-            </Link>
-            <Link
-              to="/student/tests"
-              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition-all border border-white/20 flex items-center gap-2"
-            >
-              <FileText className="w-4 h-4" />
-              <span>CBT Test Center</span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Live Session Modal */}
+      {/* Interactive Modals */}
       <LiveSessionModal
         isOpen={Boolean(selectedLiveSession)}
         onClose={() => setSelectedLiveSession(null)}
         session={selectedLiveSession}
       />
+
+      <TestDetailsModal
+        isOpen={Boolean(selectedTestForDetails)}
+        onClose={() => setSelectedTestForDetails(null)}
+        test={selectedTestForDetails}
+        currentTime={currentTime}
+      />
+
     </div>
   );
 }
