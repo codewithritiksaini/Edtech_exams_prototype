@@ -4,8 +4,8 @@
 // Persists in localStorage and synchronizes with authService
 // =============================================================================
 
-import { authService, USER_ROLES } from './authService';
-import { curriculumService } from './curriculumService';
+import { authService, USER_ROLES } from './authService.js';
+import { curriculumService } from './curriculumService.js';
 
 const STORAGE_KEY_FACULTY = 'medprep_phase5_faculty_v1';
 const STORAGE_KEY_STUDENTS = 'medprep_phase5_students_v1';

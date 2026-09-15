@@ -1,4 +1,4 @@
-import { facultyAvailabilityService } from '../services/facultyAvailabilityService';
+import { facultyAvailabilityService } from '../services/facultyAvailabilityService.js';
 
 // =============================================================================
 // SCHEDULE SLOT UTILITIES
@@ -97,19 +97,70 @@ export const STANDARD_TIME_SLOTS = [
 ];
 
 /**
- * Parse a time string like "09:00 AM" or "04:00 PM" into decimal hours
+ * Parse a time string like "09:00 AM", "04:00 PM", or "14:30" into decimal hours
  */
-function parseTimeToHours(timeStr) {
+export function parseTimeToHours(timeStr) {
   if (!timeStr) return null;
-  const clean = timeStr.trim().replace(/\s*(IST|EST|GMT|CET)\s*/i, '').trim();
-  const match = clean.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!match) return null;
-  let h = parseInt(match[1], 10);
-  const m = parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
-  if (period === 'PM' && h !== 12) h += 12;
-  if (period === 'AM' && h === 12) h = 0;
-  return h + m / 60;
+  const clean = timeStr.trim().replace(/\s*(IST|EST|GMT|CET|UTC)\s*/i, '').trim();
+  
+  // 12-hour AM/PM match: "09:00 AM" or "9:30pm"
+  const match12 = clean.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (match12) {
+    let h = parseInt(match12[1], 10);
+    const m = parseInt(match12[2], 10);
+    const period = match12[3].toUpperCase();
+    if (period === 'PM' && h !== 12) h += 12;
+    if (period === 'AM' && h === 12) h = 0;
+    return h + m / 60;
+  }
+
+  // 24-hour match: "14:30" or "09:00"
+  const match24 = clean.match(/^(\d{1,2}):(\d{2})$/);
+  if (match24) {
+    const h = parseInt(match24[1], 10);
+    const m = parseInt(match24[2], 10);
+    if (h >= 0 && h <= 24 && m >= 0 && m < 60) {
+      return h + m / 60;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse a time range string (e.g. "09:00 AM - 10:30 AM IST", "10:00 - 11:30", or slot id)
+ * into numeric start and end decimal hours.
+ */
+export function parseTimeRangeToHours(timeRangeStr) {
+  if (!timeRangeStr) return null;
+  
+  // Direct match to standard slot by ID or timeRange
+  const stdSlot = STANDARD_TIME_SLOTS.find(
+    s => s.id === timeRangeStr || s.timeRange.toLowerCase() === timeRangeStr.toLowerCase()
+  );
+  if (stdSlot) {
+    return { startHour: stdSlot.startHour, endHour: stdSlot.endHour };
+  }
+
+  const parts = timeRangeStr.split('-');
+  if (parts.length < 2) return null;
+  const startHour = parseTimeToHours(parts[0].trim());
+  const endHour = parseTimeToHours(parts[1].trim());
+  if (startHour === null || endHour === null) return null;
+
+  return { startHour, endHour };
+}
+
+/**
+ * Check if two time ranges overlap.
+ * Overlap condition: startA < endB && endA > startB
+ * Adjacent windows (e.g. 10:00–11:00 and 11:00–12:00) return false (no conflict).
+ */
+export function doTimeWindowsOverlap(timeRangeA, timeRangeB) {
+  const rangeA = parseTimeRangeToHours(timeRangeA);
+  const rangeB = parseTimeRangeToHours(timeRangeB);
+  if (!rangeA || !rangeB) return false;
+  return rangeA.startHour < rangeB.endHour && rangeA.endHour > rangeB.startHour;
 }
 
 /**
@@ -224,19 +275,33 @@ export function getFacultySlotMatrix(facultyEmail, examId, weekNumber, allSchedu
  * @param {Array}  allScheduleSlots
  * @param {Array}  allSubjects
  * @param {string|null} editingSlotId  - exclude this slot from conflict check (when editing)
- * @returns {Array<{slotInfo, status, session}>}  - All 6 slots with booked/empty status
+/**
+ * Get available (unbooked) standard slots for a faculty on a specific day.
+ * Used in the scheduling form to show which slots can still be booked.
+ *
+ * @param {string} facultyEmail
+ * @param {number} dayNumber
+ * @param {string} examId
+ * @param {Array}  allScheduleSlots
+ * @param {Array}  allSubjects
+ * @param {string|null} editingSlotId  - exclude this slot from conflict check (when editing)
+ * @param {string|null} scheduledDate  - optional date (YYYY-MM-DD) for precise date/exception availability
+ * @returns {Array<{slotInfo, status, session, isAvailable, isDeclaredAvailable, reason}>}
  */
-export function getSlotsAvailabilityForFaculty(facultyEmail, dayNumber, examId, allScheduleSlots, allSubjects, editingSlotId = null) {
+export function getSlotsAvailabilityForFaculty(facultyEmail, dayNumber, examId, allScheduleSlots, allSubjects, editingSlotId = null, scheduledDate = null) {
   const facultySubjectIds = new Set(
     allSubjects
       .filter(s => s.examId === examId && s.facultyEmail?.toLowerCase() === facultyEmail?.toLowerCase())
       .map(s => s.id)
   );
 
-  const daySlots = allScheduleSlots.filter(s =>
-    s.examId === examId &&
-    Number(s.dayNumber) === Number(dayNumber) &&
+  const daySlots = (allScheduleSlots || []).filter(s =>
     s.id !== editingSlotId &&
+    String(s.status).toLowerCase() !== 'cancelled' &&
+    (
+      (s.examId === examId && Number(s.dayNumber) === Number(dayNumber)) ||
+      (scheduledDate && s.scheduledDate === scheduledDate)
+    ) &&
     (
       s.facultyEmail?.toLowerCase() === facultyEmail?.toLowerCase() ||
       facultySubjectIds.has(s.subjectId)
@@ -245,14 +310,35 @@ export function getSlotsAvailabilityForFaculty(facultyEmail, dayNumber, examId, 
 
   return STANDARD_TIME_SLOTS.map(stdSlot => {
     const bookedSession = daySlots.find(s => {
-      const normalized = normalizeTimeSlot(s.lectureTimeSlot);
-      return normalized?.id === stdSlot.id;
+      return doTimeWindowsOverlap(s.lectureTimeSlot, stdSlot.timeRange);
     });
+
+    let isAvailable = true;
+    let isDeclaredAvailable = true;
+    let reason = '';
+
+    if (bookedSession) {
+      isAvailable = false;
+      reason = `Booked: ${bookedSession.subjectName || 'Session'} (${bookedSession.lectureTimeSlot})`;
+    } else if (scheduledDate && facultyAvailabilityService) {
+      const check = facultyAvailabilityService.isFacultyAvailable(
+        facultyEmail,
+        scheduledDate,
+        stdSlot.id,
+        { excludeSlotId: editingSlotId }
+      );
+      isAvailable = check.available;
+      isDeclaredAvailable = check.code !== 'NOT_DECLARED_AVAILABLE';
+      reason = check.reason;
+    }
 
     return {
       slotInfo: stdSlot,
       status: bookedSession ? 'booked' : 'empty',
       session: bookedSession || null,
+      isAvailable,
+      isDeclaredAvailable,
+      reason
     };
   });
 }

@@ -4,7 +4,8 @@
 // Persists in localStorage with cross-component reactive event dispatching
 // =============================================================================
 
-import { dayContentStore } from '../data/mockData';
+import { dayContentStore } from '../data/mockData.js';
+import { studyPlan28DaysCurriculum } from '../data/studyPlanCurriculumData.js';
 
 const STORAGE_KEY_SUBJECTS = 'medprep_curriculum_subjects_v1';
 const STORAGE_KEY_MODULES = 'medprep_curriculum_modules_v1';
@@ -1570,11 +1571,18 @@ class CurriculumService {
 
         parsed = parsed.map(slot => {
           const init = INITIAL_SCHEDULE.find(i => i.id === slot.id);
-          if (init && !slot.lectureTimeSlot) {
-            updated = true;
-            return { ...init, ...slot, lectureTimeSlot: init.lectureTimeSlot, facultyName: init.facultyName || slot.facultyName };
+          let itemUpdated = false;
+          let res = { ...slot };
+          if (init && !res.lectureTimeSlot) {
+            itemUpdated = true;
+            res = { ...init, ...res, lectureTimeSlot: init.lectureTimeSlot, facultyName: init.facultyName || res.facultyName };
           }
-          return slot;
+          if (!res.deliveryItems && res.lectureIds) {
+            itemUpdated = true;
+            res.deliveryItems = res.lectureIds.map(lid => ({ type: 'lecture', lectureId: lid }));
+          }
+          if (itemUpdated) updated = true;
+          return res;
         });
 
         if (missing.length > 0 || updated) {
@@ -1593,7 +1601,10 @@ class CurriculumService {
   saveSchedule() {
     try {
       localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(this.schedule));
-      window.dispatchEvent(new CustomEvent('medprep-schedule-updated', { detail: { type: 'schedule', data: this.schedule } }));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('medprep-schedule-updated', { detail: { type: 'schedule', data: this.schedule } }));
+        window.dispatchEvent(new CustomEvent('medprep-delivery-plan-updated', { detail: { type: 'delivery', data: this.schedule } }));
+      }
     } catch (e) {
       console.warn('Failed to save schedule:', e);
     }
@@ -1867,6 +1878,10 @@ class CurriculumService {
       list = list.filter(l => l.moduleId === moduleId);
     }
     return list;
+  }
+
+  getAllLectures() {
+    return this.getLectures();
   }
 
   getLecturesByModule(moduleId, subjectId = null, examId = null) {
@@ -2172,6 +2187,12 @@ class CurriculumService {
 
     const resolvedTimeSlot = slotData.lectureTimeSlot || subject?.defaultTimeSlot || '09:00 AM - 10:30 AM IST';
 
+    const resolvedDeliveryItems = slotData.deliveryItems || (slotData.lectureIds || []).map(lid => ({ type: 'lecture', lectureId: lid }));
+    const resolvedLectureIds = Array.from(new Set([
+      ...(slotData.lectureIds || []),
+      ...resolvedDeliveryItems.filter(i => i.type === 'lecture' && i.lectureId).map(i => i.lectureId)
+    ]));
+
     const payload = {
       id: slotData.id || `sched-${slotData.examId}-d${slotData.dayNumber}-${slotData.subjectId || 'slot'}-${Date.now()}`,
       examId: slotData.examId,
@@ -2185,7 +2206,8 @@ class CurriculumService {
       subjectColor: subject?.color || 'rose',
       moduleId: slotData.moduleId || null,
       moduleTitle: module?.title || slotData.moduleTitle || 'Clinical Module',
-      lectureIds: slotData.lectureIds || [],
+      lectureIds: resolvedLectureIds,
+      deliveryItems: resolvedDeliveryItems,
       scheduledDate: slotData.scheduledDate || new Date().toISOString().split('T')[0],
       status: slotData.status || 'Active',
       estimatedTime: slotData.estimatedTime || '1.5 hours',
@@ -2255,22 +2277,39 @@ class CurriculumService {
   }
 
   linkLectureToDay(examId, weekNumber, dayNumber, lectureId) {
-    let slot = this.getScheduleSlot(examId, weekNumber, dayNumber);
     const lecture = this.getLectureById(lectureId);
-    if (!lecture) return null;
+    if (!lecture) {
+      console.warn(`Cannot link missing lecture ${lectureId}`);
+      return null;
+    }
+
+    if (lecture.examId && examId && examId !== 'all' && lecture.examId !== examId) {
+      console.warn(`Hierarchy mismatch: lecture ${lectureId} belongs to ${lecture.examId}, not ${examId}`);
+      return null;
+    }
+
+    const targetWeek = Number(weekNumber) || Math.ceil(Number(dayNumber) / 7) || 1;
+    let slot = this.getScheduleSlot(examId, targetWeek, dayNumber);
 
     if (!slot) {
       slot = this.saveScheduleSlot({
         examId,
-        weekNumber,
-        dayNumber,
+        weekNumber: targetWeek,
+        dayNumber: Number(dayNumber),
         dayTitle: `Day ${dayNumber} — ${lecture.title}`,
         subjectId: lecture.subjectId,
         moduleId: lecture.moduleId,
         lectureIds: [lectureId],
+        deliveryItems: [{ type: 'lecture', lectureId }],
         status: 'Active'
       });
     } else {
+      if (!slot.deliveryItems) {
+        slot.deliveryItems = (slot.lectureIds || []).map(lid => ({ type: 'lecture', lectureId: lid }));
+      }
+      if (!slot.deliveryItems.some(item => item.type === 'lecture' && item.lectureId === lectureId)) {
+        slot.deliveryItems.push({ type: 'lecture', lectureId });
+      }
       const currentIds = slot.lectureIds || [];
       if (!currentIds.includes(lectureId)) {
         slot.lectureIds = [...currentIds, lectureId];
@@ -2279,19 +2318,150 @@ class CurriculumService {
       if (!slot.moduleId) slot.moduleId = lecture.moduleId;
       this.saveSchedule();
     }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('medprep-delivery-plan-updated', {
+        detail: { examId, weekNumber: targetWeek, dayNumber: Number(dayNumber), lectureId, action: 'link' }
+      }));
+    }
+
     return slot;
   }
 
   unlinkLectureFromDay(examId, dayNumber, lectureId) {
     const slot = this.schedule.find(s => s.examId === examId && Number(s.dayNumber) === Number(dayNumber));
     if (!slot) return null;
+
+    if (slot.deliveryItems) {
+      slot.deliveryItems = slot.deliveryItems.filter(item => !(item.type === 'lecture' && item.lectureId === lectureId));
+    }
     slot.lectureIds = (slot.lectureIds || []).filter(id => id !== lectureId);
     this.saveSchedule();
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('medprep-delivery-plan-updated', {
+        detail: { examId, dayNumber: Number(dayNumber), lectureId, action: 'unlink' }
+      }));
+    }
+
     return slot;
   }
 
   // ---------------------------------------------------------------------------
-  // 6. DYNAMIC DAY RESOLVER FOR STUDENT LMS (/day/:dayId)
+  // 6. CANONICAL DELIVERY PLAN PROVIDER (Weeks 1-4, Days 1-28)
+  // Maps delivery schedule to canonical curriculum entities
+  // ---------------------------------------------------------------------------
+  getDeliveryPlan(examId = 'neet-pg') {
+    const examSlots = this.schedule.filter(s => s.examId === examId);
+
+    // Baseline 4 weeks from studyPlan28DaysCurriculum if available (or standard 4 weeks)
+    const baseWeeks = Array.isArray(studyPlan28DaysCurriculum) && studyPlan28DaysCurriculum.length > 0
+      ? studyPlan28DaysCurriculum
+      : [1, 2, 3, 4].map(w => ({ weekNumber: w, title: `Week ${w}`, days: [] }));
+
+    return baseWeeks.map(baseWeek => {
+      const weekNum = baseWeek.weekNumber;
+      const startDay = (weekNum - 1) * 7 + 1;
+      const endDay = weekNum * 7;
+      const weekSlots = examSlots.filter(s => Number(s.weekNumber) === weekNum);
+
+      const days = [];
+      for (let dayNum = startDay; dayNum <= endDay; dayNum++) {
+        const slot = weekSlots.find(s => Number(s.dayNumber) === dayNum);
+        const fallbackDay = baseWeek.days?.find(d => d.dayNumber === dayNum) || {};
+
+        // 1. Resolve deliveryItems
+        let deliveryItems = [];
+        if (slot?.deliveryItems && slot.deliveryItems.length > 0) {
+          deliveryItems = [...slot.deliveryItems];
+        } else if (slot?.lectureIds && slot.lectureIds.length > 0) {
+          deliveryItems = slot.lectureIds.map(lid => ({ type: 'lecture', lectureId: lid }));
+        } else if (Array.isArray(fallbackDay.modules)) {
+          const extractedIds = [];
+          fallbackDay.modules.forEach(m => {
+            m.lectures?.forEach(l => {
+              if (l.id) extractedIds.push(l.id);
+            });
+          });
+          deliveryItems = extractedIds.map(lid => ({ type: 'lecture', lectureId: lid }));
+        }
+
+        // 2. Resolve canonical lecture entities from curriculumService
+        const resolvedLectures = [];
+        deliveryItems.forEach(item => {
+          if (item.type === 'lecture' && item.lectureId) {
+            const canonicalLec = this.getLectureById(item.lectureId);
+            if (canonicalLec) {
+              resolvedLectures.push(canonicalLec);
+            } else {
+              // Gracefully handle if lecture ID was deleted or unmapped
+              resolvedLectures.push({
+                id: item.lectureId,
+                title: 'Assigned Lecture (Catalog Syncing)',
+                duration: '45 mins',
+                difficulty: 'High-Yield',
+                isUnavailable: true
+              });
+            }
+          }
+        });
+
+        const primaryLecture = resolvedLectures[0];
+        const subject = slot?.subjectId 
+          ? this.getSubjectById(slot.subjectId) 
+          : (primaryLecture?.subjectId ? this.getSubjectById(primaryLecture.subjectId) : null);
+        const module = slot?.moduleId 
+          ? this.getModuleById(slot.moduleId) 
+          : (primaryLecture?.moduleId ? this.getModuleById(primaryLecture.moduleId) : null);
+
+        days.push({
+          id: slot?.id || `day-${dayNum}`,
+          slotId: slot?.id || null,
+          examId,
+          weekNumber: weekNum,
+          dayNumber: dayNum,
+          title: slot?.dayTitle || fallbackDay.title || (primaryLecture ? primaryLecture.title : `Day ${dayNum} Curriculum`),
+          duration: slot?.estimatedTime || fallbackDay.duration || (primaryLecture ? primaryLecture.duration : '1.5 hours'),
+          summaryPills: fallbackDay.summaryPills || (primaryLecture ? [primaryLecture.difficulty, primaryLecture.duration] : []),
+          score: fallbackDay.score || null,
+          hasLive: Boolean(slot?.hasLive ?? fallbackDay.hasLive),
+          hasTest: Boolean(slot?.hasTest ?? fallbackDay.hasTest),
+          subjectId: subject?.id || slot?.subjectId || baseWeek.subjectId || null,
+          subjectName: subject?.name || slot?.subjectName || baseWeek.subjectName || 'Clinical Medicine',
+          moduleId: module?.id || slot?.moduleId || null,
+          moduleTitle: module?.title || slot?.moduleTitle || 'Clinical Module',
+          deliveryItems,
+          lectures: resolvedLectures,
+          lectureIds: deliveryItems.filter(i => i.type === 'lecture').map(i => i.lectureId),
+          status: slot?.status || (dayNum <= 2 ? 'Completed' : 'Active'),
+          modules: fallbackDay.modules || []
+        });
+      }
+
+      return {
+        weekNumber: weekNum,
+        title: weekSlots[0]?.weekTitle || baseWeek.title || `Week ${weekNum}`,
+        description: baseWeek.description || '',
+        badge: baseWeek.badge || '',
+        subjectId: baseWeek.subjectId || null,
+        subjectName: baseWeek.subjectName || 'Clinical Medicine',
+        days
+      };
+    });
+  }
+
+  getDayDelivery(examId = 'neet-pg', dayNumber) {
+    const num = Number(dayNumber);
+    const plan = this.getDeliveryPlan(examId);
+    for (const week of plan) {
+      const found = week.days.find(d => d.dayNumber === num);
+      if (found) return { ...found, weekTitle: week.title };
+    }
+    return null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 7. DYNAMIC DAY RESOLVER FOR STUDENT LMS (/day/:dayId)
   // Bridging hierarchical content seamlessly into DayContentView
   // ---------------------------------------------------------------------------
   getDayResolvedContent(dayId = '3', examId = null, slotId = null) {
@@ -2306,11 +2476,35 @@ class CurriculumService {
       slot = this.schedule.find(s => String(s.dayNumber) === String(dayId));
     }
 
+    // If no slot exists in schedule, check the delivery plan
+    if (!slot) {
+      const planDay = this.getDayDelivery(examId || 'neet-pg', dayId);
+      if (planDay && planDay.lectureIds && planDay.lectureIds.length > 0) {
+        slot = {
+          dayNumber: Number(dayId),
+          weekNumber: planDay.weekNumber,
+          dayTitle: planDay.title,
+          estimatedTime: planDay.duration,
+          subjectId: planDay.subjectId,
+          subjectName: planDay.subjectName,
+          moduleId: planDay.moduleId,
+          moduleTitle: planDay.moduleTitle,
+          lectureIds: planDay.lectureIds,
+          deliveryItems: planDay.deliveryItems,
+          hasLive: planDay.hasLive,
+          hasTest: planDay.hasTest
+        };
+      }
+    }
+
     const fallbackMock = dayContentStore[String(dayId)] || {};
 
+    // Determine lecture IDs from deliveryItems or lectureIds
+    const lectureIds = (slot?.deliveryItems ? slot.deliveryItems.filter(i => i.type === 'lecture').map(i => i.lectureId) : null) || slot?.lectureIds || [];
+
     // If slot has linked lectures with content, aggregate them
-    if (slot && slot.lectureIds && slot.lectureIds.length > 0) {
-      const linkedLectures = slot.lectureIds.map(lid => this.getLectureById(lid)).filter(Boolean);
+    if (slot && lectureIds.length > 0) {
+      const linkedLectures = lectureIds.map(lid => this.getLectureById(lid)).filter(Boolean);
       const primaryLecture = linkedLectures[0];
 
       if (primaryLecture) {
@@ -2374,17 +2568,25 @@ class CurriculumService {
 
         const resolvedActiveTabs = fallbackMock.activeTabs || (activeTabs.length > 0 ? activeTabs : ['video', 'notes']);
 
+        // Live canonical title reflection
+        const resolvedTitle = (primaryLecture && (!slot.dayTitle || slot.dayTitle.startsWith('Day '))) 
+          ? `Day ${dayId} — ${primaryLecture.title}` 
+          : (slot.dayTitle || `Day ${dayId} — ${primaryLecture.title}`);
+
         return {
           dayNumber: Number(dayId),
           weekNumber: slot.weekNumber || 1,
-          title: slot.dayTitle || primaryLecture.title,
+          title: resolvedTitle,
           estimatedTime: slot.estimatedTime || primaryLecture.duration || '1.5 hours',
           subject: subject?.name || slot.subjectName || 'Clinical Medicine',
           subjectName: subject?.name || slot.subjectName || 'Clinical Medicine',
+          subjectId: subject?.id || slot.subjectId || null,
           unit: module?.title || slot.moduleTitle || 'Clinical Module',
           moduleTitle: module?.title || slot.moduleTitle || 'Clinical Module',
+          moduleId: module?.id || slot.moduleId || null,
           lectureTitle: primaryLecture.title,
           lectures: linkedLectures,
+          deliveryItems: slot.deliveryItems || lectureIds.map(lid => ({ type: 'lecture', lectureId: lid })),
           activeTabs: resolvedActiveTabs,
           pdf: primaryPdf,
           notesPdf: primaryPdf,
@@ -2432,10 +2634,13 @@ class CurriculumService {
         estimatedTime: slot.estimatedTime || '1.0 hour',
         subject: subject?.name || slot.subjectName || 'Clinical Medicine',
         subjectName: subject?.name || slot.subjectName || 'Clinical Medicine',
+        subjectId: subject?.id || slot.subjectId || null,
         unit: module?.title || slot.moduleTitle || 'Review & Assessment',
         moduleTitle: module?.title || slot.moduleTitle || 'Review & Assessment',
+        moduleId: module?.id || slot.moduleId || null,
         lectureTitle: slot.dayTitle,
         lectures: [],
+        deliveryItems: slot.deliveryItems || (slot.lectureIds || []).map(lid => ({ type: 'lecture', lectureId: lid })),
         activeTabs: activeTabs.length > 0 ? activeTabs : ['notes', 'images', 'video', 'flashcards'],
         pdf: primaryPdf,
         notesPdf: primaryPdf,
@@ -2468,7 +2673,9 @@ class CurriculumService {
         moduleTitle: d.moduleTitle || d.chapterTitle || d.unit || 'Valvular Heart Diseases',
         notesPdf: d.pdf,
         galleryImages: d.images,
-        videoData: d.video
+        videoData: d.video,
+        lectures: [],
+        deliveryItems: []
       };
     }
 
@@ -2493,7 +2700,9 @@ class CurriculumService {
       flashcards: fallbackMock.flashcards || [],
       hasLive: false,
       hasTest: false,
-      live: { hasSession: false }
+      live: { hasSession: false },
+      lectures: [],
+      deliveryItems: []
     };
   }
 
@@ -2520,6 +2729,21 @@ class CurriculumService {
     const handler = (e) => callback(e.detail || { schedule: this.schedule });
     window.addEventListener('medprep-schedule-updated', handler);
     return () => window.removeEventListener('medprep-schedule-updated', handler);
+  }
+
+  subscribeDeliveryPlan(callback) {
+    if (typeof window === 'undefined') return () => {};
+    const handler = (e) => callback(e.detail);
+    window.addEventListener('medprep-delivery-plan-updated', handler);
+    window.addEventListener('medprep-schedule-updated', handler);
+    window.addEventListener('medprep-curriculum-updated', handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('medprep-delivery-plan-updated', handler);
+      window.removeEventListener('medprep-schedule-updated', handler);
+      window.removeEventListener('medprep-curriculum-updated', handler);
+      window.removeEventListener('storage', handler);
+    };
   }
 }
 

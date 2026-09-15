@@ -68,17 +68,13 @@ export default function DayContentView() {
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  // Direct URL bypass protection: Redirect if Day is not accessible
+  // Day Inspection Mode: Notify with informative banner/toast on upcoming days without blocking redirect
   useEffect(() => {
     if (!isThisDayUnlocked) {
       const highest = learningProgressService.getHighestUnlockedDay();
-      showToast(`Complete Day ${highest} first before starting Day ${currentNum}.`);
-      const timer = setTimeout(() => {
-        navigate(`/day/${highest}`);
-      }, 1500);
-      return () => clearTimeout(timer);
+      showToast(`Viewing Day ${currentNum} in inspection mode. Complete Day ${highest} first for active progress tracking.`);
     }
-  }, [currentNum, isThisDayUnlocked, navigate]);
+  }, [currentNum, isThisDayUnlocked]);
 
   // Load day data dynamically from curriculumService with studyPlanCurriculumData & mockData fallback
   const studyPlanDay = useMemo(() => getStudyPlanDay(currentNum), [currentNum]);
@@ -141,6 +137,7 @@ export default function DayContentView() {
 
   // Guard activeTab if it becomes locked or if URL has an unauthorized tab
   useEffect(() => {
+    if (!isThisDayUnlocked) return; // Allow freely inspecting tabs on upcoming days
     const isMandatory = mandatorySequence.includes(activeTab);
     if (isMandatory) {
       const isUnlocked = learningProgressService.isResourceUnlocked(dayId, activeTab, currentDayData);
@@ -150,10 +147,16 @@ export default function DayContentView() {
         showToast(`This resource is not available yet. Complete ${RESOURCE_TITLES[activeRes] || activeRes} first.`);
       }
     }
-  }, [dayId, currentDayData, mandatorySequence, progressVersion, activeTab]);
+  }, [dayId, currentDayData, mandatorySequence, progressVersion, activeTab, isThisDayUnlocked]);
 
   // Handle Tab Selection with Strict Sequential Check
   const handleSelectTab = (tabKey) => {
+    // If student is inspecting an upcoming day, allow inspecting all scheduled tabs in preview mode
+    if (!isThisDayUnlocked) {
+      setActiveTab(tabKey);
+      return;
+    }
+
     // If Live session (optional non-mandatory)
     if (tabKey === 'live') {
       if (hasLiveSession) {
@@ -241,10 +244,6 @@ export default function DayContentView() {
     : (currentNum < 28 ? currentNum + 1 : null);
 
   const handleNextDayClick = () => {
-    if (!isDayFullyCompleted) {
-      showToast(`Complete Day ${currentNum} first. Finish all required learning resources in the current day before moving to Day ${nextDayNum}.`);
-      return;
-    }
     if (nextDayNum) {
       navigate(`/day/${nextDayNum}`);
     }
@@ -362,6 +361,10 @@ export default function DayContentView() {
 
   // Generic Completion Handler for any active resource
   const handleCompleteResource = (resourceKey) => {
+    if (!isThisDayUnlocked) {
+      showToast(`Day ${currentNum} is in preview mode. Complete Day ${learningProgressService.getHighestUnlockedDay()} first to record progress.`);
+      return;
+    }
     learningProgressService.completeResource(dayId, resourceKey, currentDayData);
     
     // Check if day is now fully completed
@@ -477,6 +480,32 @@ export default function DayContentView() {
               </span>
             </div>
           </div>
+
+          {/* Inspection / Preview Mode Banner (When inspecting upcoming days) */}
+          {!isThisDayUnlocked && (
+            <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs animate-in fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <Info className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <div className="font-bold text-amber-950 text-xs sm:text-sm">
+                    Curriculum Inspection Mode — Day {currentNum}
+                  </div>
+                  <div className="text-amber-800 text-[11px] mt-0.5">
+                    You are previewing scheduled curriculum. Complete Day {learningProgressService.getHighestUnlockedDay()} first to unlock active video playback, progress recording, and clinical test drills.
+                  </div>
+                </div>
+              </div>
+              <Link
+                to={`/day/${learningProgressService.getHighestUnlockedDay()}`}
+                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shrink-0 flex items-center gap-1.5 shadow-2xs cursor-pointer self-start sm:self-auto"
+              >
+                <span>Jump to Day {learningProgressService.getHighestUnlockedDay()}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
 
           {/* ========================================================================= */}
           {/* 3. Day Header Card — Unified Academic Overview & Learning Progress        */}
@@ -677,7 +706,7 @@ export default function DayContentView() {
                   </button>
                 )}
 
-                {/* Next Day Button (Progression Enforced) */}
+                {/* Next Day Button (Progression / Inspection Navigation) */}
                 <button
                   type="button"
                   onClick={handleNextDayClick}
@@ -687,9 +716,9 @@ export default function DayContentView() {
                       ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
                       : isDayFullyCompleted
                         ? 'bg-brand-600 hover:bg-brand-700 text-white border-brand-600 shadow-sm shadow-brand-600/20 cursor-pointer'
-                        : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100 cursor-pointer'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 cursor-pointer shadow-2xs'
                   }`}
-                  title={isDayFullyCompleted ? `Advance to Day ${nextDayNum}` : `Complete Day ${currentNum} to unlock Day ${nextDayNum}`}
+                  title={nextDayNum ? `Navigate to Day ${nextDayNum}` : 'No next day'}
                 >
                   <span>Next Day</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1020,6 +1049,11 @@ export default function DayContentView() {
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <span>Video Masterclass Completed ✓</span>
                       </div>
+                    ) : !isThisDayUnlocked ? (
+                      <div className="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 font-bold text-xs flex items-center gap-2 border border-amber-200">
+                        <Lock className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Preview Only • Day Locked</span>
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -1149,6 +1183,11 @@ export default function DayContentView() {
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <span>PDF Notes Completed ✓</span>
                       </div>
+                    ) : !isThisDayUnlocked ? (
+                      <div className="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 font-bold text-xs flex items-center gap-2 border border-amber-200">
+                        <Lock className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Preview Only • Day Locked</span>
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -1253,6 +1292,11 @@ export default function DayContentView() {
                       <div className="px-4 py-2.5 rounded-xl bg-emerald-50 text-emerald-800 font-bold text-xs flex items-center gap-2 border border-emerald-200">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <span>All Cases Inspected ✓</span>
+                      </div>
+                    ) : !isThisDayUnlocked ? (
+                      <div className="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 font-bold text-xs flex items-center gap-2 border border-amber-200">
+                        <Lock className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Preview Only • Day Locked</span>
                       </div>
                     ) : (
                       <button
@@ -1370,6 +1414,11 @@ export default function DayContentView() {
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <span>Flashcard Deck Completed ✓</span>
                       </div>
+                    ) : !isThisDayUnlocked ? (
+                      <div className="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 font-bold text-xs flex items-center gap-2 border border-amber-200">
+                        <Lock className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Preview Only • Day Locked</span>
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -1479,13 +1528,20 @@ export default function DayContentView() {
                   </div>
 
                   <div className="pt-2">
-                    <Link
-                      to={`/test/test-${currentNum}`}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm"
-                    >
-                      <span>Launch CBT Assessment</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    {!isThisDayUnlocked ? (
+                      <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-100/70 text-amber-900 font-bold text-xs border border-amber-300">
+                        <Lock className="w-3.5 h-3.5 text-amber-800" />
+                        <span>CBT Assessment Locked • Complete Day {learningProgressService.getHighestUnlockedDay()} First</span>
+                      </div>
+                    ) : (
+                      <Link
+                        to={`/test/test-${currentNum}`}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm cursor-pointer"
+                      >
+                        <span>Launch CBT Assessment</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

@@ -49,6 +49,7 @@ import { peopleService } from '../../services/peopleService';
 import FacultySlotMatrixView from './schedule/FacultySlotMatrixView';
 import FacultySlotDetailModal from './schedule/FacultySlotDetailModal';
 import { STANDARD_TIME_SLOTS, getSlotsAvailabilityForFaculty } from '../../utils/scheduleSlotUtils';
+import { facultyAvailabilityService } from '../../services/facultyAvailabilityService';
 
 const SUBJECT_COLOR_MAP = {
   rose: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', tag: 'bg-rose-600', badge: 'bg-rose-100 text-rose-800' },
@@ -114,6 +115,8 @@ export default function ManageScheduleTab({
   const [formHasLive, setFormHasLive] = useState(false);
   const [formHasTest, setFormHasTest] = useState(false);
   const [formStatus, setFormStatus] = useState('Active');
+  const [formFacultyEmail, setFormFacultyEmail] = useState('');
+  const [formAvailabilityError, setFormAvailabilityError] = useState(null);
   // Available-slots-only toggle for the scheduling drawer
   const [formShowAvailableOnly, setFormShowAvailableOnly] = useState(true);
 
@@ -361,6 +364,8 @@ export default function ManageScheduleTab({
       setFormHasLive(Boolean(slot.hasLive));
       setFormHasTest(Boolean(slot.hasTest));
       setFormStatus(slot.status || 'Active');
+      setFormFacultyEmail(slot.facultyEmail || '');
+      setFormAvailabilityError(null);
     } else {
       setEditingSlot(null);
       const dayNum = targetDay || ((selectedWeek - 1) * 7 + (weekSlots.length + 1));
@@ -377,6 +382,8 @@ export default function ManageScheduleTab({
       if (!defaultSubId) defaultSubId = examSubjects[0]?.id || '';
       const defaultSubObj = examSubjects.find(s => s.id === defaultSubId) || examSubjects[0];
       setFormSubjectId(defaultSubId);
+      setFormFacultyEmail(targetFacultyEmail || defaultSubObj?.facultyEmail || '');
+      setFormAvailabilityError(null);
 
       // Default lecture time slot: use targetTimeSlot if provided (from empty slot click), else subject default
       const resolvedTimeSlot = targetTimeSlot || defaultSubObj?.defaultTimeSlot || '09:00 AM - 10:30 AM IST';
@@ -441,6 +448,26 @@ export default function ManageScheduleTab({
     const subObj = examSubjects.find(s => s.id === formSubjectId);
     const chapObj = modules.find(c => c.id === formModuleId);
 
+    const effectiveFacultyEmail = formFacultyEmail || subObj?.facultyEmail || '';
+    const allFacList = peopleService.getFacultyList ? peopleService.getFacultyList() : [];
+    const assignedFac = allFacList.find(f => f.email?.toLowerCase() === effectiveFacultyEmail?.toLowerCase());
+    const effectiveFacultyName = assignedFac?.name || subObj?.assignedFacultyName || currentUser?.name || 'Lead Specialist';
+
+    // VALIDATION: Check faculty availability and overlap before booking
+    if (formStatus !== 'Cancelled' && effectiveFacultyEmail && facultyAvailabilityService) {
+      const validation = facultyAvailabilityService.validateBooking({
+        facultyEmail: effectiveFacultyEmail,
+        dateStr: formDate,
+        timeSlot: formLectureTimeSlot,
+        excludeSlotId: editingSlot?.id || null
+      });
+
+      if (!validation.valid) {
+        setFormAvailabilityError(validation.error);
+        return;
+      }
+    }
+
     const saved = curriculumService.saveScheduleSlot({
       ...(editingSlot ? { id: editingSlot.id } : {}),
       examId: selectedExamId,
@@ -458,13 +485,14 @@ export default function ManageScheduleTab({
       scheduledDate: formDate,
       estimatedTime: formDuration,
       lectureTimeSlot: formLectureTimeSlot,
-      facultyName: subObj?.assignedFacultyName || currentUser?.name || 'Lead Specialist',
-      facultyEmail: subObj?.facultyEmail || '',
+      facultyName: effectiveFacultyName,
+      facultyEmail: effectiveFacultyEmail,
       hasLive: formHasLive,
       hasTest: formHasTest,
       status: formStatus
     });
 
+    setFormAvailabilityError(null);
     setSchedule(curriculumService.getSchedule(selectedExamId));
     setIsModalOpen(false);
     showToast(editingSlot 
@@ -2481,6 +2509,17 @@ export default function ManageScheduleTab({
               {/* Drawer Scrollable Body */}
               <form onSubmit={handleSaveSlot} id="schedule-drawer-form" className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
               
+              {/* Availability Conflict Alert Banner */}
+              {formAvailabilityError && (
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-semibold flex items-start gap-2.5 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <div className="font-black text-rose-900">Booking Prevented — Conflict or Unavailable</div>
+                    <div className="text-[11px] font-medium text-rose-700 leading-relaxed">{formAvailabilityError}</div>
+                  </div>
+                </div>
+              )}
+              
               {/* Step 1: Week, Day & Release Date */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
@@ -2603,6 +2642,28 @@ export default function ManageScheduleTab({
                 </div>
               </div>
 
+              {/* Step 3b: Assigned Faculty Selection */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-indigo-600" />
+                  3. Assigned Faculty Member *
+                </label>
+                <select
+                  value={formFacultyEmail}
+                  onChange={(e) => {
+                    setFormFacultyEmail(e.target.value);
+                    setFormAvailabilityError(null);
+                  }}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  {(peopleService.getFacultyList ? peopleService.getFacultyList() : []).map(fac => (
+                    <option key={fac.id} value={fac.email}>
+                      {fac.name} ({fac.email}) — {fac.specialty}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Step 4: Link Lectures Multi-Select with Quick Actions */}
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
@@ -2722,17 +2783,17 @@ export default function ManageScheduleTab({
                 {/* Available Slots Only Toggle */}
                 {(() => {
                   const selSub = examSubjects.find(s => s.id === formSubjectId);
-                  const selFacultyEmail = selSub?.facultyEmail || '';
-                  const slotAvailability = selFacultyEmail
+                  const effectiveEmail = formFacultyEmail || selSub?.facultyEmail || '';
+                  const slotAvailability = effectiveEmail
                     ? getSlotsAvailabilityForFaculty(
-                        selFacultyEmail, formDayNumber, selectedExamId,
-                        examSchedule, subjects, editingSlot?.id || null
+                        effectiveEmail, formDayNumber, selectedExamId,
+                        examSchedule, subjects, editingSlot?.id || null, formDate
                       )
-                    : STANDARD_TIME_SLOTS.map(sl => ({ slotInfo: sl, status: 'empty', session: null }));
+                    : STANDARD_TIME_SLOTS.map(sl => ({ slotInfo: sl, status: 'empty', session: null, isAvailable: true, isDeclaredAvailable: true }));
 
-                  const availableCount = slotAvailability.filter(s => s.status === 'empty').length;
+                  const availableCount = slotAvailability.filter(s => s.status === 'empty' && s.isAvailable !== false).length;
                   const visibleSlots = formShowAvailableOnly
-                    ? slotAvailability.filter(s => s.status === 'empty')
+                    ? slotAvailability.filter(s => s.status === 'empty' && s.isAvailable !== false)
                     : slotAvailability;
 
                   return (
@@ -2741,7 +2802,7 @@ export default function ManageScheduleTab({
                       <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
                         <div className="flex items-center gap-2 text-[11px] font-semibold text-indigo-700">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                          {availableCount} / {STANDARD_TIME_SLOTS.length} slots free for {selSub?.assignedFacultyName?.split(' ')[0] || 'faculty'} on Day {formDayNumber}
+                          {availableCount} / {STANDARD_TIME_SLOTS.length} slots available for {effectiveEmail.split('@')[0]} on {formDate}
                         </div>
                         <button
                           type="button"

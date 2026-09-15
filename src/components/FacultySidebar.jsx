@@ -16,7 +16,8 @@ import {
   PinOff, 
   X, 
   GraduationCap,
-  HelpCircle 
+  HelpCircle,
+  Clock 
 } from 'lucide-react';
 import { peopleService } from '../services/peopleService';
 import { curriculumService } from '../services/curriculumService';
@@ -81,6 +82,7 @@ export default function FacultySidebar({
     dashboard: '/faculty/dashboard',
     exams: '/faculty/exams',
     schedule: '/faculty/schedule',
+    availability: '/faculty/availability',
     upload: '/faculty/upload',
     students: '/faculty/students',
     live: '/faculty/live-sessions',
@@ -103,6 +105,7 @@ export default function FacultySidebar({
     }
     if (tabId === 'exams') return p.startsWith('/faculty/exams');
     if (tabId === 'schedule') return p.startsWith('/faculty/schedule');
+    if (tabId === 'availability') return p.startsWith('/faculty/availability');
     if (tabId === 'upload') return p.startsWith('/faculty/upload');
     if (tabId === 'students') return p.startsWith('/faculty/students');
     if (tabId === 'live') return p.startsWith('/faculty/live-sessions');
@@ -303,7 +306,30 @@ export default function FacultySidebar({
                   </div>
                   {isExpanded && (
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
-                      Planner
+                      Classes
+                    </span>
+                  )}
+                </button>
+
+                {/* My Availability */}
+                <button
+                  onClick={() => handleTabClick('availability')}
+                  title={!isExpanded ? 'My Availability' : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
+                    isTabActive('availability')
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+                    <Clock className={`w-4 h-4 shrink-0 ${isTabActive('availability') ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">My Availability</span>}
+                  </div>
+                  {isExpanded && (
+                    <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
+                      Slots
                     </span>
                   )}
                 </button>

@@ -1,453 +1,552 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { 
   Calendar as CalendarIcon, 
   Clock, 
   BookOpen, 
-  Radio, 
-  Sparkles, 
-  ArrowRight, 
-  CheckCircle2, 
   Layers, 
   FileText,
-  UploadCloud,
-  Check,
-  Plus,
+  CheckCircle2, 
+  AlertCircle,
+  ChevronRight,
+  ExternalLink,
   Sliders,
+  Filter,
   CalendarCheck,
-  AlertCircle
+  CalendarDays,
+  CalendarX,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  FolderTree,
+  Eye
 } from 'lucide-react';
 import { catalogService } from '../../services/catalogService';
 import { curriculumService } from '../../services/curriculumService';
 import { peopleService } from '../../services/peopleService';
-import { facultyAvailabilityService, WEEKDAYS } from '../../services/facultyAvailabilityService';
-import { STANDARD_TIME_SLOTS } from '../../utils/scheduleSlotUtils';
+import { facultyAvailabilityService } from '../../services/facultyAvailabilityService';
 
 export default function FacultySchedulePage() {
-  const { examId = 'neet-pg' } = useParams();
-  const navigate = useNavigate();
+  const { examId: routeExamId } = useParams();
 
-  const [exams, setExams] = useState(() => catalogService.getExams());
-  const [currentExam, setCurrentExam] = useState(() => 
-    catalogService.getExamById(examId) || { id: examId, name: examId.toUpperCase() }
-  );
-  const [scheduleSlots, setScheduleSlots] = useState(() => curriculumService.getSchedule(examId));
-  const [selectedWeek, setSelectedWeek] = useState(1);
-
-  // Faculty profile & Availability state
+  // SCOPE ENFORCEMENT: Strictly locked to authenticated faculty profile.
+  // URL query params or spoofed IDs are deliberately ignored to enforce role boundary.
   const currentFaculty = peopleService.getCurrentFacultyProfile();
   const facultyEmail = currentFaculty?.email || 'faculty@demo.com';
 
-  const [availabilityProfile, setAvailabilityProfile] = useState(() => 
-    facultyAvailabilityService.getAvailabilityForFaculty(facultyEmail)
+  const [exams, setExams] = useState(() => catalogService.getExams());
+  const [selectedExamFilter, setSelectedExamFilter] = useState(routeExamId || 'all');
+  const [timeHorizonFilter, setTimeHorizonFilter] = useState('upcoming'); // 'today' | 'week' | 'upcoming' | 'all'
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled'
+
+  const [scheduleSlots, setScheduleSlots] = useState(() => 
+    curriculumService.getFacultySchedule(facultyEmail, selectedExamFilter === 'all' ? null : selectedExamFilter)
   );
-  const [selectedWeekday, setSelectedWeekday] = useState('Monday');
-  const [availabilitySaveSuccess, setAvailabilitySaveSuccess] = useState(false);
-  const [isAvailabilityPanelOpen, setIsAvailabilityPanelOpen] = useState(false);
 
   // Synchronize with services
   useEffect(() => {
     const unsubCatalog = catalogService.subscribe(payload => {
       setExams(payload.exams);
-      const matched = payload.exams.find(e => e.id === examId);
-      if (matched) setCurrentExam(matched);
     });
 
     const handleScheduleUpdate = () => {
-      setScheduleSlots(curriculumService.getSchedule(examId));
+      setScheduleSlots(
+        curriculumService.getFacultySchedule(
+          facultyEmail, 
+          selectedExamFilter === 'all' ? null : selectedExamFilter
+        )
+      );
     };
-    window.addEventListener('medprep-schedule-updated', handleScheduleUpdate);
 
-    const unsubAvail = facultyAvailabilityService.subscribe(() => {
-      setAvailabilityProfile(facultyAvailabilityService.getAvailabilityForFaculty(facultyEmail));
-    });
+    window.addEventListener('medprep-schedule-updated', handleScheduleUpdate);
+    window.addEventListener('medprep-delivery-plan-updated', handleScheduleUpdate);
 
     return () => {
       unsubCatalog();
       window.removeEventListener('medprep-schedule-updated', handleScheduleUpdate);
-      unsubAvail();
+      window.removeEventListener('medprep-delivery-plan-updated', handleScheduleUpdate);
     };
-  }, [examId, facultyEmail]);
+  }, [facultyEmail, selectedExamFilter]);
 
-  // Transform curriculumService schedule slots into 4 dynamic weeks (28 days)
-  const weeksData = useMemo(() => {
-    const cleanFacultyName = currentFaculty?.name ? currentFaculty.name.replace(/^Dr\.\s*/i, '').toLowerCase().trim() : '';
+  // Compute Date Boundaries for Horizons
+  const { todayStr, weekStartStr, weekEndStr } = useMemo(() => {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
 
-    return [1, 2, 3, 4].map(weekNum => {
-      const startDay = (weekNum - 1) * 7 + 1;
-      const endDay = weekNum * 7;
-      const weekSlots = scheduleSlots.filter(s => Number(s.weekNumber) === weekNum);
+    // Compute Monday of current week
+    const dayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday
+    const distanceToMonday = (dayOfWeek + 6) % 7;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - distanceToMonday);
 
-      // Find first non-empty subject in this week
-      const firstSubjectName = weekSlots.find(s => s.subjectName)?.subjectName || 'Clinical Medicine';
+    // Compute Sunday of current week
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    return {
+      todayStr: today,
+      weekStartStr: monday.toISOString().split('T')[0],
+      weekEndStr: sunday.toISOString().split('T')[0]
+    };
+  }, []);
+
+  // Filter and Enrich Slots with Canonical Academic Data
+  const enrichedSlots = useMemo(() => {
+    return scheduleSlots.map(slot => {
+      // Canonically resolve academic entities
+      const primaryLectureId = slot.lectureIds?.[0] || 
+        slot.deliveryItems?.find(i => i.type === 'lecture')?.lectureId || null;
       
-      const isWeekAssignedToMe = weekSlots.some(s => 
-        s.facultyEmail?.toLowerCase() === facultyEmail.toLowerCase() ||
-        (cleanFacultyName && s.facultyName?.toLowerCase().includes(cleanFacultyName))
-      );
+      const canonicalLecture = primaryLectureId ? curriculumService.getLectureById(primaryLectureId) : null;
+      const canonicalSubject = slot.subjectId ? curriculumService.getSubjectById(slot.subjectId) : null;
+      const canonicalModule = slot.moduleId ? curriculumService.getModuleById(slot.moduleId) : null;
+      const exam = exams.find(e => e.id === slot.examId);
 
-      const days = Array.from({ length: 7 }, (_, i) => {
-        const dayNumber = startDay + i;
-        const matchingSlots = weekSlots.filter(s => Number(s.dayNumber) === dayNumber);
-        const primarySlot = matchingSlots[0] || null;
-
-        const isDayAssignedToMe = primarySlot ? (
-          primarySlot.facultyEmail?.toLowerCase() === facultyEmail.toLowerCase() ||
-          (cleanFacultyName && primarySlot.facultyName?.toLowerCase().includes(cleanFacultyName))
-        ) : false;
-
-        return {
-          day: dayNumber,
-          title: primarySlot?.dayTitle?.replace(/^Day \d+ (—|-)? ?/, '') || primarySlot?.moduleTitle || `Day ${dayNumber} Curriculum`,
-          type: primarySlot?.subjectName || firstSubjectName,
-          live: Boolean(primarySlot?.hasLive),
-          liveTime: primarySlot?.lectureTimeSlot || '8:00 PM',
-          hasTest: Boolean(primarySlot?.hasTest),
-          assigned: isDayAssignedToMe,
-          status: primarySlot?.status || (dayNumber <= 2 ? 'Released' : 'Scheduled'),
-          slotData: primarySlot
-        };
-      });
+      // Safe date formatting
+      let displayDate = slot.scheduledDate || 'Date to be announced';
+      let weekdayName = '';
+      if (slot.scheduledDate) {
+        try {
+          const parts = slot.scheduledDate.split('-');
+          if (parts.length === 3) {
+            const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            displayDate = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+            weekdayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
 
       return {
-        weekNumber: weekNum,
-        title: `Week ${weekNum}: ${firstSubjectName}`,
-        specialty: isWeekAssignedToMe ? `${firstSubjectName} (Your Department)` : firstSubjectName,
-        assignedToMe: isWeekAssignedToMe,
-        days
+        ...slot,
+        canonicalLecture,
+        canonicalSubject,
+        canonicalModule,
+        examName: exam?.name || slot.examId?.toUpperCase() || 'Medical Track',
+        resolvedTitle: canonicalLecture?.title || slot.dayTitle?.replace(/^Day \d+ (—|-)? ?/, '') || slot.moduleTitle || 'Clinical Session',
+        resolvedSubjectName: canonicalSubject?.name || slot.subjectName || 'Medical Subject',
+        resolvedModuleName: canonicalModule?.title || slot.moduleTitle || 'Clinical Module',
+        displayDate,
+        weekdayName,
+        isCancelled: String(slot.status).toLowerCase() === 'cancelled',
+        isToday: slot.scheduledDate === todayStr,
+        isThisWeek: slot.scheduledDate >= weekStartStr && slot.scheduledDate <= weekEndStr
       };
     });
-  }, [scheduleSlots, currentFaculty, facultyEmail]);
+  }, [scheduleSlots, exams, todayStr, weekStartStr, weekEndStr]);
 
-  const currentWeekData = weeksData.find(w => w.weekNumber === selectedWeek) || weeksData[0];
+  // Apply Horizon & Status Filters
+  const filteredSlots = useMemo(() => {
+    return enrichedSlots.filter(slot => {
+      // Horizon filter
+      if (timeHorizonFilter === 'today') {
+        if (slot.scheduledDate !== todayStr) return false;
+      } else if (timeHorizonFilter === 'week') {
+        if (!slot.scheduledDate || slot.scheduledDate < weekStartStr || slot.scheduledDate > weekEndStr) {
+          return false;
+        }
+      } else if (timeHorizonFilter === 'upcoming') {
+        if (slot.scheduledDate && slot.scheduledDate < todayStr) return false;
+      }
 
-  // Handler: Toggle single standard slot for selected weekday
-  const handleToggleSlot = (slotId) => {
-    const updated = facultyAvailabilityService.toggleSlot(facultyEmail, selectedWeekday, slotId);
-    setAvailabilityProfile(updated);
-    setAvailabilitySaveSuccess(true);
-    setTimeout(() => setAvailabilitySaveSuccess(false), 2000);
-  };
+      // Status filter
+      if (statusFilter !== 'all') {
+        if (String(slot.status).toLowerCase() !== statusFilter.toLowerCase()) return false;
+      }
 
-  // Handler: Batch apply current weekday's pattern to all Mon-Fri weekdays
-  const handleApplyToAllWeekdays = () => {
-    const currentDaySlots = availabilityProfile?.declaredWeeklySlots?.[selectedWeekday] || [];
-    const newWeekly = { ...availabilityProfile?.declaredWeeklySlots };
-    ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
-      newWeekly[day] = [...currentDaySlots];
+      return true;
+    }).sort((a, b) => {
+      if (a.scheduledDate && b.scheduledDate) {
+        return a.scheduledDate.localeCompare(b.scheduledDate);
+      }
+      return (a.dayNumber || 0) - (b.dayNumber || 0);
     });
-    const updated = facultyAvailabilityService.setAvailabilityForFaculty(facultyEmail, newWeekly);
-    setAvailabilityProfile(updated);
-    setAvailabilitySaveSuccess(true);
-    setTimeout(() => setAvailabilitySaveSuccess(false), 2000);
-  };
+  }, [enrichedSlots, timeHorizonFilter, statusFilter, todayStr, weekStartStr, weekEndStr]);
 
-  // Summary calculation of total declared slots
-  const totalDeclaredSlots = useMemo(() => {
-    if (!availabilityProfile?.declaredWeeklySlots) return 0;
-    return Object.values(availabilityProfile.declaredWeeklySlots).reduce((sum, arr) => sum + (arr?.length || 0), 0);
-  }, [availabilityProfile]);
+  // KPI Metrics
+  const metrics = useMemo(() => {
+    return {
+      totalAssigned: enrichedSlots.length,
+      todayCount: enrichedSlots.filter(s => s.isToday && !s.isCancelled).length,
+      thisWeekCount: enrichedSlots.filter(s => s.isThisWeek && !s.isCancelled).length,
+      upcomingCount: enrichedSlots.filter(s => s.scheduledDate >= todayStr && !s.isCancelled).length,
+      cancelledCount: enrichedSlots.filter(s => s.isCancelled).length
+    };
+  }, [enrichedSlots, todayStr]);
+
+  // Status Badge Helper
+  const renderStatusBadge = (status, isCancelled) => {
+    if (isCancelled || String(status).toLowerCase() === 'cancelled') {
+      return (
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1">
+          <CalendarX className="w-3 h-3" />
+          Cancelled
+        </span>
+      );
+    }
+    if (String(status).toLowerCase() === 'completed') {
+      return (
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
+          <CheckCircle2 className="w-3 h-3" />
+          Completed
+        </span>
+      );
+    }
+    if (String(status).toLowerCase() === 'in progress') {
+      return (
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 animate-pulse">
+          In Progress
+        </span>
+      );
+    }
+    if (String(status).toLowerCase() === 'confirmed') {
+      return (
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-sky-100 text-sky-800 border border-sky-200 flex items-center gap-1">
+          Confirmed
+        </span>
+      );
+    }
+    return (
+      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+        <CalendarCheck className="w-3 h-3" />
+        Scheduled
+      </span>
+    );
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in max-w-6xl">
-      {/* Exam Switcher Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {exams.map((ex) => {
-          const isCurrent = ex.id === examId;
-          return (
-            <button
-              key={ex.id}
-              onClick={() => {
-                navigate(`/faculty/schedule/${ex.id}`);
-                setCurrentExam(ex);
-              }}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 shrink-0 cursor-pointer border ${
-                isCurrent
-                  ? 'bg-white text-indigo-700 border-indigo-300 shadow-sm ring-2 ring-indigo-500/10'
-                  : 'bg-white/60 text-slate-600 border-slate-200/80 hover:bg-white hover:text-slate-900'
-              }`}
-            >
-              <span className="text-base">{ex.flag || '🩺'}</span>
-              <span>{ex.name}</span>
-            </button>
-          );
-        })}
-      </div>
-
+    <div className="space-y-6 animate-in fade-in duration-300 pb-12">
       {/* Header Banner */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Faculty Teaching Timetable
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Faculty Teaching Calendar
             </span>
-            <span className="text-slate-300">•</span>
-            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-              Live Delivery & Timetable
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+              {currentFaculty?.name || 'Dr. Siddharth V.'} ({facultyEmail})
             </span>
           </div>
-
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            {currentExam.name} — Teaching Calendar
+            My Teaching Schedule
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
-            Live delivery schedule synchronized with curriculum services. Review confirmed clinical lessons, grand rounds, and declare your weekly teaching availability.
+          <p className="text-slate-500 text-xs sm:text-sm max-w-2xl leading-relaxed">
+            Live lectures and clinical sessions assigned to you by Academic Administration. Canonical curriculum entities update automatically if lecture details change.
           </p>
         </div>
 
-        {/* Action CTAs */}
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            onClick={() => setIsAvailabilityPanelOpen(!isAvailabilityPanelOpen)}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border ${
-              isAvailabilityPanelOpen
-                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
-                : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-            }`}
-          >
-            <Sliders className="w-4 h-4" />
-            <span>{isAvailabilityPanelOpen ? 'Hide Availability' : 'Declare Availability'}</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-white/30 text-[10px] font-black">
-              {totalDeclaredSlots} Slots
-            </span>
-          </button>
-
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
           <Link
-            to="/faculty/upload"
-            className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+            to="/faculty/availability"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-sm"
           >
-            <UploadCloud className="w-4 h-4" />
-            <span>Quick Import</span>
+            <Clock className="w-4 h-4 text-emerald-400" />
+            <span>Manage My Availability</span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           </Link>
         </div>
       </div>
 
-      {/* Interactive Clinician Availability Declaration Panel */}
-      {isAvailabilityPanelOpen && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-200 shadow-sm space-y-5 animate-in slide-in-from-top-4 duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <CalendarCheck className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-base font-black text-slate-900">
-                  Declare Weekly Teaching Availability
-                </h3>
-                {availabilitySaveSuccess && (
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-black animate-in fade-in flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Saved to Timetable Engine
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Select your preferred 6 standard lecture windows. Administrative timetable coordinators will match your declared availability when assigning cohort masterclasses.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleApplyToAllWeekdays}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
-              >
-                Copy {selectedWeekday} to Mon–Fri
-              </button>
-            </div>
+      {/* KPI Dashboard Bar */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+        <div 
+          onClick={() => setTimeHorizonFilter('today')}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer select-none ${
+            timeHorizonFilter === 'today'
+              ? 'bg-emerald-50 border-emerald-300 shadow-xs'
+              : 'bg-white border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-emerald-600" />
+            Today's Classes
+          </span>
+          <div className="text-2xl font-black text-slate-900 mt-1">
+            {metrics.todayCount}
           </div>
-
-          {/* Weekday Selector Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            {WEEKDAYS.map(day => {
-              const count = availabilityProfile?.declaredWeeklySlots?.[day]?.length || 0;
-              const isSelected = selectedWeekday === day;
-              return (
-                <button
-                  key={day}
-                  onClick={() => setSelectedWeekday(day)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                    isSelected
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <span>{day}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                    isSelected ? 'bg-white/30 text-white' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* 6 Standard Time Slots Grid for Selected Day */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {STANDARD_TIME_SLOTS.map(slot => {
-              const daySlots = availabilityProfile?.declaredWeeklySlots?.[selectedWeekday] || [];
-              const isAvailable = daySlots.includes(slot.id);
-
-              return (
-                <div
-                  key={slot.id}
-                  onClick={() => handleToggleSlot(slot.id)}
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start justify-between gap-3 ${
-                    isAvailable
-                      ? 'bg-emerald-50/70 border-emerald-400 shadow-xs'
-                      : 'bg-slate-50 border-slate-200/80 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-xs font-black text-slate-900">
-                      <span>{slot.icon}</span>
-                      <span>{slot.label}</span>
-                    </div>
-                    <div className="text-[11px] text-slate-500 font-medium">
-                      {slot.timeRange}
-                    </div>
-                    <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                      isAvailable ? 'bg-emerald-200/60 text-emerald-900' : 'bg-slate-200/80 text-slate-600'
-                    }`}>
-                      {isAvailable ? '✓ Declared Available' : 'Off-Duty'}
-                    </span>
-                  </div>
-
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                    isAvailable ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'
-                  }`}>
-                    {isAvailable ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-            <span>
-              Configuring for: <strong className="text-slate-700">{facultyEmail}</strong> ({currentFaculty?.specialty || 'Faculty'})
-            </span>
-            <span>Changes persist immediately into admin slot matrix.</span>
+          <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+            Sessions today
           </div>
         </div>
-      )}
 
-      {/* Week Selector Tabs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {weeksData.map((wk) => {
-          const isSelected = selectedWeek === wk.weekNumber;
-          return (
-            <button
-              key={wk.weekNumber}
-              onClick={() => setSelectedWeek(wk.weekNumber)}
-              className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                isSelected
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
-                  : 'bg-white text-slate-700 border-slate-200/80 hover:border-indigo-200'
-              }`}
-            >
-              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase">
-                <span className={isSelected ? 'text-indigo-200' : 'text-slate-400'}>
-                  Week {wk.weekNumber}
-                </span>
-                {wk.assignedToMe && (
-                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
-                    isSelected ? 'bg-indigo-700 text-white' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                  }`}>
-                    Your Dept
-                  </span>
-                )}
-              </div>
-              <div className="text-xs font-black mt-1 line-clamp-1">
-                {wk.title.replace(`Week ${wk.weekNumber}: `, '')}
-              </div>
-              <div className={`text-[10px] mt-1 ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
-                7 Daily Curriculum Deliverables
-              </div>
-            </button>
-          );
-        })}
+        <div 
+          onClick={() => setTimeHorizonFilter('week')}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer select-none ${
+            timeHorizonFilter === 'week'
+              ? 'bg-indigo-50 border-indigo-300 shadow-xs'
+              : 'bg-white border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <CalendarDays className="w-3.5 h-3.5 text-indigo-600" />
+            This Week
+          </span>
+          <div className="text-2xl font-black text-slate-900 mt-1">
+            {metrics.thisWeekCount}
+          </div>
+          <div className="text-[10px] text-indigo-700 font-semibold mt-0.5">
+            Mon–Sun window
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setTimeHorizonFilter('upcoming')}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer select-none ${
+            timeHorizonFilter === 'upcoming'
+              ? 'bg-sky-50 border-sky-300 shadow-xs'
+              : 'bg-white border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <CalendarCheck className="w-3.5 h-3.5 text-sky-600" />
+            Upcoming
+          </span>
+          <div className="text-2xl font-black text-slate-900 mt-1">
+            {metrics.upcomingCount}
+          </div>
+          <div className="text-[10px] text-sky-700 font-semibold mt-0.5">
+            Active bookings ahead
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setTimeHorizonFilter('all')}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer select-none ${
+            timeHorizonFilter === 'all'
+              ? 'bg-slate-100 border-slate-300 shadow-xs'
+              : 'bg-white border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5 text-slate-600" />
+            Total Assigned
+          </span>
+          <div className="text-2xl font-black text-slate-900 mt-1">
+            {metrics.totalAssigned}
+          </div>
+          <div className="text-[10px] text-slate-500 font-semibold mt-0.5">
+            Across all exams
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl border border-slate-200 bg-white space-y-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <CalendarX className="w-3.5 h-3.5 text-rose-500" />
+            Cancelled Sessions
+          </span>
+          <div className="text-2xl font-black text-rose-700">
+            {metrics.cancelledCount}
+          </div>
+          <div className="text-[10px] text-slate-400">
+            Retained in audit log
+          </div>
+        </div>
       </div>
 
-      {/* Days Table / Grid */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-black text-slate-900">
-              {currentWeekData.title}
-            </h2>
-            <p className="text-xs text-slate-500">
-              Department Specialty: <span className="font-bold text-slate-700">{currentWeekData.specialty}</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          {currentWeekData.days.map((d) => (
-            <div
-              key={d.day}
-              className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-3 group ${
-                d.live
-                  ? 'bg-rose-50/40 border-rose-200 shadow-xs'
-                  : 'bg-slate-50/60 border-slate-200/80 hover:bg-white hover:border-indigo-200'
+      {/* Control Bar: Filters & View Modes */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex items-center justify-between flex-wrap gap-4">
+        {/* Left: Time Horizon Tabs */}
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+          {[
+            { id: 'today', label: "Today's Classes" },
+            { id: 'week', label: 'This Week' },
+            { id: 'upcoming', label: 'Upcoming' },
+            { id: 'all', label: 'All Classes' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setTimeHorizonFilter(tab.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                timeHorizonFilter === tab.id
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-lg">
-                    Day #{d.day}
-                  </span>
-
-                  <div className="flex items-center gap-1.5">
-                    {d.live && (
-                      <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black uppercase flex items-center gap-1">
-                        <Radio className="w-3 h-3" />
-                        <span>{d.liveTime || 'Live Clinic'}</span>
-                      </span>
-                    )}
-                    {d.hasTest && (
-                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
-                        CBT
-                      </span>
-                    )}
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      d.status === 'Released'
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : d.status === 'Live Tonight'
-                        ? 'bg-rose-50 text-rose-700 border border-rose-200 animate-pulse'
-                        : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {d.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                    {d.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">{d.type}</p>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
-                <span className="text-[11px] text-slate-400 font-medium">
-                  {d.assigned ? `Lead: ${currentFaculty?.name || 'Assigned'}` : 'Department Assigned'}
-                </span>
-
-                <div className="flex items-center gap-3">
-                  <Link
-                    to={`/day/${d.day}`}
-                    target="_blank"
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                  >
-                    <span>LMS View</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </Link>
-                </div>
-              </div>
-            </div>
+              {tab.label}
+            </button>
           ))}
         </div>
+
+        {/* Right: Exam Filter, Status Filter & View Toggle */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Exam Filter */}
+          <select
+            value={selectedExamFilter}
+            onChange={(e) => setSelectedExamFilter(e.target.value)}
+            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">All Assigned Exams</option>
+            {exams.map(e => (
+              <option key={e.id} value={e.id}>{e.name}</option>
+            ))}
+          </select>
+
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">All Statuses</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
       </div>
+
+      {/* Main Schedule List / Feed */}
+      {filteredSlots.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-xs space-y-3">
+          <CalendarCheck className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="text-base font-black text-slate-800">
+            No Teaching Sessions Found
+          </h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+            {timeHorizonFilter === 'today'
+              ? 'You have no live classes or clinical lectures scheduled for today.'
+              : timeHorizonFilter === 'week'
+              ? 'No classes are scheduled for you in the current week.'
+              : 'You have no assigned classes matching the current filter criteria.'}
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/faculty/availability"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+            >
+              <Clock className="w-3.5 h-3.5 text-slate-500" />
+              <span>Update Teaching Availability</span>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {filteredSlots.map(slot => {
+            const isStruck = slot.isCancelled;
+
+            return (
+              <div
+                key={slot.id}
+                className={`bg-white rounded-3xl p-5 sm:p-6 border transition-all hover:shadow-sm space-y-4 ${
+                  slot.isToday && !slot.isCancelled
+                    ? 'border-emerald-300 ring-2 ring-emerald-500/10'
+                    : slot.isCancelled
+                    ? 'border-rose-200 bg-rose-50/20 opacity-75'
+                    : 'border-slate-200'
+                }`}
+              >
+                {/* Top Row: Date, Time & Status */}
+                <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-2xl flex items-center justify-center font-bold shrink-0 ${
+                      slot.isToday ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'
+                    }`}>
+                      <CalendarIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-slate-900 flex items-center gap-2">
+                        <span>{slot.displayDate}</span>
+                        {slot.isToday && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-white">
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 mt-0.5">
+                        <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>{slot.lectureTimeSlot || 'Time to be announced'}</span>
+                        <span>•</span>
+                        <span>{slot.estimatedTime || '1.5 hours'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {renderStatusBadge(slot.status, slot.isCancelled)}
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+                      {slot.examName}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Middle: Canonical Academic Hierarchy Context */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  <div className="md:col-span-2 space-y-2">
+                    {/* Subject & Module Pills */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        {slot.resolvedSubjectName}
+                      </span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                        <FolderTree className="w-3 h-3 text-slate-400" />
+                        {slot.resolvedModuleName}
+                      </span>
+                    </div>
+
+                    {/* Resolved Lecture Title */}
+                    <h3 className={`text-base font-black text-slate-900 ${isStruck ? 'line-through text-slate-400' : ''}`}>
+                      {slot.resolvedTitle}
+                    </h3>
+
+                    {/* Delivery Day reference */}
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <span className="font-bold text-slate-700">Delivery Plan Reference:</span>
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold">
+                        Week {slot.weekNumber} • Day {slot.dayNumber}
+                      </span>
+                      {slot.notes && (
+                        <>
+                          <span>•</span>
+                          <span className="italic">"{slot.notes}"</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions Column */}
+                  <div className="flex flex-row md:flex-col justify-end md:justify-center items-end gap-2 shrink-0">
+                    {slot.canonicalLecture ? (
+                      <Link
+                        to={`/faculty/exams/${slot.examId}/subjects/${slot.subjectId}/modules/${slot.moduleId}/lectures/${slot.canonicalLecture.id}/content`}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Content Studio</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/faculty/upload"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Manage Content</span>
+                      </Link>
+                    )}
+
+                    <a
+                      href={`/day/${slot.dayNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 text-[11px] font-bold hover:bg-slate-100 transition-colors"
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span>Preview Delivery Day</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

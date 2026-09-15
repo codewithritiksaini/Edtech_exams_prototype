@@ -41,6 +41,7 @@ import FacultyTestsPage from './pages/faculty/FacultyTestsPage';
 import FacultyStudentsPage from './pages/faculty/FacultyStudentsPage';
 import FacultyAnalyticsPage from './pages/faculty/FacultyAnalyticsPage';
 import FacultySchedulePage from './pages/faculty/FacultySchedulePage';
+import FacultyAvailabilityPage from './pages/faculty/FacultyAvailabilityPage';
 import FacultyQuestionAuthoringPage from './pages/faculty/FacultyQuestionAuthoringPage';
 import FacultyTestResultsPage from './pages/faculty/FacultyTestResultsPage';
 import StudentCoursesPage from './pages/student/StudentCoursesPage';
@@ -253,6 +254,7 @@ export default function App() {
             {/* Operational Management Sub-Pages */}
             <Route path="/faculty/schedule" element={<FacultySchedulePage />} />
             <Route path="/faculty/schedule/:examId" element={<FacultySchedulePage />} />
+            <Route path="/faculty/availability" element={<FacultyAvailabilityPage />} />
             <Route path="/faculty/upload" element={<FacultyDirectUploadPage />} />
             <Route path="/faculty/live-sessions" element={<FacultyLiveSessionsPage />} />
             <Route path="/faculty/tests" element={<FacultyTestsPage />} />
