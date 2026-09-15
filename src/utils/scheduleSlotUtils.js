@@ -1,3 +1,5 @@
+import { facultyAvailabilityService } from '../services/facultyAvailabilityService';
+
 // =============================================================================
 // SCHEDULE SLOT UTILITIES
 // Provides standard slot taxonomy, normalization, and faculty slot matrix helpers
@@ -171,6 +173,7 @@ export function getFacultySlotMatrix(facultyEmail, examId, weekNumber, allSchedu
 
   return Array.from({ length: 7 }, (_, i) => {
     const dayNumber = startDay + i;
+    const weekday = DAY_NAMES[i];
     const daySlots = weekSlots.filter(s => Number(s.dayNumber) === dayNumber);
 
     const slots = STANDARD_TIME_SLOTS.map(stdSlot => {
@@ -180,20 +183,33 @@ export function getFacultySlotMatrix(facultyEmail, examId, weekNumber, allSchedu
         return normalized?.id === stdSlot.id;
       });
 
+      const isDeclared = facultyAvailabilityService.isSlotDeclaredAvailable(facultyEmail, weekday, stdSlot.id);
+
+      let status = 'empty';
+      if (bookedSession) {
+        status = 'booked';
+      } else if (isDeclared) {
+        status = 'available';
+      } else {
+        status = 'unavailable';
+      }
+
       return {
         slotInfo: stdSlot,
-        status: bookedSession ? 'booked' : 'empty',
+        status,
+        isDeclaredAvailable: isDeclared,
         session: bookedSession || null,
       };
     });
 
     return {
       dayNumber,
-      weekday: DAY_NAMES[i],
-      shortWeekday: DAY_NAMES[i].slice(0, 3),
+      weekday,
+      shortWeekday: weekday.slice(0, 3),
       slots,
       bookedCount: slots.filter(s => s.status === 'booked').length,
-      emptyCount: slots.filter(s => s.status === 'empty').length,
+      availableCount: slots.filter(s => s.status === 'available').length,
+      emptyCount: slots.filter(s => s.status === 'available' || s.status === 'empty').length,
     };
   });
 }

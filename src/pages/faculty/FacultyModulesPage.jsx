@@ -221,7 +221,61 @@ export default function FacultyModulesPage() {
     curriculumService.moveModuleOrder(chapId, direction);
   };
 
-  // If subject is not assigned to current faculty, restrict access
+  // 1. Guard: Subject not found
+  if (!subject) {
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Subject Not Found</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          The requested subject does not exist or has been removed from the academic curriculum.
+        </p>
+        <div className="pt-2">
+          <Link
+            to={routeExamId ? `/faculty/exams/${routeExamId}/subjects` : "/faculty/subjects"}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <span>Return to Subjects</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Guard: Hierarchy Mismatch (subject.examId !== routeExamId)
+  if (routeExamId && subject.examId && subject.examId !== routeExamId) {
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-rose-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Invalid Academic Hierarchy Context</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Subject <strong className="text-slate-800 font-semibold">{subject.name}</strong> belongs to program <strong className="text-slate-800 font-semibold">{subject.examId?.toUpperCase()}</strong>, but was accessed through the route for <strong className="text-rose-600 font-semibold">{routeExamId?.toUpperCase()}</strong>.
+        </p>
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            to={`/faculty/exams/${subject.examId}/subjects/${subject.id}/modules`}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <span>Switch to {subject.examId.toUpperCase()} Context</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            to={`/faculty/exams/${routeExamId}/subjects`}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+          >
+            <span>Back to {routeExamId.toUpperCase()} Subjects</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Guard: If subject is not assigned to current faculty, restrict access
   if (!isAssigned) {
     return (
       <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
@@ -234,7 +288,7 @@ export default function FacultyModulesPage() {
         </p>
         <div className="pt-2">
           <Link
-            to="/faculty/subjects"
+            to={effectiveExamId ? `/faculty/exams/${effectiveExamId}/subjects` : "/faculty/subjects"}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
           >
             <span>Return to My Assigned Subjects</span>
@@ -490,7 +544,7 @@ export default function FacultyModulesPage() {
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDeleteModule(chap)}
+                          onClick={() => handleOpenDeleteModal(chap)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                           title="Delete Module"
                         >
@@ -593,7 +647,7 @@ export default function FacultyModulesPage() {
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteModule(chap)}
+                      onClick={() => handleOpenDeleteModal(chap)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                       title="Delete Module"
                     >

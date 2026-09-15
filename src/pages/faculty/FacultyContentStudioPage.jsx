@@ -752,23 +752,125 @@ export default function FacultyContentStudioPage() {
 
   const backLecturesUrl = `/faculty/exams/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures`;
 
-  if (!lecture) {
+  // 1. Guard: Subject not found
+  if (!subject) {
     return (
-      <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-4">
-        <Sparkles className="w-12 h-12 text-slate-300 mx-auto" />
-        <h2 className="text-base font-bold text-slate-800">Lecture Not Found</h2>
-        <p className="text-xs text-slate-500">The requested lecture could not be located in the curriculum database.</p>
-        <Link
-          to={backLecturesUrl}
-          className="inline-flex px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold"
-        >
-          Back to Lectures
-        </Link>
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Subject Not Found</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          The requested subject does not exist or has been removed from the academic curriculum.
+        </p>
+        <div className="pt-2">
+          <Link
+            to={examId ? `/faculty/exams/${examId}/subjects` : "/faculty/subjects"}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <span>Return to Subjects</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
     );
   }
 
-  // If subject is not assigned to current faculty, restrict studio access
+  // 2. Guard: Module not found
+  if (!module) {
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Module Not Found</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          The requested curriculum module does not exist or has been removed.
+        </p>
+        <div className="pt-2">
+          <Link
+            to={`/faculty/exams/${examId}/subjects/${subjectId}/modules`}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <span>Return to Modules Roster</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Guard: Lecture not found
+  if (!lecture) {
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+          <Sparkles className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Lecture Not Found</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          The requested lecture could not be located in the curriculum database.
+        </p>
+        <div className="pt-2">
+          <Link
+            to={backLecturesUrl}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <span>Return to Lectures Roster</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. Guard: Hierarchy Mismatches
+  const isExamSubjectMismatch = examId && subject.examId && subject.examId !== examId;
+  const isModuleSubjectMismatch = module.subjectId && module.subjectId !== subject.id;
+  const isLectureModuleMismatch = lecture.moduleId && lecture.moduleId !== module.id;
+  const isLectureSubjectMismatch = lecture.subjectId && lecture.subjectId !== subject.id;
+
+  if (isExamSubjectMismatch || isModuleSubjectMismatch || isLectureModuleMismatch || isLectureSubjectMismatch) {
+    let errorDetail = '';
+    if (isExamSubjectMismatch) {
+      errorDetail = `Subject "${subject.name}" belongs to program ${subject.examId?.toUpperCase()}, but was accessed under route ${examId?.toUpperCase()}.`;
+    } else if (isModuleSubjectMismatch) {
+      errorDetail = `Module "${module.title}" belongs to subject ID "${module.subjectId}", not "${subject.name}" (${subject.id}).`;
+    } else if (isLectureModuleMismatch) {
+      errorDetail = `Lecture "${lecture.title}" belongs to module ID "${lecture.moduleId}", not "${module.title}" (${module.id}).`;
+    } else if (isLectureSubjectMismatch) {
+      errorDetail = `Lecture "${lecture.title}" belongs to subject ID "${lecture.subjectId}", not "${subject.name}" (${subject.id}).`;
+    }
+
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-rose-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Invalid Academic Hierarchy Context</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          {errorDetail}
+        </p>
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            to={backLecturesUrl}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <span>Back to Module Lectures</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            to={`/faculty/exams/${examId}/subjects/${subjectId}/modules`}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+          >
+            <span>Return to Modules</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 5. Guard: If subject is not assigned to current faculty, restrict studio access
   if (!isAssigned) {
     return (
       <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
@@ -781,7 +883,7 @@ export default function FacultyContentStudioPage() {
         </p>
         <div className="pt-2">
           <Link
-            to="/faculty/subjects"
+            to={examId ? `/faculty/exams/${examId}/subjects` : "/faculty/subjects"}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
           >
             <span>Return to My Assigned Subjects</span>

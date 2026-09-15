@@ -90,24 +90,22 @@ export default function FacultySubjectsPage() {
     });
   }, [exams, subjects, assignedExamsList, facultyAssignedSubjectIds, currentFaculty]);
 
-  // Selected exam filter: default to 'all' as requested by user
-  const initialExamFilter = searchParams.get('exam') || 'all';
+  // Selected exam filter: locked to routeExamId if present, else search param or 'all'
+  const initialExamFilter = routeExamId || searchParams.get('exam') || 'all';
   const [selectedExamFilter, setSelectedExamFilter] = useState(initialExamFilter);
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('all');
 
-  // If accessed via /faculty/exams/:examId/subjects, normalize cleanly to /faculty/subjects
+  // Keep selectedExamFilter strictly locked to routeExamId when routeExamId is present
   useEffect(() => {
     if (routeExamId) {
-      navigate('/faculty/subjects', { replace: true });
+      setSelectedExamFilter(routeExamId);
+      setSelectedSubjectFilter('all');
     }
-  }, [routeExamId, navigate]);
+  }, [routeExamId]);
 
-  // If selectedExamFilter is neither 'all' nor in assignedExams, reset to 'all'
-  useEffect(() => {
-    if (selectedExamFilter !== 'all' && assignedExams.length > 0 && !assignedExams.some(e => e.id === selectedExamFilter)) {
-      setSelectedExamFilter('all');
-    }
-  }, [selectedExamFilter, assignedExams]);
+  // Resolve active exam from route or state
+  const routeExam = routeExamId ? (exams.find(e => e.id === routeExamId) || catalogService.getExamById(routeExamId)) : null;
+  const isInvalidExamRoute = Boolean(routeExamId && !routeExam);
 
   // View & Filter State
   const [viewMode, setViewMode] = useState('table');
@@ -153,6 +151,11 @@ export default function FacultySubjectsPage() {
   const handleExamFilterChange = (newExamId) => {
     setSelectedExamFilter(newExamId);
     setSelectedSubjectFilter('all');
+    if (newExamId === 'all') {
+      navigate('/faculty/subjects');
+    } else {
+      navigate(`/faculty/exams/${newExamId}/subjects`);
+    }
   };
 
   // Available subjects for subject filter dropdown (relative to chosen exam filter)
@@ -238,6 +241,9 @@ export default function FacultySubjectsPage() {
     setSelectedExamFilter('all');
     setSelectedSubjectFilter('all');
     setStatusFilter('all');
+    if (routeExamId) {
+      navigate('/faculty/subjects');
+    }
   };
 
   const handleOpenCreateModal = () => {
@@ -323,6 +329,60 @@ export default function FacultySubjectsPage() {
     return exams.find(e => e.id === selectedExamFilter) || null;
   };
 
+  // Check if routeExamId is assigned to the current faculty
+  const isExamAssignedToFaculty = useMemo(() => {
+    if (!routeExamId) return true;
+    return assignedExams.some(e => e.id === routeExamId);
+  }, [routeExamId, assignedExams]);
+
+  // If routeExamId is specified but invalid, render clean hierarchy error state
+  if (isInvalidExamRoute) {
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Exam Program Not Found</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          The exam track identifier <strong className="text-slate-800">"{routeExamId}"</strong> was not found in the institutional exam catalog.
+        </p>
+        <div className="pt-2">
+          <Link
+            to="/faculty/exams"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to My Assigned Programs</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // If routeExamId is valid but NOT assigned to this faculty, render access restricted state
+  if (routeExamId && routeExam && !isExamAssignedToFaculty) {
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Program Access Restricted</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          You do not have assigned teaching permissions for <strong className="text-slate-800">{routeExam.name}</strong> ({routeExam.id}). In the faculty portal, you can only view and manage curricula for examination tracks assigned to your faculty profile.
+        </p>
+        <div className="pt-2">
+          <Link
+            to="/faculty/exams"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to My Assigned Programs</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in">
       {/* Toast Notification */}
@@ -332,7 +392,6 @@ export default function FacultySubjectsPage() {
           <span>{toastMessage}</span>
         </div>
       )}
-
 
       {/* Header Banner */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-5">
@@ -377,6 +436,65 @@ export default function FacultySubjectsPage() {
           </button>
         </div>
       </div>
+
+      {/* Active Academic Context Strip */}
+      {routeExamId && routeExam ? (
+        <div className="p-4 rounded-3xl bg-indigo-50 border border-indigo-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white text-base flex items-center justify-center font-black shadow-xs shrink-0">
+              {routeExam.flag || '🩺'}
+            </div>
+            <div>
+              <div className="text-xs font-black text-indigo-950 flex items-center gap-2">
+                <span>Active Program Context: {routeExam.fullName || routeExam.name}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-600 text-white font-black uppercase tracking-wider">
+                  Program Scoped
+                </span>
+              </div>
+              <p className="text-[11px] text-indigo-700 mt-0.5">
+                You are currently viewing academic subjects belonging to this specific exam track.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/faculty/subjects"
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 shadow-2xs transition-colors shrink-0 text-center"
+          >
+            Switch to Global Subject Directory
+          </Link>
+        </div>
+      ) : (
+        <div className="p-4 rounded-3xl bg-slate-100/70 border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-slate-800 text-white text-base flex items-center justify-center font-black shadow-xs shrink-0">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-black text-slate-900 flex items-center gap-2">
+                <span>Global Assigned Subject Directory</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold">
+                  All Programs
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Viewing all curriculum subjects assigned to your faculty profile across all licensing tracks.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-400">Jump to Track:</span>
+            {assignedExams.map(ex => (
+              <Link
+                key={ex.id}
+                to={`/faculty/exams/${ex.id}/subjects`}
+                className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 text-xs font-bold border border-slate-200 shadow-2xs transition-colors"
+              >
+                {ex.flag} {ex.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* KPI Stats Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

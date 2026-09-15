@@ -457,42 +457,131 @@ class LiveSessionsService {
   }
 
   addSession(data) {
+    let examId = data.examId;
+    let examName = data.examName;
+
+    if (!examId && data.course) {
+      if (data.course.includes('USMLE')) {
+        examId = 'usmle';
+        examName = 'USMLE Step 1 & 2 CK';
+      } else if (data.course.includes('PLAB') || data.course.includes('UKMLA')) {
+        examId = 'plab';
+        examName = 'PLAB 1 & 2 / UKMLA';
+      } else if (data.course.includes('Europe')) {
+        examId = 'europe';
+        examName = 'Europe Medical Licensing';
+      } else {
+        examId = 'neet-pg';
+        examName = 'NEET PG & NExT 2026';
+      }
+    }
+
+    const durationMinutes = Number(data.durationMinutes) || 
+      (typeof data.duration === 'string' && data.duration.includes('hour') ? Math.round(parseFloat(data.duration) * 60) : parseInt(data.duration, 10)) || 75;
+
+    let startOffsetMinutes = 60;
+    let endOffsetMinutes = 60 + durationMinutes;
+
+    if (data.isLiveNow) {
+      startOffsetMinutes = -5;
+      endOffsetMinutes = durationMinutes - 5;
+    } else if (data.date && data.time) {
+      try {
+        const cleanTime = data.time.replace('IST', '').trim();
+        const sched = new Date(`${data.date}T${cleanTime}`);
+        if (!isNaN(sched.getTime())) {
+          startOffsetMinutes = Math.round((sched.getTime() - PROTOTYPE_EPOCH) / 60000);
+          endOffsetMinutes = startOffsetMinutes + durationMinutes;
+        }
+      } catch (e) {
+        console.warn('Live session date parse warning:', e);
+      }
+    }
+
     const newSession = {
-      id: `live-${Date.now()}`,
-      examId: data.examId || 'neet-pg',
-      examName: data.examName || 'NEET PG & NExT 2026',
-      title: data.title || data.topic,
-      topic: data.topic,
+      id: data.id || `live-${Date.now()}`,
+      examId: examId || 'neet-pg',
+      examName: examName || 'NEET PG & NExT 2026',
+      course: examName || data.course || 'NEET PG & NExT 2026',
+      title: data.title || data.topic || 'Clinical Grand Rounds',
+      topic: data.topic || data.title || 'Clinical Grand Rounds',
       description: data.description || 'Clinical grand rounds presentation with interactive discussion.',
       timezone: data.timezone || 'IST',
-      formattedTime: data.time?.includes('IST') ? data.time : `${data.time || '8:00 PM'} IST`,
-      duration: data.duration || '1 hr 15 min',
-      durationMinutes: data.durationMinutes || 75,
-      faculty: data.faculty || 'Dr. Siddharth V.',
+      formattedTime: data.formattedTime || (data.date ? `${data.date} • ${data.time || '8:00 PM IST'}` : `${data.time || '8:00 PM'} IST`),
+      date: data.date || 'Today',
+      time: data.time || '8:00 PM IST',
+      duration: data.duration || `${durationMinutes} mins`,
+      durationMinutes,
+      faculty: data.faculty || data.instructor || 'Dr. Siddharth V.',
+      instructor: data.instructor || data.faculty || 'Dr. Siddharth V.',
       facultyTitle: data.facultyTitle || 'Clinical Faculty Mentor',
       college: data.college || 'Clinical Specialist',
       facultyId: data.facultyId || 'fac-1',
-      meetingLink: data.meetingLink || 'https://meet.google.com/medprep-live-room',
-      attendeesCount: 0,
+      meetingLink: data.meetingLink || data.zoomLink || 'https://meet.google.com/medprep-live-room',
+      zoomLink: data.zoomLink || data.meetingLink || 'https://meet.google.com/medprep-live-room',
+      attendeesCount: data.registeredStudents || 0,
+      registeredStudents: data.registeredStudents || 380,
       replayAvailable: false,
       replayUrl: null,
-      badge: 'Scheduled',
-      // Starts in 60 minutes by default
-      startOffsetMinutes: 60,
-      endOffsetMinutes: 135,
+      badge: data.isLiveNow ? 'Live Tonight' : 'Upcoming',
+      startOffsetMinutes,
+      endOffsetMinutes,
       studyPlan: data.weekId ? {
         weekNumber: Number(data.weekId),
         dayNumber: Number(data.dayId || 1),
         dayTitle: `Day ${data.dayId || 1} Review`,
         subjectName: 'Clinical Medicine',
         moduleTitle: 'Clinical Medicine Module'
-      } : null
+      } : (data.studyPlan || null)
     };
 
     this.sessions = [newSession, ...this.sessions];
     this.saveSessions();
 
     return newSession;
+  }
+
+  deleteSession(id) {
+    this.sessions = this.sessions.filter(s => s.id !== id);
+    this.saveSessions();
+    return true;
+  }
+
+  startBroadcast(id) {
+    const session = this.sessions.find(s => s.id === id);
+    if (!session) return null;
+
+    const duration = session.durationMinutes || 75;
+    session.startOffsetMinutes = -2;
+    session.endOffsetMinutes = duration - 2;
+    session.startIso = new Date(Date.now() - 2 * 60000).toISOString();
+    session.endIso = new Date(Date.now() + duration * 60000).toISOString();
+    session.badge = 'Live Now';
+
+    this.saveSessions();
+    return session;
+  }
+
+  endBroadcast(id, replayUrl) {
+    const session = this.sessions.find(s => s.id === id);
+    if (!session) return null;
+
+    const duration = session.durationMinutes || 75;
+    session.startOffsetMinutes = -duration - 10;
+    session.endOffsetMinutes = -1;
+    session.startIso = new Date(Date.now() - (duration + 10) * 60000).toISOString();
+    session.endIso = new Date(Date.now() - 60000).toISOString();
+
+    if (replayUrl) {
+      session.replayAvailable = true;
+      session.replayUrl = replayUrl;
+      session.badge = 'Replay Available';
+    } else {
+      session.badge = 'Ended';
+    }
+
+    this.saveSessions();
+    return session;
   }
 
   uploadRecording(sessionId, recordingUrl) {

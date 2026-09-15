@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Video, 
   Radio, 
@@ -10,14 +10,38 @@ import {
   CheckCircle2, 
   Trash2, 
   X,
-  Play
+  Play,
+  Square,
+  Sparkles
 } from 'lucide-react';
-import { dashboardLiveSessions } from '../../data/mockData';
+import { 
+  liveSessionsService, 
+  SESSION_STATUS, 
+  getLiveSessionStatus, 
+  formatSessionCountdown 
+} from '../../services/liveSessionsService';
 
 export default function FacultyLiveSessionsPage() {
-  const [liveSessionsList, setLiveSessionsList] = useState(dashboardLiveSessions);
+  const [liveSessionsList, setLiveSessionsList] = useState(() => liveSessionsService.getAllSessions());
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [successToast, setSuccessToast] = useState('');
+
+  // Subscribe to central service & interval timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 10000);
+
+    const unsubscribe = liveSessionsService.subscribe((updated) => {
+      setLiveSessionsList([...updated]);
+    });
+
+    return () => {
+      clearInterval(timer);
+      unsubscribe();
+    };
+  }, []);
 
   // Schedule form state
   const [liveCourse, setLiveCourse] = useState('NEET PG & NExT 2026');
@@ -26,35 +50,52 @@ export default function FacultyLiveSessionsPage() {
   const [liveDate, setLiveDate] = useState('2026-09-15');
   const [liveTime, setLiveTime] = useState('20:00');
   const [liveDuration, setLiveDuration] = useState('1.5 hours');
-  const [liveLink, setLiveLink] = useState('https://zoom.us/j/9876543210');
+  const [liveLink, setLiveLink] = useState('https://meet.google.com/medprep-live-room');
 
   const handleScheduleSubmit = (e) => {
     e.preventDefault();
     if (!liveTopic.trim()) return;
 
-    const newSession = {
-      id: `live-${Date.now()}`,
+    const newSession = liveSessionsService.addSession({
       course: liveCourse,
       topic: liveTopic.trim(),
+      title: liveTopic.trim(),
       dayInfo: liveDay,
-      instructor: 'Dr. Sarah Jenkins',
+      instructor: 'Dr. Siddharth V.',
+      faculty: 'Dr. Siddharth V.',
       date: liveDate,
       time: `${liveTime} IST`,
       duration: liveDuration,
-      status: 'upcoming',
-      registeredStudents: 380,
+      meetingLink: liveLink.trim(),
       zoomLink: liveLink.trim()
-    };
+    });
 
-    setLiveSessionsList(prev => [newSession, ...prev]);
+    setLiveSessionsList(liveSessionsService.getAllSessions());
     setIsScheduleModalOpen(false);
     setLiveTopic('');
-    setSuccessToast(`Live broadcast scheduled: "${newSession.topic}"!`);
+    setSuccessToast(`Live broadcast scheduled & synced with Student LMS: "${newSession.topic}"!`);
     setTimeout(() => setSuccessToast(''), 4000);
   };
 
   const handleDeleteSession = (id) => {
-    setLiveSessionsList(prev => prev.filter(s => s.id !== id));
+    liveSessionsService.deleteSession(id);
+    setLiveSessionsList(liveSessionsService.getAllSessions());
+    setSuccessToast('Masterclass broadcast removed.');
+    setTimeout(() => setSuccessToast(''), 3000);
+  };
+
+  const handleStartBroadcast = (id) => {
+    liveSessionsService.startBroadcast(id);
+    setLiveSessionsList(liveSessionsService.getAllSessions());
+    setSuccessToast('Broadcast is now LIVE! Live status synchronized across all student dashboards.');
+    setTimeout(() => setSuccessToast(''), 4000);
+  };
+
+  const handleEndBroadcast = (id) => {
+    liveSessionsService.endBroadcast(id, 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=900&auto=format&fit=crop&q=80');
+    setLiveSessionsList(liveSessionsService.getAllSessions());
+    setSuccessToast('Session concluded. Cloud recording archive published.');
+    setTimeout(() => setSuccessToast(''), 4000);
   };
 
   return (
@@ -99,14 +140,21 @@ export default function FacultyLiveSessionsPage() {
 
       {/* Sessions Timetable Cards */}
       <div className="space-y-4">
-        <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
-          Broadcast Timetable & Archives ({liveSessionsList.length})
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+            Broadcast Timetable & Archives ({liveSessionsList.length})
+          </h2>
+          <span className="text-xs font-bold text-slate-400">
+            Real-Time State Synchronization Active
+          </span>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {liveSessionsList.map((session) => {
-            const isLive = session.status === 'live';
-            const isUpcoming = session.status === 'upcoming';
+            const status = getLiveSessionStatus(session, currentTime);
+            const isLive = status === SESSION_STATUS.LIVE;
+            const isUpcoming = status === SESSION_STATUS.UPCOMING;
+            const isEnded = status === SESSION_STATUS.ENDED;
 
             return (
               <div
@@ -116,7 +164,7 @@ export default function FacultyLiveSessionsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-indigo-600">
-                      {session.course}
+                      {session.course || session.examName || 'NEET PG & NExT 2026'}
                     </span>
                     <div className="flex items-center gap-2">
                       {isLive && (
@@ -127,17 +175,18 @@ export default function FacultyLiveSessionsPage() {
                       )}
                       {isUpcoming && (
                         <span className="px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-black uppercase">
-                          Upcoming
+                          {formatSessionCountdown(session, currentTime)}
                         </span>
                       )}
-                      {!isLive && !isUpcoming && (
+                      {isEnded && (
                         <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase">
-                          Recorded Archive
+                          {session.replayAvailable ? 'Replay Available' : 'Ended'}
                         </span>
                       )}
                       <button
                         onClick={() => handleDeleteSession(session.id)}
-                        className="text-slate-300 hover:text-rose-600 p-1 rounded-lg"
+                        className="text-slate-300 hover:text-rose-600 p-1 rounded-lg cursor-pointer"
+                        title="Delete broadcast"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -145,33 +194,66 @@ export default function FacultyLiveSessionsPage() {
                   </div>
 
                   <h3 className="text-base font-black text-slate-900 group-hover:text-rose-600 transition-colors">
-                    {session.topic}
+                    {session.topic || session.title}
                   </h3>
 
                   <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/60 space-y-1.5 text-xs text-slate-600">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5 font-semibold">
                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{session.date}</span>
+                        <span>{session.formattedTime || session.date || 'Today'}</span>
                       </span>
                       <span className="flex items-center gap-1.5 font-semibold">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{session.time} ({session.duration})</span>
+                        <span>{session.duration || `${session.durationMinutes || 75} mins`}</span>
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-slate-500 pt-1 border-t border-slate-200/50">
-                      <span>Instructor: {session.instructor || 'Dr. Sarah Jenkins'}</span>
-                      <span className="font-bold text-indigo-600">{session.registeredStudents || 380} Cohort Doctors</span>
+                      <span>Instructor: {session.faculty || session.instructor || 'Dr. Siddharth V.'}</span>
+                      <span className="font-bold text-indigo-600">{session.attendeesCount || session.registeredStudents || 380} Doctors Enrolled</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs text-slate-400 font-mono truncate max-w-[200px]">
-                    {session.zoomLink || 'https://zoom.us/j/...'}
-                  </span>
+                {/* Broadcast Lifecycle Action Buttons */}
+                <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {isUpcoming && (
+                      <button
+                        onClick={() => handleStartBroadcast(session.id)}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white font-bold text-xs flex items-center gap-1 transition-all cursor-pointer border border-emerald-200 hover:border-emerald-600"
+                        title="Start live broadcast immediately"
+                      >
+                        <Radio className="w-3 h-3" />
+                        <span>Go Live Now</span>
+                      </button>
+                    )}
+
+                    {isLive && (
+                      <button
+                        onClick={() => handleEndBroadcast(session.id)}
+                        className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white font-bold text-xs flex items-center gap-1 transition-all cursor-pointer border border-rose-200 hover:border-rose-600"
+                        title="Conclude live broadcast and save archive"
+                      >
+                        <Square className="w-3 h-3" />
+                        <span>End Broadcast</span>
+                      </button>
+                    )}
+
+                    {isEnded && !session.replayAvailable && (
+                      <button
+                        onClick={() => handleEndBroadcast(session.id)}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white font-bold text-xs flex items-center gap-1 transition-all cursor-pointer border border-indigo-200 hover:border-indigo-600"
+                        title="Publish recording archive for student replay"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        <span>Publish Replay</span>
+                      </button>
+                    )}
+                  </div>
+
                   <a
-                    href={session.zoomLink || '#'}
+                    href={session.meetingLink || session.zoomLink || '#'}
                     target="_blank"
                     rel="noreferrer"
                     className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-rose-600/25 transition-all cursor-pointer"
