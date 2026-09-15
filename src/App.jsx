@@ -56,6 +56,7 @@ import StudentLiveRoomPage from './pages/student/StudentLiveRoomPage';
 import StudentTestsPage from './pages/student/StudentTestsPage';
 import StudentProgressPage from './pages/student/StudentProgressPage';
 import StudentSettingsPage from './pages/student/StudentSettingsPage';
+import ExamDataPreviewPage from './pages/prototype/ExamDataPreviewPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -76,6 +77,7 @@ export default function App() {
                     location.pathname.startsWith('/live-session') ||
                     location.pathname.startsWith('/faculty') ||
                     location.pathname.startsWith('/admin') ||
+                    location.pathname.startsWith('/prototype') ||
                     location.pathname === '/login';
 
   const handleExploreCourses = () => {
@@ -133,6 +135,10 @@ export default function App() {
           <Route 
             path="/test/:testId" 
             element={<TestExperiencePage />} 
+          />
+          <Route 
+            path="/prototype/exam-data" 
+            element={<ExamDataPreviewPage />} 
           />
           <Route 
             path="/login" 
