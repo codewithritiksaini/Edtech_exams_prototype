@@ -10,6 +10,8 @@ import {
   Paperclip
 } from 'lucide-react';
 
+import { doubtsService } from '../services/doubtsService';
+
 export default function AskDoubtModal({ isOpen, onClose, dayTitle }) {
   if (!isOpen) return null;
 
@@ -20,6 +22,13 @@ export default function AskDoubtModal({ isOpen, onClose, dayTitle }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    doubtsService.submitDoubt({
+      title: subject,
+      question: doubtText,
+      urgency,
+      topic: dayTitle || 'Clinical Study Day',
+      dayNumber: 3
+    });
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);

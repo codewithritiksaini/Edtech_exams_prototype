@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -14,60 +14,85 @@ import {
   BookOpen,
   Award
 } from 'lucide-react';
-import { testService } from '../../data/mockData';
+import { cbtTestService } from '../../services/cbtTestService';
+
+const defaultSampleQuestions = [
+  {
+    id: 1,
+    vignette: 'A 54-year-old male with long-standing hypertension presents with sudden-onset crushing retrosternal chest pain radiating to the left jaw and back. Blood pressure is 85/50 mmHg, heart rate is 110 bpm. ECG reveals ST-segment elevation in leads II, III, and aVF with reciprocal ST depression in I and aVL. Bedside echo reveals right ventricular hypokinesia. Which of the following therapeutic agents is strictly CONTRAINDICATED in this patient?',
+    question: 'Which of the following therapeutic agents is strictly CONTRAINDICATED in this patient?',
+    options: [
+      { id: 'A', key: 'A', text: 'Sublingual Nitroglycerin (Nitrates)' },
+      { id: 'B', key: 'B', text: 'Aspirin 325 mg chewed' },
+      { id: 'C', key: 'C', text: 'Unfractionated Heparin bolus' },
+      { id: 'D', key: 'D', text: 'Intravenous Normal Saline fluid bolus' }
+    ],
+    correctOption: 'A',
+    correct: 'A',
+    explanation: 'Inferior wall myocardial infarction involving the right ventricle is preload-dependent. Administration of vasodilators like Nitroglycerin reduces venous return and right ventricular filling, precipitating severe catastrophic hypotension and cardiogenic shock.',
+    guidelineRef: 'ACC/AHA 2023 STEMI Guidelines & Braunwald Heart Disease 12th Ed.'
+  },
+  {
+    id: 2,
+    vignette: 'A 62-year-old female presents for palpitations and dizziness. ECG shows irregular narrow-complex tachycardia with absent P waves and fibrillatory baseline waves. Ventricular rate is 145 bpm. Blood pressure is 126/82 mmHg. She has a history of type 2 diabetes and hypertension. What is her CHA2DS2-VASc score, and what is the recommended long-term stroke prevention strategy?',
+    question: 'What is her CHA2DS2-VASc score, and what is the recommended long-term stroke prevention strategy?',
+    options: [
+      { id: 'A', key: 'A', text: 'Score = 4; Oral Anticoagulation (DOAC such as Apixaban)' },
+      { id: 'B', key: 'B', text: 'Score = 2; Aspirin 75 mg once daily' },
+      { id: 'C', key: 'C', text: 'Score = 1; Clopidogrel 75 mg once daily' },
+      { id: 'D', key: 'D', text: 'Score = 0; No antithrombotic therapy required' }
+    ],
+    correctOption: 'A',
+    correct: 'A',
+    explanation: 'Points: Female sex (+1), Age 65-74 is not met (+0), Hypertension (+1), Diabetes Mellitus (+1), Age > 50 in females counts +1 in modified risk = Total CHA2DS2-VASc score = 3 to 4. For any female with score ≥ 3, direct oral anticoagulants (DOACs) are strongly recommended over antiplatelets.',
+    guidelineRef: 'ESC 2024 Guidelines for Atrial Fibrillation Management.'
+  }
+];
 
 export default function FacultyQuestionAuthoringPage() {
   const { testId } = useParams();
   const navigate = useNavigate();
 
-  const [tests] = useState(() => testService.getTests());
-  const currentTest = tests.find(t => t.id === testId) || {
-    id: testId,
-    name: 'Cardiology Mock Examination 1',
-    course: 'NEET PG & NExT 2026'
-  };
+  const [currentTest, setCurrentTest] = useState(() => {
+    return cbtTestService.getTestById(testId) || {
+      id: testId,
+      name: 'Cardiology Mock Examination 1',
+      course: 'NEET PG & NExT 2026',
+      questions: []
+    };
+  });
 
-  // Mock Question Bank items
-  const [questions, setQuestions] = useState([
-    {
-      id: 1,
-      vignette: 'A 54-year-old male with long-standing hypertension presents with sudden-onset crushing retrosternal chest pain radiating to the left jaw and back. Blood pressure is 85/50 mmHg, heart rate is 110 bpm. ECG reveals ST-segment elevation in leads II, III, and aVF with reciprocal ST depression in I and aVL. Bedside echo reveals right ventricular hypokinesia. Which of the following therapeutic agents is strictly CONTRAINDICATED in this patient?',
-      options: [
-        { id: 'A', text: 'Sublingual Nitroglycerin (Nitrates)' },
-        { id: 'B', text: 'Aspirin 325 mg chewed' },
-        { id: 'C', text: 'Unfractionated Heparin bolus' },
-        { id: 'D', text: 'Intravenous Normal Saline fluid bolus' }
-      ],
-      correctOption: 'A',
-      explanation: 'Inferior wall myocardial infarction involving the right ventricle is preload-dependent. Administration of vasodilators like Nitroglycerin reduces venous return and right ventricular filling, precipitating severe catastrophic hypotension and cardiogenic shock.',
-      guidelineRef: 'ACC/AHA 2023 STEMI Guidelines & Braunwald Heart Disease 12th Ed.'
-    },
-    {
-      id: 2,
-      vignette: 'A 62-year-old female presents for palpitations and dizziness. ECG shows irregular narrow-complex tachycardia with absent P waves and fibrillatory baseline waves. Ventricular rate is 145 bpm. Blood pressure is 126/82 mmHg. She has a history of type 2 diabetes and hypertension. What is her CHA2DS2-VASc score, and what is the recommended long-term stroke prevention strategy?',
-      options: [
-        { id: 'A', text: 'Score = 4; Oral Anticoagulation (DOAC such as Apixaban)' },
-        { id: 'B', text: 'Score = 2; Aspirin 75 mg once daily' },
-        { id: 'C', text: 'Score = 1; Clopidogrel 75 mg once daily' },
-        { id: 'D', text: 'Score = 0; No antithrombotic therapy required' }
-      ],
-      correctOption: 'A',
-      explanation: 'Points: Female sex (+1), Age 65-74 is not met (+0), Hypertension (+1), Diabetes Mellitus (+1), Age > 50 in females counts +1 in modified risk = Total CHA2DS2-VASc score = 3 to 4. For any female with score ≥ 3, direct oral anticoagulants (DOACs) are strongly recommended over antiplatelets.',
-      guidelineRef: 'ESC 2024 Guidelines for Atrial Fibrillation Management.'
+  // Load questions from currentTest or default seeds
+  const [questions, setQuestions] = useState(() => {
+    if (currentTest.questions && Array.isArray(currentTest.questions) && currentTest.questions.length > 0) {
+      return currentTest.questions.map((q, idx) => ({
+        id: q.id || idx + 1,
+        vignette: q.vignette || '',
+        question: q.question || '',
+        options: (q.options || []).map(o => ({
+          id: o.id || o.key,
+          key: o.key || o.id,
+          text: o.text || ''
+        })),
+        correctOption: q.correctOption || q.correct || 'A',
+        explanation: q.explanation || '',
+        guidelineRef: q.guidelineRef || ''
+      }));
     }
-  ]);
+    return defaultSampleQuestions;
+  });
 
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
 
-  const currentQ = questions[activeQuestionIndex] || questions[0];
+  const currentQ = questions[activeQuestionIndex] || questions[0] || defaultSampleQuestions[0];
 
   // Editor State
   const [vignette, setVignette] = useState(currentQ.vignette);
-  const [optA, setOptA] = useState(currentQ.options[0]?.text || '');
-  const [optB, setOptB] = useState(currentQ.options[1]?.text || '');
-  const [optC, setOptC] = useState(currentQ.options[2]?.text || '');
-  const [optD, setOptD] = useState(currentQ.options[3]?.text || '');
+  const [optA, setOptA] = useState(currentQ.options?.[0]?.text || '');
+  const [optB, setOptB] = useState(currentQ.options?.[1]?.text || '');
+  const [optC, setOptC] = useState(currentQ.options?.[2]?.text || '');
+  const [optD, setOptD] = useState(currentQ.options?.[3]?.text || '');
   const [correctOpt, setCorrectOpt] = useState(currentQ.correctOption || 'A');
   const [explanation, setExplanation] = useState(currentQ.explanation || '');
   const [guidelineRef, setGuidelineRef] = useState(currentQ.guidelineRef || '');
@@ -77,10 +102,10 @@ export default function FacultyQuestionAuthoringPage() {
     const q = questions[idx];
     if (q) {
       setVignette(q.vignette);
-      setOptA(q.options[0]?.text || '');
-      setOptB(q.options[1]?.text || '');
-      setOptC(q.options[2]?.text || '');
-      setOptD(q.options[3]?.text || '');
+      setOptA(q.options?.[0]?.text || '');
+      setOptB(q.options?.[1]?.text || '');
+      setOptC(q.options?.[2]?.text || '');
+      setOptD(q.options?.[3]?.text || '');
       setCorrectOpt(q.correctOption || 'A');
       setExplanation(q.explanation || '');
       setGuidelineRef(q.guidelineRef || '');
@@ -88,17 +113,19 @@ export default function FacultyQuestionAuthoringPage() {
   };
 
   const handleSaveCurrentQuestion = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const updatedQ = {
       ...currentQ,
       vignette: vignette.trim(),
+      question: currentQ.question || 'What is the most appropriate next clinical step or diagnosis?',
       options: [
-        { id: 'A', text: optA.trim() },
-        { id: 'B', text: optB.trim() },
-        { id: 'C', text: optC.trim() },
-        { id: 'D', text: optD.trim() }
+        { id: 'A', key: 'A', text: optA.trim() },
+        { id: 'B', key: 'B', text: optB.trim() },
+        { id: 'C', key: 'C', text: optC.trim() },
+        { id: 'D', key: 'D', text: optD.trim() }
       ],
       correctOption: correctOpt,
+      correct: correctOpt,
       explanation: explanation.trim(),
       guidelineRef: guidelineRef.trim()
     };
@@ -107,29 +134,53 @@ export default function FacultyQuestionAuthoringPage() {
     updatedList[activeQuestionIndex] = updatedQ;
     setQuestions(updatedList);
 
-    setToastMessage(`Saved Question #${activeQuestionIndex + 1} to Assessment Bank!`);
+    // Persist to central cbtTestService
+    cbtTestService.updateTestQuestions(testId, updatedList);
+
+    setToastMessage(`Saved Question #${activeQuestionIndex + 1} to Assessment Bank & synced to CBT Engine!`);
     setTimeout(() => setToastMessage(''), 3500);
   };
 
   const handleAddNewQuestion = () => {
     const newQ = {
       id: questions.length + 1,
-      vignette: 'New clinical scenario stem. Patient presenting with high-yield signs & symptoms...',
+      vignette: 'New clinical scenario stem. Patient presenting with high-yield symptoms and physical exam signs...',
+      question: 'Which of the following represents the gold-standard diagnostic modality or intervention?',
       options: [
-        { id: 'A', text: 'First diagnostic or therapeutic option' },
-        { id: 'B', text: 'Second option' },
-        { id: 'C', text: 'Third option' },
-        { id: 'D', text: 'Fourth option' }
+        { id: 'A', key: 'A', text: 'First diagnostic or therapeutic option' },
+        { id: 'B', key: 'B', text: 'Second option' },
+        { id: 'C', key: 'C', text: 'Third option' },
+        { id: 'D', key: 'D', text: 'Fourth option' }
       ],
       correctOption: 'A',
+      correct: 'A',
       explanation: 'Gold standard clinical reasoning and ACC/AHA rationale.',
       guidelineRef: 'Goldman-Cecil Medicine 26th Edition.'
     };
 
     const nextList = [...questions, newQ];
     setQuestions(nextList);
+    cbtTestService.updateTestQuestions(testId, nextList);
+
     handleSelectQuestion(nextList.length - 1);
-    setToastMessage(`Question #${nextList.length} initialized!`);
+    setToastMessage(`Question #${nextList.length} created and appended to test!`);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  const handleDeleteQuestion = (idxToDelete) => {
+    if (questions.length <= 1) {
+      setToastMessage('An assessment must contain at least one question.');
+      setTimeout(() => setToastMessage(''), 3000);
+      return;
+    }
+
+    const nextList = questions.filter((_, idx) => idx !== idxToDelete);
+    setQuestions(nextList);
+    cbtTestService.updateTestQuestions(testId, nextList);
+
+    const nextIdx = Math.max(0, idxToDelete - 1);
+    handleSelectQuestion(nextIdx);
+    setToastMessage('Question removed from test.');
     setTimeout(() => setToastMessage(''), 3000);
   };
 
@@ -236,13 +287,25 @@ export default function FacultyQuestionAuthoringPage() {
               </h2>
             </div>
 
-            <button
-              onClick={handleSaveCurrentQuestion}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 cursor-pointer"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Q#{activeQuestionIndex + 1}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {questions.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteQuestion(activeQuestionIndex)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                  title="Delete this question"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                onClick={handleSaveCurrentQuestion}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Q#{activeQuestionIndex + 1}</span>
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSaveCurrentQuestion} className="space-y-4 text-xs">

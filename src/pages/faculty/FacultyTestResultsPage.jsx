@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -12,36 +12,40 @@ import {
   FileText,
   Filter
 } from 'lucide-react';
-import { testService, initialCohortTestResults } from '../../data/mockData';
+import { cbtTestService } from '../../services/cbtTestService';
 
 export default function FacultyTestResultsPage() {
   const { testId } = useParams();
   const navigate = useNavigate();
 
-  const [tests] = useState(() => testService.getTests());
-  const currentTest = tests.find(t => t.id === testId) || {
+  const [attemptsData, setAttemptsData] = useState(() => cbtTestService.getAttemptsForTest(testId));
+
+  useEffect(() => {
+    const unsubscribe = cbtTestService.subscribe(() => {
+      setAttemptsData(cbtTestService.getAttemptsForTest(testId));
+    });
+    return unsubscribe;
+  }, [testId]);
+
+  const currentTest = attemptsData.test || {
     id: testId,
-    name: 'Cardiology Mock Test 1',
+    name: 'Clinical Mock Assessment',
+    title: 'Clinical Mock Assessment',
     course: 'NEET PG & NExT 2026',
     totalMarks: 100
+  };
+
+  const candidatesList = attemptsData.candidates || [];
+  const summary = attemptsData.summary || {
+    totalAppeared: '384 Doctors',
+    batchMeanScore: '78.4 / 100',
+    passingPercentage: '88.5% Pass',
+    highestMark: '96 / 100'
   };
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [toastMessage, setToastMessage] = useState('');
-
-  const candidatesList = [
-    { rank: 1, name: 'Dr. Priya Sharma', email: 'priya.s@medprep.com', score: '96/100', percentage: '96.0%', percentile: '99.8%', timeTaken: '34m 12s', status: 'Pass', submittedAt: 'Sep 06, 19:42' },
-    { rank: 2, name: 'Dr. Rohan Verma', email: 'rohan.v@medprep.com', score: '92/100', percentage: '92.0%', percentile: '99.1%', timeTaken: '38m 05s', status: 'Pass', submittedAt: 'Sep 06, 19:45' },
-    { rank: 3, name: 'Dr. Ananya Joshi', email: 'ananya.j@medprep.com', score: '88/100', percentage: '88.0%', percentile: '98.4%', timeTaken: '41m 20s', status: 'Pass', submittedAt: 'Sep 06, 19:50' },
-    { rank: 4, name: 'Dr. Michael Chen', email: 'm.chen@medprep.com', score: '86/100', percentage: '86.0%', percentile: '97.2%', timeTaken: '42m 10s', status: 'Pass', submittedAt: 'Sep 06, 19:51' },
-    { rank: 5, name: 'Dr. Emily Watson', email: 'emily.w@medprep.com', score: '84/100', percentage: '84.0%', percentile: '95.6%', timeTaken: '44m 30s', status: 'Pass', submittedAt: 'Sep 06, 19:54' },
-    { rank: 6, name: 'Dr. Ritik Saini', email: 'student@demo.com', score: '80/100', percentage: '80.0%', percentile: '91.8%', timeTaken: '43m 15s', status: 'Pass', submittedAt: 'Sep 06, 19:55' },
-    { rank: 7, name: 'Dr. Arjun Patel', email: 'arjun.p@medprep.com', score: '76/100', percentage: '76.0%', percentile: '86.5%', timeTaken: '44m 50s', status: 'Pass', submittedAt: 'Sep 06, 19:56' },
-    { rank: 8, name: 'Dr. Fatima Noor', email: 'fatima.n@medprep.com', score: '68/100', percentage: '68.0%', percentile: '74.2%', timeTaken: '45m 00s', status: 'Pass', submittedAt: 'Sep 06, 19:58' },
-    { rank: 9, name: 'Dr. David Miller', email: 'david.m@medprep.com', score: '52/100', percentage: '52.0%', percentile: '51.0%', timeTaken: '45m 00s', status: 'Fail', submittedAt: 'Sep 06, 19:59' },
-    { rank: 10, name: 'Dr. Kavita Singh', email: 'kavita.s@medprep.com', score: '44/100', percentage: '44.0%', percentile: '38.5%', timeTaken: '45m 00s', status: 'Fail', submittedAt: 'Sep 06, 20:00' }
-  ];
 
   const filteredCandidates = candidatesList.filter(c => {
     const matchesName = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -103,10 +107,10 @@ export default function FacultyTestResultsPage() {
       {/* Performance Summary Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Appeared', val: '384 Doctors', color: 'text-indigo-600' },
-          { label: 'Batch Mean Score', val: '78.4 / 100', color: 'text-emerald-600' },
-          { label: 'Passing Percentage', val: '88.5% Pass', color: 'text-blue-600' },
-          { label: 'Highest Mark', val: '96 / 100', color: 'text-amber-600' }
+          { label: 'Total Appeared', val: summary.totalAppeared || '384 Doctors', color: 'text-indigo-600' },
+          { label: 'Batch Mean Score', val: summary.batchMeanScore || '78.4 / 100', color: 'text-emerald-600' },
+          { label: 'Passing Percentage', val: summary.passingPercentage || '88.5% Pass', color: 'text-blue-600' },
+          { label: 'Highest Mark', val: summary.highestMark || '96 / 100', color: 'text-amber-600' }
         ].map((item, i) => (
           <div key={i} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-1">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{item.label}</span>

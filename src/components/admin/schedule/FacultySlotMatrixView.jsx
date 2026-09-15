@@ -213,17 +213,25 @@ export default function FacultySlotMatrixView({
 
                         {/* Slot status mini dots */}
                         <div className="flex flex-col gap-0.5 items-center">
-                          {dayData.slots.map(slotData => (
-                            <div
-                              key={slotData.slotInfo.id}
-                              title={`${slotData.slotInfo.label}: ${slotData.status === 'booked' ? (slotData.session?.dayTitle || 'Booked') : 'Available'}`}
-                              className={`w-full h-1 rounded-full ${
-                                slotData.status === 'booked'
-                                  ? 'bg-indigo-500'
-                                  : 'bg-slate-200'
-                              }`}
-                            />
-                          ))}
+                          {dayData.slots.map(slotData => {
+                            let dotColor = 'bg-slate-200';
+                            let statusLabel = 'Off-Duty / Unset';
+                            if (slotData.status === 'booked') {
+                              dotColor = 'bg-indigo-500';
+                              statusLabel = slotData.session?.dayTitle || 'Booked';
+                            } else if (slotData.isDeclaredAvailable) {
+                              dotColor = 'bg-emerald-400';
+                              statusLabel = 'Clinician Declared Available';
+                            }
+
+                            return (
+                              <div
+                                key={slotData.slotInfo.id}
+                                title={`${slotData.slotInfo.label}: ${statusLabel}`}
+                                className={`w-full h-1 rounded-full ${dotColor}`}
+                              />
+                            );
+                          })}
                         </div>
 
                         <div className="text-[9px] font-bold">
@@ -231,19 +239,24 @@ export default function FacultySlotMatrixView({
                             {bookedSlots.length}B
                           </span>
                           <span className="text-slate-300 mx-0.5">/</span>
-                          <span className="text-emerald-600">{emptySlots.length}F</span>
+                          <span className="text-emerald-600 font-black">
+                            {dayData.slots.filter(s => s.isDeclaredAvailable && s.status !== 'booked').length}A
+                          </span>
                         </div>
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="flex items-center gap-3 mt-2 text-[10px] font-medium text-slate-400">
+                <div className="flex items-center gap-4 mt-2 text-[10px] font-medium text-slate-400 flex-wrap">
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-1 bg-indigo-500 rounded-full inline-block"/> Booked (B)
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="w-2 h-1 bg-slate-200 rounded-full inline-block"/> Free (F)
+                    <span className="w-2 h-1 bg-emerald-400 rounded-full inline-block"/> Declared Available (A)
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-1 bg-slate-200 rounded-full inline-block"/> Off-Duty / Unset
                   </span>
                 </div>
               </div>
@@ -344,11 +357,16 @@ export default function FacultySlotMatrixView({
                                 );
                               }
 
-                              // Empty slot
+                              // Empty slot: check if declared available
+                              const isDeclared = cellSlot?.isDeclaredAvailable;
                               return (
                                 <div
                                   key={dayData.dayNumber}
-                                  className="p-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center gap-1 min-h-[60px] hover:border-emerald-400 hover:bg-emerald-50/30 transition-all group cursor-pointer"
+                                  className={`p-2 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 min-h-[60px] cursor-pointer group ${
+                                    isDeclared
+                                      ? 'border-emerald-200 bg-emerald-50/50 hover:border-emerald-500 hover:bg-emerald-100/60'
+                                      : 'border-dashed border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-100/50'
+                                  }`}
                                   onClick={() => onOpenModal && onOpenModal(
                                     null,
                                     dayData.dayNumber,
@@ -357,10 +375,18 @@ export default function FacultySlotMatrixView({
                                     fac.email
                                   )}
                                 >
-                                  <span className="text-[8px] font-bold text-emerald-500 group-hover:text-emerald-700 transition-colors">✓ Free</span>
-                                  <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-0.5 text-[8px] font-bold text-emerald-600">
+                                  {isDeclared ? (
+                                    <span className="text-[8px] font-black text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                                      ✓ Available
+                                    </span>
+                                  ) : (
+                                    <span className="text-[8px] font-medium text-slate-400">
+                                      Off-Duty
+                                    </span>
+                                  )}
+                                  <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-0.5 text-[8px] font-bold text-indigo-600">
                                     <Plus className="w-2.5 h-2.5" />
-                                    <span>Book</span>
+                                    <span>Assign</span>
                                   </div>
                                 </div>
                               );

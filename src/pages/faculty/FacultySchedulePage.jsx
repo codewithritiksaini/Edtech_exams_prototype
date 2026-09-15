@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Calendar as CalendarIcon, 
@@ -10,83 +10,143 @@ import {
   CheckCircle2, 
   Layers, 
   FileText,
-  UploadCloud
+  UploadCloud,
+  Check,
+  Plus,
+  Sliders,
+  CalendarCheck,
+  AlertCircle
 } from 'lucide-react';
 import { catalogService } from '../../services/catalogService';
+import { curriculumService } from '../../services/curriculumService';
+import { peopleService } from '../../services/peopleService';
+import { facultyAvailabilityService, WEEKDAYS } from '../../services/facultyAvailabilityService';
+import { STANDARD_TIME_SLOTS } from '../../utils/scheduleSlotUtils';
 
 export default function FacultySchedulePage() {
   const { examId = 'neet-pg' } = useParams();
   const navigate = useNavigate();
 
-  const [exams] = useState(() => catalogService.getExams());
-  const [currentExam, setCurrentExam] = useState(() => catalogService.getExamById(examId) || { id: examId, name: examId.toUpperCase() });
+  const [exams, setExams] = useState(() => catalogService.getExams());
+  const [currentExam, setCurrentExam] = useState(() => 
+    catalogService.getExamById(examId) || { id: examId, name: examId.toUpperCase() }
+  );
+  const [scheduleSlots, setScheduleSlots] = useState(() => curriculumService.getSchedule(examId));
   const [selectedWeek, setSelectedWeek] = useState(1);
 
-  // 4 Weeks / 28 Days Teaching Schedule with Faculty Assignments
-  const weeksData = [
-    {
-      weekNumber: 1,
-      title: 'Week 1: Cardiology & Hemodynamics',
-      specialty: 'Cardiology (Your Specialty)',
-      assignedToMe: true,
-      days: [
-        { day: 1, title: 'Valvular Heart Diseases & Murmurs', type: 'Clinical Theory & Echo', live: false, assigned: true, status: 'Released' },
-        { day: 2, title: 'Heart Failure & Guideline Pharmacotherapy', type: '4 Pillars of HFrEF', live: false, assigned: true, status: 'Released' },
-        { day: 3, title: 'Cardiac Arrhythmias & ECG Interpretation', type: 'Brugada / Vereckei', live: true, liveTime: '8:00 PM Tonight', assigned: true, status: 'Live Tonight' },
-        { day: 4, title: 'Acute Coronary Syndromes (STEMI / NSTEMI)', type: 'PCI vs Thrombolysis', live: false, assigned: true, status: 'Scheduled' },
-        { day: 5, title: 'Congenital Heart Defects & Shunts', type: 'Cyanotic vs Acyanotic', live: false, assigned: true, status: 'Scheduled' },
-        { day: 6, title: 'Active Recall Spaced Repetition Sprint', type: '120 Flashcards Deck', live: false, assigned: true, status: 'Drafting' },
-        { day: 7, title: 'Cardiology Subject Grand Mock Test', type: 'CBT 100 Marks (NEET Pattern)', live: false, assigned: true, status: 'Scheduled' },
-      ]
-    },
-    {
-      weekNumber: 2,
-      title: 'Week 2: Respiratory Medicine & Pulmonology',
-      specialty: 'Pulmonology Lead',
-      assignedToMe: false,
-      days: [
-        { day: 8, title: 'COPD & Asthma Guidelines (GOLD / GINA)', type: 'Spirometry Patterns', live: false, assigned: false, status: 'Upcoming' },
-        { day: 9, title: 'Interstitial Lung Diseases & Sarcoidosis', type: 'HRCT Interpretation', live: false, assigned: false, status: 'Upcoming' },
-        { day: 10, title: 'Pneumonia & Pulmonary Tuberculosis', type: 'DOTS / NTEP Regimens', live: true, liveTime: '8:00 PM', assigned: false, status: 'Upcoming' },
-        { day: 11, title: 'Pulmonary Embolism & DVT', type: 'Wells Score & CTPA', live: false, assigned: false, status: 'Upcoming' },
-        { day: 12, title: 'Pleural Diseases: Effusion & Pneumothorax', type: 'Light Criteria', live: false, assigned: false, status: 'Upcoming' },
-        { day: 13, title: 'Chest X-Ray & Arterial Blood Gas Workshop', type: 'ABG Stepwise Algorithm', live: false, assigned: false, status: 'Upcoming' },
-        { day: 14, title: 'Respiratory Grand CBT Assessment', type: 'CBT 100 Marks', live: false, assigned: false, status: 'Upcoming' },
-      ]
-    },
-    {
-      weekNumber: 3,
-      title: 'Week 3: Nephrology & Fluid-Electrolyte Disorders',
-      specialty: 'Nephrology Lead',
-      assignedToMe: false,
-      days: [
-        { day: 15, title: 'Acute Kidney Injury (KDIGO Criteria)', type: 'Pre-Renal vs ATN', live: false, assigned: false, status: 'Upcoming' },
-        { day: 16, title: 'Glomerular Diseases: Nephrotic vs Nephritic', type: 'Biopsy Pathology', live: false, assigned: false, status: 'Upcoming' },
-        { day: 17, title: 'Hyponatremia & Potassium Disorders', type: 'Emergency Protocols', live: true, liveTime: '8:00 PM', assigned: false, status: 'Upcoming' },
-        { day: 18, title: 'Acid-Base Balance: Anion Gap Metabolic Acidosis', type: 'Winters Formula', live: false, assigned: false, status: 'Upcoming' },
-        { day: 19, title: 'Chronic Kidney Disease & Dialysis', type: 'Calcium-Phosphate Axis', live: false, assigned: false, status: 'Upcoming' },
-        { day: 20, title: 'Urinary Sediment Mastery & Case Vignettes', type: 'Microscopy Lightbox', live: false, assigned: false, status: 'Upcoming' },
-        { day: 21, title: 'Nephrology Grand CBT Assessment', type: 'CBT 100 Marks', live: false, assigned: false, status: 'Upcoming' },
-      ]
-    },
-    {
-      weekNumber: 4,
-      title: 'Week 4: Gastroenterology & Hepatology',
-      specialty: 'GI & Hepatology Lead',
-      assignedToMe: false,
-      days: [
-        { day: 22, title: 'Cirrhosis, Portal Hypertension & Ascites', type: 'SAAG Calculation', live: false, assigned: false, status: 'Upcoming' },
-        { day: 23, title: 'Acute Pancreatitis & Biliary Emergencies', type: 'Ransons Score', live: false, assigned: false, status: 'Upcoming' },
-        { day: 24, title: 'Viral Hepatitis (Serology Interpretation)', type: 'HBsAg, Anti-HBc Panel', live: true, liveTime: '8:00 PM', assigned: false, status: 'Upcoming' },
-        { day: 25, title: 'Inflammatory Bowel Disease (Crohns vs UC)', type: 'Biologics & Endoscopy', live: false, assigned: false, status: 'Upcoming' },
-        { day: 26, title: 'Peptic Ulcer Disease & GI Bleeding', type: 'Rockall & Blatchford', live: false, assigned: false, status: 'Upcoming' },
-        { day: 27, title: 'GI Pathology & Endoscopy Lightbox Case Studies', type: 'Image Quiz', live: false, assigned: false, status: 'Upcoming' },
-        { day: 28, title: 'Gastroenterology Grand CBT Assessment', type: 'CBT 100 Marks', live: false, assigned: false, status: 'Upcoming' },
-      ]
-    }
-  ];
+  // Faculty profile & Availability state
+  const currentFaculty = peopleService.getCurrentFacultyProfile();
+  const facultyEmail = currentFaculty?.email || 'faculty@demo.com';
+
+  const [availabilityProfile, setAvailabilityProfile] = useState(() => 
+    facultyAvailabilityService.getAvailabilityForFaculty(facultyEmail)
+  );
+  const [selectedWeekday, setSelectedWeekday] = useState('Monday');
+  const [availabilitySaveSuccess, setAvailabilitySaveSuccess] = useState(false);
+  const [isAvailabilityPanelOpen, setIsAvailabilityPanelOpen] = useState(false);
+
+  // Synchronize with services
+  useEffect(() => {
+    const unsubCatalog = catalogService.subscribe(payload => {
+      setExams(payload.exams);
+      const matched = payload.exams.find(e => e.id === examId);
+      if (matched) setCurrentExam(matched);
+    });
+
+    const handleScheduleUpdate = () => {
+      setScheduleSlots(curriculumService.getSchedule(examId));
+    };
+    window.addEventListener('medprep-schedule-updated', handleScheduleUpdate);
+
+    const unsubAvail = facultyAvailabilityService.subscribe(() => {
+      setAvailabilityProfile(facultyAvailabilityService.getAvailabilityForFaculty(facultyEmail));
+    });
+
+    return () => {
+      unsubCatalog();
+      window.removeEventListener('medprep-schedule-updated', handleScheduleUpdate);
+      unsubAvail();
+    };
+  }, [examId, facultyEmail]);
+
+  // Transform curriculumService schedule slots into 4 dynamic weeks (28 days)
+  const weeksData = useMemo(() => {
+    const cleanFacultyName = currentFaculty?.name ? currentFaculty.name.replace(/^Dr\.\s*/i, '').toLowerCase().trim() : '';
+
+    return [1, 2, 3, 4].map(weekNum => {
+      const startDay = (weekNum - 1) * 7 + 1;
+      const endDay = weekNum * 7;
+      const weekSlots = scheduleSlots.filter(s => Number(s.weekNumber) === weekNum);
+
+      // Find first non-empty subject in this week
+      const firstSubjectName = weekSlots.find(s => s.subjectName)?.subjectName || 'Clinical Medicine';
+      
+      const isWeekAssignedToMe = weekSlots.some(s => 
+        s.facultyEmail?.toLowerCase() === facultyEmail.toLowerCase() ||
+        (cleanFacultyName && s.facultyName?.toLowerCase().includes(cleanFacultyName))
+      );
+
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const dayNumber = startDay + i;
+        const matchingSlots = weekSlots.filter(s => Number(s.dayNumber) === dayNumber);
+        const primarySlot = matchingSlots[0] || null;
+
+        const isDayAssignedToMe = primarySlot ? (
+          primarySlot.facultyEmail?.toLowerCase() === facultyEmail.toLowerCase() ||
+          (cleanFacultyName && primarySlot.facultyName?.toLowerCase().includes(cleanFacultyName))
+        ) : false;
+
+        return {
+          day: dayNumber,
+          title: primarySlot?.dayTitle?.replace(/^Day \d+ (—|-)? ?/, '') || primarySlot?.moduleTitle || `Day ${dayNumber} Curriculum`,
+          type: primarySlot?.subjectName || firstSubjectName,
+          live: Boolean(primarySlot?.hasLive),
+          liveTime: primarySlot?.lectureTimeSlot || '8:00 PM',
+          hasTest: Boolean(primarySlot?.hasTest),
+          assigned: isDayAssignedToMe,
+          status: primarySlot?.status || (dayNumber <= 2 ? 'Released' : 'Scheduled'),
+          slotData: primarySlot
+        };
+      });
+
+      return {
+        weekNumber: weekNum,
+        title: `Week ${weekNum}: ${firstSubjectName}`,
+        specialty: isWeekAssignedToMe ? `${firstSubjectName} (Your Department)` : firstSubjectName,
+        assignedToMe: isWeekAssignedToMe,
+        days
+      };
+    });
+  }, [scheduleSlots, currentFaculty, facultyEmail]);
 
   const currentWeekData = weeksData.find(w => w.weekNumber === selectedWeek) || weeksData[0];
+
+  // Handler: Toggle single standard slot for selected weekday
+  const handleToggleSlot = (slotId) => {
+    const updated = facultyAvailabilityService.toggleSlot(facultyEmail, selectedWeekday, slotId);
+    setAvailabilityProfile(updated);
+    setAvailabilitySaveSuccess(true);
+    setTimeout(() => setAvailabilitySaveSuccess(false), 2000);
+  };
+
+  // Handler: Batch apply current weekday's pattern to all Mon-Fri weekdays
+  const handleApplyToAllWeekdays = () => {
+    const currentDaySlots = availabilityProfile?.declaredWeeklySlots?.[selectedWeekday] || [];
+    const newWeekly = { ...availabilityProfile?.declaredWeeklySlots };
+    ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
+      newWeekly[day] = [...currentDaySlots];
+    });
+    const updated = facultyAvailabilityService.setAvailabilityForFaculty(facultyEmail, newWeekly);
+    setAvailabilityProfile(updated);
+    setAvailabilitySaveSuccess(true);
+    setTimeout(() => setAvailabilitySaveSuccess(false), 2000);
+  };
+
+  // Summary calculation of total declared slots
+  const totalDeclaredSlots = useMemo(() => {
+    if (!availabilityProfile?.declaredWeeklySlots) return 0;
+    return Object.values(availabilityProfile.declaredWeeklySlots).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+  }, [availabilityProfile]);
 
   return (
     <div className="space-y-6 animate-in fade-in max-w-6xl">
@@ -107,7 +167,7 @@ export default function FacultySchedulePage() {
                   : 'bg-white/60 text-slate-600 border-slate-200/80 hover:bg-white hover:text-slate-900'
               }`}
             >
-              <span className="text-base">{ex.flag}</span>
+              <span className="text-base">{ex.flag || '🩺'}</span>
               <span>{ex.name}</span>
             </button>
           );
@@ -123,7 +183,7 @@ export default function FacultySchedulePage() {
             </span>
             <span className="text-slate-300">•</span>
             <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-              4-Week Curriculum Drip
+              Live Delivery & Timetable
             </span>
           </div>
 
@@ -131,19 +191,144 @@ export default function FacultySchedulePage() {
             {currentExam.name} — Teaching Calendar
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
-            View scheduled live clinics, content releases, and mock examinations across the 28-day curriculum cycle.
+            Live delivery schedule synchronized with curriculum services. Review confirmed clinical lessons, grand rounds, and declare your weekly teaching availability.
           </p>
         </div>
 
-        {/* Quick Upload Button */}
-        <Link
-          to="/faculty/upload"
-          className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
-        >
-          <UploadCloud className="w-4 h-4" />
-          <span>Upload for Day Slot</span>
-        </Link>
+        {/* Action CTAs */}
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => setIsAvailabilityPanelOpen(!isAvailabilityPanelOpen)}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border ${
+              isAvailabilityPanelOpen
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
+                : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            <span>{isAvailabilityPanelOpen ? 'Hide Availability' : 'Declare Availability'}</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-white/30 text-[10px] font-black">
+              {totalDeclaredSlots} Slots
+            </span>
+          </button>
+
+          <Link
+            to="/faculty/upload"
+            className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+          >
+            <UploadCloud className="w-4 h-4" />
+            <span>Quick Import</span>
+          </Link>
+        </div>
       </div>
+
+      {/* Interactive Clinician Availability Declaration Panel */}
+      {isAvailabilityPanelOpen && (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-200 shadow-sm space-y-5 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <CalendarCheck className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-base font-black text-slate-900">
+                  Declare Weekly Teaching Availability
+                </h3>
+                {availabilitySaveSuccess && (
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-black animate-in fade-in flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Saved to Timetable Engine
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Select your preferred 6 standard lecture windows. Administrative timetable coordinators will match your declared availability when assigning cohort masterclasses.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleApplyToAllWeekdays}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Copy {selectedWeekday} to Mon–Fri
+              </button>
+            </div>
+          </div>
+
+          {/* Weekday Selector Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+            {WEEKDAYS.map(day => {
+              const count = availabilityProfile?.declaredWeeklySlots?.[day]?.length || 0;
+              const isSelected = selectedWeekday === day;
+              return (
+                <button
+                  key={day}
+                  onClick={() => setSelectedWeekday(day)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>{day}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                    isSelected ? 'bg-white/30 text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 6 Standard Time Slots Grid for Selected Day */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {STANDARD_TIME_SLOTS.map(slot => {
+              const daySlots = availabilityProfile?.declaredWeeklySlots?.[selectedWeekday] || [];
+              const isAvailable = daySlots.includes(slot.id);
+
+              return (
+                <div
+                  key={slot.id}
+                  onClick={() => handleToggleSlot(slot.id)}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                    isAvailable
+                      ? 'bg-emerald-50/70 border-emerald-400 shadow-xs'
+                      : 'bg-slate-50 border-slate-200/80 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs font-black text-slate-900">
+                      <span>{slot.icon}</span>
+                      <span>{slot.label}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-medium">
+                      {slot.timeRange}
+                    </div>
+                    <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                      isAvailable ? 'bg-emerald-200/60 text-emerald-900' : 'bg-slate-200/80 text-slate-600'
+                    }`}>
+                      {isAvailable ? '✓ Declared Available' : 'Off-Duty'}
+                    </span>
+                  </div>
+
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+                    isAvailable ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'
+                  }`}>
+                    {isAvailable ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+            <span>
+              Configuring for: <strong className="text-slate-700">{facultyEmail}</strong> ({currentFaculty?.specialty || 'Faculty'})
+            </span>
+            <span>Changes persist immediately into admin slot matrix.</span>
+          </div>
+        </div>
+      )}
 
       {/* Week Selector Tabs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -175,7 +360,7 @@ export default function FacultySchedulePage() {
                 {wk.title.replace(`Week ${wk.weekNumber}: `, '')}
               </div>
               <div className={`text-[10px] mt-1 ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
-                7 Daily Learning Modules
+                7 Daily Curriculum Deliverables
               </div>
             </button>
           );
@@ -218,6 +403,11 @@ export default function FacultySchedulePage() {
                         <span>{d.liveTime || 'Live Clinic'}</span>
                       </span>
                     )}
+                    {d.hasTest && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
+                        CBT
+                      </span>
+                    )}
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       d.status === 'Released'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -231,7 +421,7 @@ export default function FacultySchedulePage() {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
                     {d.title}
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">{d.type}</p>
@@ -240,10 +430,10 @@ export default function FacultySchedulePage() {
 
               <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
                 <span className="text-[11px] text-slate-400 font-medium">
-                  {d.assigned ? 'Faculty Lead: Dr. Sarah Jenkins' : 'Specialist Assigned'}
+                  {d.assigned ? `Lead: ${currentFaculty?.name || 'Assigned'}` : 'Department Assigned'}
                 </span>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <Link
                     to={`/day/${d.day}`}
                     target="_blank"

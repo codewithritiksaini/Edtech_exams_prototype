@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
@@ -187,9 +187,10 @@ export default function App() {
             path="/faculty/login" 
             element={<LoginPage />} 
           />
+          {/* Deprecated legacy route: Redirect to modern faculty portal */}
           <Route 
             path="/faculty/legacy" 
-            element={<FacultyDashboardPage />} 
+            element={<Navigate to="/faculty" replace />} 
           />
 
           {/* Phase 4: Faculty Portal with Scoped Hierarchy & Operations */}
