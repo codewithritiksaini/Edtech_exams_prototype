@@ -550,7 +550,7 @@ class CbtTestService {
       const chosen = userAnswers[q.id];
       if (!chosen) {
         unattemptedCount++;
-      } else if (chosen === q.correct) {
+      } else if (chosen === q.correct || chosen === q.correctOption) {
         correctCount++;
       } else {
         incorrectCount++;
@@ -614,6 +614,277 @@ class CbtTestService {
     }
 
     return completedAttempt;
+  }
+
+  // ===========================================================================
+  // FACULTY & ADMIN MUTATIONS: SINGLE SOURCE OF TRUTH
+  // ===========================================================================
+
+  createTest(testData) {
+    const id = testData.id || `test-${Date.now()}`;
+    const durationMinutes = Number(testData.durationMinutes) || 
+      (typeof testData.duration === 'string' ? parseInt(testData.duration, 10) : 45) || 45;
+    const durationSeconds = durationMinutes * 60;
+    
+    // Exam track mapping
+    let examTrack = testData.examTrack || testData.courseId;
+    if (!examTrack) {
+      if (testData.course?.includes('USMLE')) examTrack = 'usmle';
+      else if (testData.course?.includes('PLAB') || testData.course?.includes('UKMLA')) examTrack = 'plab';
+      else if (testData.course?.includes('Europe')) examTrack = 'europe';
+      else examTrack = 'neet-pg';
+    }
+
+    const course = testData.course || (
+      examTrack === 'usmle' ? 'USMLE Step 1 & 2 CK' :
+      examTrack === 'plab' ? 'PLAB 1 & 2 / UKMLA' :
+      examTrack === 'europe' ? 'Europe Medical Licensing' :
+      'NEET PG & NExT 2026'
+    );
+
+    // Questions
+    const questions = Array.isArray(testData.questions) && testData.questions.length > 0
+      ? testData.questions
+      : sampleCbtQuestionBank.slice(0, Math.min(testData.questionCount || testData.totalQuestions || 20, sampleCbtQuestionBank.length));
+    
+    const totalQuestions = questions.length || Number(testData.questionCount) || Number(testData.totalQuestions) || 20;
+    const totalMarks = Number(testData.totalMarks) || (totalQuestions * (testData.marksPerCorrect || 5));
+
+    // Calculate window offsets
+    let startOffsetMinutes = 60; // Default: starts in 1 hour
+    let endOffsetMinutes = startOffsetMinutes + durationMinutes + 120; // 2 hour exam window
+    let formattedWindow = 'Upcoming • Scheduled';
+
+    if (testData.date && testData.time) {
+      try {
+        const timeClean = testData.time.replace('IST', '').trim();
+        const schedDate = new Date(`${testData.date}T${timeClean}`);
+        if (!isNaN(schedDate.getTime())) {
+          startOffsetMinutes = Math.round((schedDate.getTime() - PROTOTYPE_EPOCH) / 60000);
+          endOffsetMinutes = startOffsetMinutes + durationMinutes + 120;
+          formattedWindow = `${schedDate.toLocaleDateString([], { month: 'short', day: 'numeric' })} • ${testData.time}`;
+        }
+      } catch (e) {
+        console.warn('Date parsing fallback:', e);
+      }
+    }
+
+    const newTest = {
+      id,
+      name: testData.name || testData.title || 'Clinical Mock Assessment',
+      title: testData.name || testData.title || 'Clinical Mock Assessment',
+      examTrack,
+      courseId: examTrack,
+      course,
+      batch: testData.batch || testData.batchTier || 'All Enrolled Candidates',
+      batchTier: testData.batchTier || testData.batch || 'All Enrolled Candidates',
+      date: testData.date || 'Upcoming',
+      time: testData.time || '18:00 IST',
+      duration: `${durationMinutes} mins`,
+      durationMinutes,
+      durationSeconds,
+      totalQuestions,
+      questionCount: totalQuestions,
+      totalMarks,
+      passingScore: Number(testData.passingScore) || 50,
+      negativeMarking: testData.negativeMarking !== undefined ? testData.negativeMarking : true,
+      marksPerCorrect: Number(testData.marksPerCorrect) || 5,
+      marksPerIncorrect: Number(testData.marksPerIncorrect) || -1,
+      marksUnanswered: 0,
+      startOffsetMinutes,
+      endOffsetMinutes,
+      formattedWindow,
+      pattern: testData.pattern || 'NExT Aligned Clinical Vignettes',
+      instructions: testData.instructions || [
+        `This examination consists of ${totalQuestions} high-yield clinical vignette multiple choice questions.`,
+        `Total duration allowed is ${durationMinutes} minutes from the time you start your attempt.`,
+        `Marking Scheme: +${testData.marksPerCorrect || 5} for correct, ${testData.marksPerIncorrect || -1} for incorrect, 0 for unattempted.`,
+        'Timer starts immediately upon clicking "Start Examination".',
+        'Answers are saved automatically in real time and persist across page refreshes.'
+      ],
+      questions,
+      status: testData.status || 'upcoming'
+    };
+
+    this.tests = [newTest, ...this.tests.filter(t => t.id !== id)];
+    this.saveTests();
+
+    // Bidirectional sync to legacy testService
+    try {
+      testService.saveTest({
+        ...newTest,
+        questionsCount: totalQuestions
+      });
+    } catch (e) {
+      console.warn('Legacy sync error on createTest:', e);
+    }
+
+    return newTest;
+  }
+
+  updateTest(id, patch) {
+    const index = this.tests.findIndex(t => t.id === id);
+    if (index === -1) return null;
+
+    const updated = {
+      ...this.tests[index],
+      ...patch,
+      title: patch.name || patch.title || this.tests[index].title,
+      name: patch.name || patch.title || this.tests[index].name
+    };
+
+    if (patch.questions) {
+      updated.totalQuestions = patch.questions.length;
+      updated.questionCount = patch.questions.length;
+      updated.totalMarks = patch.questions.length * (updated.marksPerCorrect || 5);
+    }
+
+    this.tests[index] = updated;
+    this.saveTests();
+
+    try {
+      testService.saveTest(updated);
+    } catch (e) {
+      console.warn('Legacy sync error on updateTest:', e);
+    }
+
+    return updated;
+  }
+
+  deleteTest(id) {
+    this.tests = this.tests.filter(t => t.id !== id);
+    delete this.attempts[id];
+    this.saveTests();
+    this.saveAttempts();
+
+    try {
+      const legacyTests = testService.getTests().filter(t => t.id !== id);
+      localStorage.setItem('medprep_phase6_tests', JSON.stringify(legacyTests));
+      window.dispatchEvent(new CustomEvent('medprep-tests-updated', { detail: legacyTests }));
+    } catch (e) {
+      console.warn('Legacy sync error on deleteTest:', e);
+    }
+    return true;
+  }
+
+  updateTestQuestions(testId, questions) {
+    const test = this.getTestById(testId);
+    if (!test) return null;
+
+    const normalized = questions.map((q, idx) => ({
+      id: q.id || idx + 1,
+      vignette: q.vignette || '',
+      question: q.question || 'What is the most appropriate next clinical step or diagnosis?',
+      options: (q.options || []).map(o => ({
+        id: o.id || o.key,
+        key: o.key || o.id,
+        text: o.text || ''
+      })),
+      correct: q.correct || q.correctOption || 'A',
+      correctOption: q.correctOption || q.correct || 'A',
+      explanation: q.explanation || q.rationale || '',
+      guidelineRef: q.guidelineRef || ''
+    }));
+
+    return this.updateTest(testId, {
+      questions: normalized,
+      totalQuestions: normalized.length,
+      questionCount: normalized.length,
+      totalMarks: normalized.length * (test.marksPerCorrect || 5)
+    });
+  }
+
+  addQuestionToTest(testId, questionData) {
+    const test = this.getTestById(testId);
+    if (!test) return null;
+
+    const currentQuestions = Array.isArray(test.questions) ? test.questions : [];
+    const newQ = {
+      id: questionData.id || currentQuestions.length + 1,
+      vignette: questionData.vignette || '',
+      question: questionData.question || 'What is the most appropriate management or diagnosis?',
+      options: questionData.options?.map(o => ({
+        id: o.id || o.key,
+        key: o.key || o.id,
+        text: o.text || ''
+      })) || [
+        { id: 'A', key: 'A', text: questionData.optA || '' },
+        { id: 'B', key: 'B', text: questionData.optB || '' },
+        { id: 'C', key: 'C', text: questionData.optC || '' },
+        { id: 'D', key: 'D', text: questionData.optD || '' }
+      ],
+      correct: questionData.correct || questionData.correctOption || 'A',
+      correctOption: questionData.correctOption || questionData.correct || 'A',
+      explanation: questionData.explanation || questionData.rationale || '',
+      guidelineRef: questionData.guidelineRef || ''
+    };
+
+    const updatedQuestions = [...currentQuestions, newQ];
+    this.updateTestQuestions(testId, updatedQuestions);
+    return newQ;
+  }
+
+  getAttemptsForTest(testId) {
+    const test = this.getTestById(testId);
+    const completedAttempt = this.getCompletedAttempt(testId);
+
+    // Standard benchmark cohort candidates for realistic institutional depth
+    const defaultCohortCandidates = [
+      { rank: 1, name: 'Dr. Priya Sharma', email: 'priya.s@medprep.com', score: '96/100', percentage: '96.0%', percentile: '99.8%', timeTaken: '34m 12s', status: 'Pass', submittedAt: 'Sep 06, 19:42' },
+      { rank: 2, name: 'Dr. Rohan Verma', email: 'rohan.v@medprep.com', score: '92/100', percentage: '92.0%', percentile: '99.1%', timeTaken: '38m 05s', status: 'Pass', submittedAt: 'Sep 06, 19:45' },
+      { rank: 3, name: 'Dr. Ananya Joshi', email: 'ananya.j@medprep.com', score: '88/100', percentage: '88.0%', percentile: '98.4%', timeTaken: '41m 20s', status: 'Pass', submittedAt: 'Sep 06, 19:50' },
+      { rank: 4, name: 'Dr. Michael Chen', email: 'm.chen@medprep.com', score: '86/100', percentage: '86.0%', percentile: '97.2%', timeTaken: '42m 10s', status: 'Pass', submittedAt: 'Sep 06, 19:51' },
+      { rank: 5, name: 'Dr. Emily Watson', email: 'emily.w@medprep.com', score: '84/100', percentage: '84.0%', percentile: '95.6%', timeTaken: '44m 30s', status: 'Pass', submittedAt: 'Sep 06, 19:54' },
+      { rank: 7, name: 'Dr. Arjun Patel', email: 'arjun.p@medprep.com', score: '76/100', percentage: '76.0%', percentile: '86.5%', timeTaken: '44m 50s', status: 'Pass', submittedAt: 'Sep 06, 19:56' },
+      { rank: 8, name: 'Dr. Fatima Noor', email: 'fatima.n@medprep.com', score: '68/100', percentage: '68.0%', percentile: '74.2%', timeTaken: '45m 00s', status: 'Pass', submittedAt: 'Sep 06, 19:58' },
+      { rank: 9, name: 'Dr. David Miller', email: 'david.m@medprep.com', score: '52/100', percentage: '52.0%', percentile: '51.0%', timeTaken: '45m 00s', status: 'Fail', submittedAt: 'Sep 06, 19:59' },
+      { rank: 10, name: 'Dr. Kavita Singh', email: 'kavita.s@medprep.com', score: '44/100', percentage: '44.0%', percentile: '38.5%', timeTaken: '45m 00s', status: 'Fail', submittedAt: 'Sep 06, 20:00' }
+    ];
+
+    let candidates = [...defaultCohortCandidates];
+
+    // If an actual student attempt exists in cbtTestService, inject/update Dr. Ritik Saini
+    if (completedAttempt) {
+      const ritikCandidate = {
+        rank: 6,
+        name: 'Dr. Ritik Saini',
+        email: 'student@demo.com',
+        score: `${completedAttempt.score}/${completedAttempt.totalMarks}`,
+        percentage: `${completedAttempt.percentage}.0%`,
+        percentile: completedAttempt.percentile || '91.8%',
+        timeTaken: completedAttempt.timeTakenFormatted || '43m 15s',
+        status: completedAttempt.statusLabel || (completedAttempt.percentage >= (test?.passingScore || 50) ? 'Pass' : 'Fail'),
+        submittedAt: completedAttempt.submittedAt || 'Today, 18:49 IST'
+      };
+      candidates.splice(5, 0, ritikCandidate);
+    } else {
+      candidates.splice(5, 0, {
+        rank: 6,
+        name: 'Dr. Ritik Saini',
+        email: 'student@demo.com',
+        score: '80/100',
+        percentage: '80.0%',
+        percentile: '91.8%',
+        timeTaken: '43m 15s',
+        status: 'Pass',
+        submittedAt: 'Sep 06, 19:55'
+      });
+    }
+
+    const totalAppeared = 384 + (completedAttempt ? 1 : 0);
+    const passCount = candidates.filter(c => c.status === 'Pass').length;
+    const passPercentage = Math.round((passCount / candidates.length) * 100);
+
+    return {
+      test,
+      candidates,
+      summary: {
+        totalAppeared: `${totalAppeared} Doctors`,
+        batchMeanScore: '78.4 / 100',
+        passingPercentage: `${passPercentage}% Pass`,
+        highestMark: '96 / 100'
+      }
+    };
   }
 
   subscribe(callback) {

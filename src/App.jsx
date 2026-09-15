@@ -219,9 +219,10 @@ export default function App() {
             path="/faculty/login" 
             element={<LoginPage />} 
           />
+          {/* Deprecated legacy route: Redirect to modern faculty portal */}
           <Route 
             path="/faculty/legacy" 
-            element={<FacultyDashboardPage />} 
+            element={<Navigate to="/faculty" replace />} 
           />
 
           {/* Phase 4: Faculty Portal with Scoped Hierarchy & Operations */}

@@ -83,7 +83,9 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
           const subject = curriculumService.getSubjectById(subjectId);
           crumbs.push({
             label: subject ? subject.name : 'Subject',
-            path: `/${rootSegment}/exams/${examId}/subjects/${subjectId}/modules`,
+            path: (segments.includes('modules') || moduleId)
+              ? `/${rootSegment}/exams/${examId}/subjects/${subjectId}/modules`
+              : null,
             icon: Layers
           });
 
@@ -92,7 +94,9 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
               const module = curriculumService.getModuleById(moduleId);
               crumbs.push({
                 label: module ? module.title : 'Module',
-                path: `/${rootSegment}/exams/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures`,
+                path: (segments.includes('lectures') || lectureId)
+                  ? `/${rootSegment}/exams/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures`
+                  : null,
                 icon: FolderTree
               });
 
@@ -101,7 +105,9 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
                   const lecture = curriculumService.getLectureById(lectureId);
                   crumbs.push({
                     label: lecture ? lecture.title : 'Lecture',
-                    path: `/${rootSegment}/exams/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures/${lectureId}/content`,
+                    path: segments.includes('content')
+                      ? `/${rootSegment}/exams/${examId}/subjects/${subjectId}/modules/${moduleId}/lectures`
+                      : null,
                     icon: FileText
                   });
 
@@ -112,10 +118,28 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
                       icon: Sparkles
                     });
                   }
+                } else {
+                  crumbs.push({
+                    label: 'Lectures',
+                    path: null,
+                    icon: FileText
+                  });
                 }
               }
+            } else {
+              crumbs.push({
+                label: 'Modules',
+                path: null,
+                icon: FolderTree
+              });
             }
           }
+        } else {
+          crumbs.push({
+            label: 'Subjects',
+            path: null,
+            icon: Layers
+          });
         }
       }
     }
@@ -168,7 +192,9 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
       const subject = curriculumService.getSubjectById(subjectId);
       crumbs.push({
         label: subject ? subject.name : 'Subject',
-        path: `/${rootSegment}/subjects/${subjectId}/modules`,
+        path: (segments.includes('modules') || moduleId)
+          ? `/${rootSegment}/subjects/${subjectId}/modules`
+          : null,
         icon: Layers
       });
 
@@ -177,7 +203,9 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
           const module = curriculumService.getModuleById(moduleId);
           crumbs.push({
             label: module ? module.title : 'Module',
-            path: `/${rootSegment}/subjects/${subjectId}/modules/${moduleId}/lectures`,
+            path: (segments.includes('lectures') || lectureId)
+              ? `/${rootSegment}/subjects/${subjectId}/modules/${moduleId}/lectures`
+              : null,
             icon: FolderTree
           });
 
@@ -186,7 +214,9 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
               const lecture = curriculumService.getLectureById(lectureId);
               crumbs.push({
                 label: lecture ? lecture.title : 'Lecture',
-                path: `/${rootSegment}/subjects/${subjectId}/modules/${moduleId}/lectures/${lectureId}/content`,
+                path: segments.includes('content')
+                  ? `/${rootSegment}/subjects/${subjectId}/modules/${moduleId}/lectures`
+                  : null,
                 icon: FileText
               });
 
@@ -197,8 +227,20 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
                   icon: Sparkles
                 });
               }
+            } else {
+              crumbs.push({
+                label: 'Lectures',
+                path: null,
+                icon: FileText
+              });
             }
           }
+        } else {
+          crumbs.push({
+            label: 'Modules',
+            path: null,
+            icon: FolderTree
+          });
         }
       }
     }
