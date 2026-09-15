@@ -1584,6 +1584,18 @@ export const testService = {
     return updated;
   },
 
+  deleteTest: (testId) => {
+    const tests = testService.getTests();
+    const remaining = tests.filter((t) => t.id !== testId);
+    try {
+      localStorage.setItem(STORAGE_KEY_TESTS, JSON.stringify(remaining));
+      window.dispatchEvent(new CustomEvent('medprep-tests-updated', { detail: remaining }));
+    } catch (e) {
+      console.warn('Storage save error:', e);
+    }
+    return remaining;
+  },
+
   addTest: (testData) => {
     const questionList = testData.questions && Array.isArray(testData.questions) ? testData.questions : [];
     const newTest = {
