@@ -181,3 +181,151 @@ export function detectDuplicateIds(items = [], collectionName = 'items') {
   }
   return dupList;
 }
+
+/**
+ * Validates a question during the authoring workflow.
+ * Supports status-aware validation:
+ * - 'draft': relaxed, allows saving work in progress
+ * - 'review', 'approved', 'published': strict completeness checks
+ * @param {object} question
+ * @param {string} targetStatus
+ * @returns {{ isValid: boolean, errors: string[], warnings: string[] }}
+ */
+export function validateQuestionAuthoring(question, targetStatus = 'draft') {
+  const errors = [];
+  const warnings = [];
+
+  if (!question || typeof question !== 'object') {
+    return { isValid: false, errors: ['Question data is missing or invalid.'], warnings: [] };
+  }
+
+  const prompt = question.content?.prompt?.trim() || '';
+  if (!prompt) {
+    if (targetStatus === 'draft') {
+      warnings.push('Question prompt is currently empty.');
+    } else {
+      errors.push('Question prompt cannot be empty for review or publication.');
+    }
+  }
+
+  if (!question.type) {
+    errors.push('Question type must be selected.');
+  }
+
+  const isStrict = targetStatus === 'published' || targetStatus === 'approved' || targetStatus === 'review';
+
+  switch (question.type) {
+    case 'single_choice': {
+      const options = question.responseSchema?.options || [];
+      const filledOptions = options.filter(o => o.text && o.text.trim().length > 0);
+      const correct = question.answer?.correct || [];
+
+      if (isStrict) {
+        if (filledOptions.length < 2) {
+          errors.push('Single Choice questions require at least 2 non-empty options.');
+        }
+        if (correct.length !== 1) {
+          errors.push('Single Choice questions require exactly 1 correct answer.');
+        } else if (!options.some(o => o.id === correct[0] && o.text?.trim())) {
+          errors.push('Selected correct option does not have valid option text.');
+        }
+      } else {
+        if (options.length < 2) {
+          warnings.push('Recommended to have at least 2 options.');
+        }
+        if (correct.length === 0) {
+          warnings.push('No correct answer marked yet.');
+        }
+      }
+      break;
+    }
+
+    case 'multiple_choice': {
+      const options = question.responseSchema?.options || [];
+      const filledOptions = options.filter(o => o.text && o.text.trim().length > 0);
+      const correct = question.answer?.correct || [];
+
+      if (isStrict) {
+        if (filledOptions.length < 2) {
+          errors.push('Multiple Choice questions require at least 2 non-empty options.');
+        }
+        if (correct.length < 1) {
+          errors.push('Multiple Choice questions require at least 1 correct answer.');
+        }
+        const validIds = new Set(filledOptions.map(o => o.id));
+        const invalidCorrect = correct.filter(c => !validIds.has(c));
+        if (invalidCorrect.length > 0) {
+          errors.push('One or more selected correct options do not match valid option entries.');
+        }
+      } else {
+        if (correct.length === 0) {
+          warnings.push('No correct answers marked yet.');
+        }
+      }
+      break;
+    }
+
+    case 'true_false': {
+      const correct = question.answer?.correct || [];
+      if (isStrict) {
+        if (correct.length !== 1 || !['true', 'false'].includes(String(correct[0]).toLowerCase())) {
+          errors.push('True / False questions require exactly one selection: True or False.');
+        }
+      } else {
+        if (correct.length === 0) {
+          warnings.push('No correct answer marked yet.');
+        }
+      }
+      break;
+    }
+
+    case 'short_answer': {
+      const correct = question.answer?.correct || [];
+      const validAnswers = correct.filter(a => typeof a === 'string' && a.trim().length > 0);
+      if (isStrict) {
+        if (validAnswers.length === 0) {
+          errors.push('Short Answer questions require at least 1 accepted answer phrase.');
+        }
+      } else {
+        if (validAnswers.length === 0) {
+          warnings.push('No accepted answers configured yet.');
+        }
+      }
+      break;
+    }
+
+    case 'fill_blank': {
+      const correct = question.answer?.correct || [];
+      const validAnswers = correct.filter(a => typeof a === 'string' && a.trim().length > 0);
+      if (isStrict) {
+        if (validAnswers.length === 0) {
+          errors.push('Fill in the Blank questions require at least 1 accepted target answer.');
+        }
+      } else {
+        if (validAnswers.length === 0) {
+          warnings.push('No accepted answer values configured yet.');
+        }
+      }
+      break;
+    }
+
+    default:
+      // For future types, do not hard-block drafts
+      break;
+  }
+
+  // Scoring checks
+  if (isStrict) {
+    const marks = Number(question.scoring?.marks);
+    if (isNaN(marks) || marks <= 0) {
+      errors.push('Marks must be a positive number greater than 0.');
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings
+  };
+}
+

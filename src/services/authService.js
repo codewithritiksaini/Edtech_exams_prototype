@@ -53,11 +53,13 @@ class AuthService {
 
   loadStoredUser() {
     try {
-      const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.email && MOCK_ACCOUNTS[parsed.email]) {
-          return MOCK_ACCOUNTS[parsed.email];
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = window.localStorage.getItem(AUTH_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.email && MOCK_ACCOUNTS[parsed.email]) {
+            return MOCK_ACCOUNTS[parsed.email];
+          }
         }
       }
     } catch (e) {

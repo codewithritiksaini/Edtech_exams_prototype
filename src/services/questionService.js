@@ -111,6 +111,55 @@ class QuestionService {
   }
 
   /**
+   * Duplicates/clones an existing question.
+   * Creates an independent copy with a new unique ID and draft status.
+   * @param {string|number} id
+   * @returns {{ success: boolean, question?: object, error?: string }}
+   */
+  cloneQuestion(id) {
+    const original = this.getQuestionById(id);
+    if (!original) {
+      return { success: false, error: `Question "${id}" not found.` };
+    }
+
+    const cloneId = `${original.id}-clone-${Date.now().toString(36).slice(-4)}`;
+    const clonedQuestion = {
+      ...JSON.parse(JSON.stringify(original)),
+      id: cloneId,
+      status: 'draft',
+      content: {
+        ...original.content,
+        prompt: `${original.content?.prompt || ''} (Copy)`
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const result = this.createQuestion(clonedQuestion);
+    return result;
+  }
+
+  /**
+   * Changes the status of a question (e.g. draft -> review -> published -> archived).
+   * @param {string|number} id
+   * @param {string} newStatus
+   * @returns {object|null}
+   */
+  changeQuestionStatus(id, newStatus) {
+    if (!id || !newStatus) return null;
+    return this.updateQuestion(id, { status: newStatus });
+  }
+
+  /**
+   * Soft-archives a question.
+   * @param {string|number} id
+   * @returns {object|null}
+   */
+  archiveQuestion(id) {
+    return this.changeQuestionStatus(id, 'archived');
+  }
+
+  /**
    * Deletes a question by ID.
    * @param {string|number} id
    * @returns {boolean} True if deleted
@@ -125,8 +174,93 @@ class QuestionService {
   }
 
   /**
-   * Simple prototype search and filter across questions.
-   * @param {object} filters - { type, subject, topic, difficulty, query }
+   * Calculates usage of a question across active assessments.
+   * @param {string|number} questionId
+   * @returns {{ count: number, assessments: Array<{ id: string, title: string }> }}
+   */
+  getQuestionUsage(questionId) {
+    if (!questionId) return { count: 0, assessments: [] };
+    const cleanId = String(questionId);
+    const assessments = getStoredData(PROTOTYPE_STORAGE_KEYS.ASSESSMENTS, []) || [];
+    const groups = getStoredData(PROTOTYPE_STORAGE_KEYS.GROUPS, []) || [];
+
+    // Find group IDs that contain this question
+    const matchingGroupIds = new Set(
+      groups
+        .filter(g => Array.isArray(g.questionIds) && g.questionIds.map(String).includes(cleanId))
+        .map(g => String(g.id))
+    );
+
+    const usedInAssessments = new Map();
+
+    for (const assessment of assessments) {
+      const versions = assessment.versions || [];
+      let isReferenced = false;
+
+      for (const version of versions) {
+        const sections = version.sections || [];
+        for (const section of sections) {
+          const items = section.items || [];
+          for (const item of items) {
+            if (item.type === 'question' && String(item.refId) === cleanId) {
+              isReferenced = true;
+              break;
+            }
+            if (item.type === 'question_group' && matchingGroupIds.has(String(item.refId))) {
+              isReferenced = true;
+              break;
+            }
+          }
+          if (isReferenced) break;
+        }
+        if (isReferenced) break;
+      }
+
+      if (isReferenced) {
+        usedInAssessments.set(assessment.id, {
+          id: assessment.id,
+          title: assessment.title || assessment.id
+        });
+      }
+    }
+
+    const list = Array.from(usedInAssessments.values());
+    return {
+      count: list.length,
+      assessments: list
+    };
+  }
+
+  /**
+   * Computes dynamic KPI summary statistics for Question Bank dashboard.
+   * @returns {{ total: number, published: number, review: number, approved: number, draft: number, archived: number }}
+   */
+  getSummaryStats() {
+    const questions = this.getQuestions();
+    const stats = {
+      total: questions.length,
+      published: 0,
+      review: 0,
+      approved: 0,
+      draft: 0,
+      archived: 0
+    };
+
+    for (const q of questions) {
+      const status = q.status || 'draft';
+      if (stats[status] !== undefined) {
+        stats[status]++;
+      } else {
+        stats.draft++;
+      }
+    }
+
+    return stats;
+  }
+
+  /**
+   * Prototype search and multi-criteria filtering across questions.
+   * @param {object} filters - { search, query, type, subject, topic, difficulty, status, tag }
    * @returns {Array<object>}
    */
   searchQuestions(filters = {}) {
@@ -144,13 +278,33 @@ class QuestionService {
     if (filters.difficulty && filters.difficulty !== 'all') {
       list = list.filter(q => q.metadata?.difficulty === filters.difficulty);
     }
-    if (filters.query && typeof filters.query === 'string' && filters.query.trim()) {
-      const qLower = filters.query.toLowerCase().trim();
+    if (filters.status && filters.status !== 'all') {
+      list = list.filter(q => (q.status || 'draft') === filters.status);
+    }
+    if (filters.tag && filters.tag !== 'all') {
+      list = list.filter(q => Array.isArray(q.metadata?.tags) && q.metadata.tags.includes(filters.tag));
+    }
+
+    const searchTerm = (filters.search || filters.query || '').trim().toLowerCase();
+    if (searchTerm) {
       list = list.filter(q => {
+        const id = String(q.id).toLowerCase();
         const prompt = q.content?.prompt?.toLowerCase() || '';
         const vignette = q.content?.vignette?.toLowerCase() || '';
         const expl = q.explanation?.toLowerCase() || '';
-        return prompt.includes(qLower) || vignette.includes(qLower) || expl.includes(qLower);
+        const subject = q.metadata?.subject?.toLowerCase() || '';
+        const topic = q.metadata?.topic?.toLowerCase() || '';
+        const tags = Array.isArray(q.metadata?.tags) ? q.metadata.tags.join(' ').toLowerCase() : '';
+
+        return (
+          id.includes(searchTerm) ||
+          prompt.includes(searchTerm) ||
+          vignette.includes(searchTerm) ||
+          expl.includes(searchTerm) ||
+          subject.includes(searchTerm) ||
+          topic.includes(searchTerm) ||
+          tags.includes(searchTerm)
+        );
       });
     }
 
@@ -159,3 +313,4 @@ class QuestionService {
 }
 
 export const questionService = new QuestionService();
+

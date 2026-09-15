@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
@@ -57,6 +57,18 @@ import StudentTestsPage from './pages/student/StudentTestsPage';
 import StudentProgressPage from './pages/student/StudentProgressPage';
 import StudentSettingsPage from './pages/student/StudentSettingsPage';
 import ExamDataPreviewPage from './pages/prototype/ExamDataPreviewPage';
+import QuestionBankPage from './pages/QuestionBankPage';
+import QuestionEditorPage from './pages/QuestionEditorPage';
+import QuestionPreviewPage from './pages/QuestionPreviewPage';
+import { authService, USER_ROLES } from './services/authService';
+
+function QuestionBankRedirect() {
+  const user = authService.getCurrentUser();
+  if (!user) return <Navigate to="/login?redirect=/questions" replace />;
+  if (user.role === USER_ROLES.STUDENT) return <Navigate to="/student/dashboard" replace />;
+  if (user.role === USER_ROLES.FACULTY) return <Navigate to="/faculty/questions" replace />;
+  return <Navigate to="/admin/questions" replace />;
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -78,6 +90,8 @@ export default function App() {
                     location.pathname.startsWith('/faculty') ||
                     location.pathname.startsWith('/admin') ||
                     location.pathname.startsWith('/prototype') ||
+                    location.pathname.startsWith('/questions') ||
+                    location.pathname.startsWith('/question-bank') ||
                     location.pathname === '/login';
 
   const handleExploreCourses = () => {
@@ -141,6 +155,14 @@ export default function App() {
             element={<ExamDataPreviewPage />} 
           />
           <Route 
+            path="/questions" 
+            element={<QuestionBankRedirect />} 
+          />
+          <Route 
+            path="/question-bank" 
+            element={<QuestionBankRedirect />} 
+          />
+          <Route 
             path="/login" 
             element={<LoginPage />} 
           />
@@ -184,6 +206,10 @@ export default function App() {
             <Route path="/admin/faculty" element={<AdminFacultyPage />} />
             <Route path="/admin/students" element={<AdminStudentsPage />} />
             <Route path="/admin/tests" element={<AdminTestsPage />} />
+            <Route path="/admin/questions" element={<QuestionBankPage />} />
+            <Route path="/admin/questions/new" element={<QuestionEditorPage />} />
+            <Route path="/admin/questions/:questionId/edit" element={<QuestionEditorPage />} />
+            <Route path="/admin/questions/:questionId/preview" element={<QuestionPreviewPage />} />
             <Route path="/admin/sample-papers" element={<AdminSamplePapersPage />} />
             <Route path="/admin/live-sessions" element={<AdminLiveSessionsPage />} />
             <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
@@ -229,6 +255,10 @@ export default function App() {
             <Route path="/faculty/upload" element={<FacultyDirectUploadPage />} />
             <Route path="/faculty/live-sessions" element={<FacultyLiveSessionsPage />} />
             <Route path="/faculty/tests" element={<FacultyTestsPage />} />
+            <Route path="/faculty/questions" element={<QuestionBankPage />} />
+            <Route path="/faculty/questions/new" element={<QuestionEditorPage />} />
+            <Route path="/faculty/questions/:questionId/edit" element={<QuestionEditorPage />} />
+            <Route path="/faculty/questions/:questionId/preview" element={<QuestionPreviewPage />} />
             <Route path="/faculty/sample-papers" element={<FacultySamplePapersPage />} />
             <Route path="/faculty/tests/:testId/questions" element={<FacultyQuestionAuthoringPage />} />
             <Route path="/faculty/tests/:testId/results" element={<FacultyTestResultsPage />} />

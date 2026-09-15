@@ -406,6 +406,283 @@ export const DEMO_QUESTIONS = [
     status: 'published',
     createdAt: '2026-09-15T08:00:00.000Z',
     updatedAt: '2026-09-15T08:00:00.000Z'
+  },
+
+  // --- Multi-Select Multiple Choice Questions (2 Qs) ---
+  {
+    id: 'q-med-mc-01',
+    type: QUESTION_TYPES.MULTIPLE_CHOICE,
+    content: {
+      vignette: 'A 68-year-old hospitalized patient develops acute rigors and tachycardia 48 hours following elective colonic resection.',
+      prompt: 'Which of the following clinical and laboratory parameters satisfy the Consensus Criteria for Systemic Inflammatory Response Syndrome (SIRS) in an adult? (Select all that apply)'
+    },
+    responseSchema: {
+      options: [
+        { id: 'A', text: 'Core body temperature > 38.0°C (100.4°F) or < 36.0°C (96.8°F)' },
+        { id: 'B', text: 'Heart rate > 90 beats per minute' },
+        { id: 'C', text: 'Mean Arterial Pressure (MAP) < 65 mmHg' },
+        { id: 'D', text: 'Respiratory rate > 20 breaths/min or PaCO2 < 32 mmHg' },
+        { id: 'E', text: 'White blood cell count > 12,000/mcL, < 4,000/mcL, or > 10% immature band forms' }
+      ]
+    },
+    answer: {
+      correct: ['A', 'B', 'D', 'E']
+    },
+    scoring: {
+      marks: 4,
+      negativeMarks: -1
+    },
+    metadata: {
+      subject: 'Critical Care',
+      topic: 'Sepsis & Resuscitation',
+      difficulty: 'medium',
+      tags: ['SIRS', 'Sepsis', 'ICU Criteria']
+    },
+    explanation: 'SIRS criteria require ≥ 2 of: (1) Temp > 38°C or < 36°C; (2) HR > 90 bpm; (3) RR > 20 or PaCO2 < 32; (4) WBC > 12k, < 4k, or > 10% bands. MAP < 65 mmHg is a resuscitation hemodynamic target and sign of septic shock, but not a defined SIRS criterion.',
+    status: 'published',
+    createdAt: '2026-09-15T09:00:00.000Z',
+    updatedAt: '2026-09-15T09:00:00.000Z'
+  },
+  {
+    id: 'q-med-mc-02',
+    type: QUESTION_TYPES.MULTIPLE_CHOICE,
+    content: {
+      vignette: 'A 74-year-old male with refractory ventricular arrhythmias has been maintained on oral Amiodarone 200 mg daily for the past 3 years.',
+      prompt: 'Which of the following organ-specific toxicities are well-documented adverse reactions associated with long-term Amiodarone therapy? (Select all that apply)'
+    },
+    responseSchema: {
+      options: [
+        { id: 'A', text: 'Pulmonary interstitial fibrosis and pneumonitis' },
+        { id: 'B', text: 'Aplastic anemia' },
+        { id: 'C', text: 'Thyroid dysfunction (both hypothyroidism and thyrotoxicosis)' },
+        { id: 'D', text: 'Corneal microdeposits (vortex keratopathy)' },
+        { id: 'E', text: 'Hepatotoxicity with elevated serum aminotransferases' }
+      ]
+    },
+    answer: {
+      correct: ['A', 'C', 'D', 'E']
+    },
+    scoring: {
+      marks: 4,
+      negativeMarks: -1
+    },
+    metadata: {
+      subject: 'Pharmacology',
+      topic: 'Antiarrhythmic Agents',
+      difficulty: 'medium',
+      tags: ['Amiodarone', 'Toxicology', 'Pharmacovigilance']
+    },
+    explanation: 'Amiodarone is iodine-rich and lipophilic. Recognized toxicities include pulmonary fibrosis, thyroid disease (37% iodine by weight), corneal deposits (in >90% of chronic users), hepatotoxicity, and blue-gray skin discoloration. Aplastic anemia is not characteristic.',
+    status: 'review',
+    createdAt: '2026-09-15T09:15:00.000Z',
+    updatedAt: '2026-09-15T09:15:00.000Z'
+  },
+
+  // --- True / False Questions (2 Qs) ---
+  {
+    id: 'q-med-tf-01',
+    type: QUESTION_TYPES.TRUE_FALSE,
+    content: {
+      vignette: 'A 24-year-old unrestrained driver involved in a motor vehicle crash presents with acute dyspnea, hypotension, and absent breath sounds over the right hemithorax.',
+      prompt: 'In tension pneumothorax, mediastinal shift causes tracheal deviation characteristically TOWARD the ipsilateral side of the pneumothorax.'
+    },
+    responseSchema: {
+      options: [
+        { id: 'true', text: 'True' },
+        { id: 'false', text: 'False' }
+      ]
+    },
+    answer: {
+      correct: ['false']
+    },
+    scoring: {
+      marks: 2,
+      negativeMarks: -1
+    },
+    metadata: {
+      subject: 'Surgery',
+      topic: 'Trauma & Emergency',
+      difficulty: 'easy',
+      tags: ['Pneumothorax', 'Trauma', 'Chest Tube']
+    },
+    explanation: 'False. In a tension pneumothorax, accumulated intrapleural positive pressure shifts the mediastinum and trachea AWAY from the affected side (contralateral deviation), impeding venous return through the vena cava.',
+    status: 'published',
+    createdAt: '2026-09-15T09:30:00.000Z',
+    updatedAt: '2026-09-15T09:30:00.000Z'
+  },
+  {
+    id: 'q-med-tf-02',
+    type: QUESTION_TYPES.TRUE_FALSE,
+    content: {
+      prompt: 'Initiation or upward titration of beta-blocker therapy is strictly contraindicated during an acute decompensated heart failure exacerbation with signs of hypoperfusion and volume overload.'
+    },
+    responseSchema: {
+      options: [
+        { id: 'true', text: 'True' },
+        { id: 'false', text: 'False' }
+      ]
+    },
+    answer: {
+      correct: ['true']
+    },
+    scoring: {
+      marks: 2,
+      negativeMarks: -1
+    },
+    metadata: {
+      subject: 'Cardiology',
+      topic: 'Heart Failure Management',
+      difficulty: 'easy',
+      tags: ['Beta-blocker', 'Decompensation', 'Guidelines']
+    },
+    explanation: 'True. While beta-blockers reduce mortality in chronic stable heart failure with reduced ejection fraction, they have negative inotropic effects and must not be started or uptitrated during acute unstable decompensation until euvolemia is restored.',
+    status: 'approved',
+    createdAt: '2026-09-15T09:45:00.000Z',
+    updatedAt: '2026-09-15T09:45:00.000Z'
+  },
+
+  // --- Short Answer Questions (2 Qs) ---
+  {
+    id: 'q-med-sa-01',
+    type: QUESTION_TYPES.SHORT_ANSWER,
+    content: {
+      vignette: 'A 78-year-old male is brought by his family for progressive unsteadiness while walking, frequent falls, progressive memory decline, and new-onset urinary urgency and incontinence over the past 8 months. Brain MRI reveals ventriculomegaly disproportionate to cerebral sulcal atrophy.',
+      prompt: 'What classic mnemonic or clinical triad describes the three primary cardinal presenting features of Normal Pressure Hydrocephalus (NPH)?'
+    },
+    responseSchema: {
+      placeholder: 'Enter triad or cardinal symptoms...',
+      caseSensitive: false
+    },
+    answer: {
+      correct: [
+        'wet, wacky, and wobbly',
+        'wet, wacky, wobbly',
+        'gait disturbance, dementia, urinary incontinence',
+        'gait disturbance, memory loss, urinary incontinence',
+        'gait ataxia, cognitive impairment, urinary incontinence',
+        'Hakim triad',
+        'Hakim-Adams triad'
+      ]
+    },
+    scoring: {
+      marks: 3,
+      negativeMarks: 0
+    },
+    metadata: {
+      subject: 'Neurology',
+      topic: 'Hydrocephalus & Cognitive Impairment',
+      difficulty: 'medium',
+      tags: ['NPH', 'Hakim Triad', 'Geriatrics']
+    },
+    explanation: 'The classic Hakim-Adams triad of Normal Pressure Hydrocephalus is gait disturbance (wobbly / magnetic gait), dementia/cognitive impairment (wacky), and urinary incontinence (wet).',
+    status: 'published',
+    createdAt: '2026-09-15T10:00:00.000Z',
+    updatedAt: '2026-09-15T10:00:00.000Z'
+  },
+  {
+    id: 'q-med-sa-02',
+    type: QUESTION_TYPES.SHORT_ANSWER,
+    content: {
+      vignette: 'A 42-year-old obese female presents with sudden sharp right upper quadrant pain that began 2 hours after a fatty meal.',
+      prompt: 'What is the eponymous term for the physical examination maneuver where deep palpation beneath the right subcostal margin causes sudden cessation of inspiration due to severe sharp peritoneal pain?'
+    },
+    responseSchema: {
+      placeholder: "e.g. Murphy's sign",
+      caseSensitive: false
+    },
+    answer: {
+      correct: [
+        "Murphy sign",
+        "Murphy's sign",
+        "Murphys sign",
+        "Murphy's",
+        "Murphy"
+      ]
+    },
+    scoring: {
+      marks: 3,
+      negativeMarks: 0
+    },
+    metadata: {
+      subject: 'Surgery',
+      topic: 'Biliary Disease',
+      difficulty: 'easy',
+      tags: ['Cholecystitis', 'Physical Exam', 'Eponym']
+    },
+    explanation: "Murphy's sign is characteristic of acute calculous cholecystitis. It occurs when the inflamed gallbladder descends and contacts the examiner's palpating fingers during inspiration.",
+    status: 'draft',
+    createdAt: '2026-09-15T10:15:00.000Z',
+    updatedAt: '2026-09-15T10:15:00.000Z'
+  },
+
+  // --- Fill in the Blank Questions (1 Q) ---
+  {
+    id: 'q-med-fb-01',
+    type: QUESTION_TYPES.FILL_BLANK,
+    content: {
+      vignette: 'A 56-year-old female underwent mechanical bileaflet mitral valve replacement 6 weeks ago.',
+      prompt: 'According to ACC/AHA guidelines, the standard target therapeutic International Normalized Ratio (INR) range for an uncomplicated patient with a mechanical MITRAL valve prosthesis on Warfarin is ___ to ___.'
+    },
+    responseSchema: {
+      placeholder: 'e.g. 2.5 to 3.5'
+    },
+    answer: {
+      correct: [
+        '2.5 to 3.5',
+        '2.5-3.5',
+        '2.5 - 3.5',
+        '2.5 to 3.5'
+      ]
+    },
+    scoring: {
+      marks: 2,
+      negativeMarks: 0
+    },
+    metadata: {
+      subject: 'Hematology',
+      topic: 'Anticoagulation & Prosthetic Valves',
+      difficulty: 'medium',
+      tags: ['Warfarin', 'INR', 'Prosthetic Valve']
+    },
+    explanation: 'Mechanical mitral valves carry higher thromboembolic risk than mechanical aortic valves due to lower blood flow velocity in the left atrium; thus the recommended target INR is 2.5 to 3.5 (target 3.0). Mechanical aortic valves target 2.0 to 3.0.',
+    status: 'published',
+    createdAt: '2026-09-15T10:30:00.000Z',
+    updatedAt: '2026-09-15T10:30:00.000Z'
+  },
+
+  // --- Archived Demo Question (1 Q) ---
+  {
+    id: 'q-med-arc-01',
+    type: QUESTION_TYPES.SINGLE_CHOICE,
+    content: {
+      vignette: 'A 52-year-old male with long-standing alcohol use presents with chronic epigastric pain and steatorrhea.',
+      prompt: 'Which of the following is the most sensitive diagnostic imaging modality for detecting early morphological pancreatic ductal changes in chronic pancreatitis?'
+    },
+    responseSchema: {
+      options: [
+        { id: 'A', text: 'Endoscopic Retrograde Cholangiopancreatography (ERCP) / MRCP with Secretin' },
+        { id: 'B', text: 'Plain abdominal radiograph' },
+        { id: 'C', text: 'Fecal elastase-1 assay monotherapy' },
+        { id: 'D', text: 'Serum amylase and lipase measurement' }
+      ]
+    },
+    answer: {
+      correct: ['A']
+    },
+    scoring: {
+      marks: 5,
+      negativeMarks: -1
+    },
+    metadata: {
+      subject: 'Gastroenterology',
+      topic: 'Pancreatic Disorders',
+      difficulty: 'hard',
+      tags: ['Pancreatitis', 'Imaging', 'Archived Version']
+    },
+    explanation: 'Secretin-enhanced MRCP and Endoscopic Ultrasound (EUS) are the most sensitive non-invasive imaging methods for early stage ductal and parenchymal changes in chronic pancreatitis. (Archived curriculum item).',
+    status: 'archived',
+    createdAt: '2026-09-15T07:00:00.000Z',
+    updatedAt: '2026-09-15T10:45:00.000Z'
   }
 ];
 
