@@ -41,7 +41,7 @@ export default function FacultySchedulePage() {
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled'
 
   const [scheduleSlots, setScheduleSlots] = useState(() => 
-    curriculumService.getFacultySchedule(facultyEmail, selectedExamFilter === 'all' ? null : selectedExamFilter)
+    curriculumService.getFacultySchedule(facultyEmail)
   );
 
   // Synchronize with services
@@ -51,12 +51,7 @@ export default function FacultySchedulePage() {
     });
 
     const handleScheduleUpdate = () => {
-      setScheduleSlots(
-        curriculumService.getFacultySchedule(
-          facultyEmail, 
-          selectedExamFilter === 'all' ? null : selectedExamFilter
-        )
-      );
+      setScheduleSlots(curriculumService.getFacultySchedule(facultyEmail));
     };
 
     window.addEventListener('medprep-schedule-updated', handleScheduleUpdate);
@@ -67,7 +62,7 @@ export default function FacultySchedulePage() {
       window.removeEventListener('medprep-schedule-updated', handleScheduleUpdate);
       window.removeEventListener('medprep-delivery-plan-updated', handleScheduleUpdate);
     };
-  }, [facultyEmail, selectedExamFilter]);
+  }, [facultyEmail]);
 
   // Compute Date Boundaries for Horizons
   const { todayStr, weekStartStr, weekEndStr } = useMemo(() => {
@@ -91,9 +86,17 @@ export default function FacultySchedulePage() {
     };
   }, []);
 
-  // Filter and Enrich Slots with Canonical Academic Data
+  // 1. Filter Slots by Selected Exam Track
+  const examFilteredSlots = useMemo(() => {
+    if (!selectedExamFilter || selectedExamFilter === 'all') {
+      return scheduleSlots;
+    }
+    return scheduleSlots.filter(slot => slot.examId === selectedExamFilter);
+  }, [scheduleSlots, selectedExamFilter]);
+
+  // 2. Filter and Enrich Slots with Canonical Academic Data
   const enrichedSlots = useMemo(() => {
-    return scheduleSlots.map(slot => {
+    return examFilteredSlots.map(slot => {
       // Canonically resolve academic entities
       const primaryLectureId = slot.lectureIds?.[0] || 
         slot.deliveryItems?.find(i => i.type === 'lecture')?.lectureId || null;
@@ -135,9 +138,9 @@ export default function FacultySchedulePage() {
         isThisWeek: slot.scheduledDate >= weekStartStr && slot.scheduledDate <= weekEndStr
       };
     });
-  }, [scheduleSlots, exams, todayStr, weekStartStr, weekEndStr]);
+  }, [examFilteredSlots, exams, todayStr, weekStartStr, weekEndStr]);
 
-  // Apply Horizon & Status Filters
+  // 3. Apply Horizon & Status Filters
   const filteredSlots = useMemo(() => {
     return enrichedSlots.filter(slot => {
       // Horizon filter
@@ -165,7 +168,7 @@ export default function FacultySchedulePage() {
     });
   }, [enrichedSlots, timeHorizonFilter, statusFilter, todayStr, weekStartStr, weekEndStr]);
 
-  // KPI Metrics
+  // KPI Metrics (Accurately computed for the selected exam track or aggregate)
   const metrics = useMemo(() => {
     return {
       totalAssigned: enrichedSlots.length,
@@ -233,8 +236,11 @@ export default function FacultySchedulePage() {
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             My Teaching Schedule
           </h1>
+          <div className="text-xs sm:text-sm font-bold text-brand-700 flex items-center gap-1.5">
+            <span>{currentFaculty?.specialty || 'MD, DM (Interventional Cardiology) • AIIMS New Delhi Senior Clinical Faculty'}</span>
+          </div>
           <p className="text-slate-500 text-xs sm:text-sm max-w-2xl leading-relaxed">
-            Live lectures and clinical sessions assigned to you by Academic Administration. Canonical curriculum entities update automatically if lecture details change.
+            Live lectures, clinical catheterization case discussions, and bedside rounds assigned to you by Academic Administration.
           </p>
         </div>
 
@@ -327,8 +333,10 @@ export default function FacultySchedulePage() {
           <div className="text-2xl font-black text-slate-900 mt-1">
             {metrics.totalAssigned}
           </div>
-          <div className="text-[10px] text-slate-500 font-semibold mt-0.5">
-            Across all exams
+          <div className="text-[10px] text-slate-500 font-semibold mt-0.5 truncate max-w-[140px]">
+            {selectedExamFilter === 'all' 
+              ? 'Across all exams' 
+              : (exams.find(e => e.id === selectedExamFilter)?.name || 'Filtered exam')}
           </div>
         </div>
 
@@ -374,22 +382,34 @@ export default function FacultySchedulePage() {
         {/* Right: Exam Filter, Status Filter & View Toggle */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Exam Filter */}
-          <select
-            value={selectedExamFilter}
-            onChange={(e) => setSelectedExamFilter(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="all">All Assigned Exams</option>
-            {exams.map(e => (
-              <option key={e.id} value={e.id}>{e.name}</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={selectedExamFilter}
+              onChange={(e) => setSelectedExamFilter(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors cursor-pointer"
+            >
+              <option value="all">All Assigned Exams</option>
+              {exams.map(e => (
+                <option key={e.id} value={e.id}>{e.name}</option>
+              ))}
+            </select>
+            {selectedExamFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setSelectedExamFilter('all')}
+                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline px-1 cursor-pointer"
+                title="Reset to All Exams"
+              >
+                Reset
+              </button>
+            )}
+          </div>
 
           {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors cursor-pointer"
           >
             <option value="all">All Statuses</option>
             <option value="Scheduled">Scheduled</option>
@@ -409,10 +429,10 @@ export default function FacultySchedulePage() {
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
             {timeHorizonFilter === 'today'
-              ? 'You have no live classes or clinical lectures scheduled for today.'
+              ? `You have no live classes or clinical lectures scheduled for today${selectedExamFilter !== 'all' ? ` in ${exams.find(e => e.id === selectedExamFilter)?.name || 'this track'}` : ''}.`
               : timeHorizonFilter === 'week'
-              ? 'No classes are scheduled for you in the current week.'
-              : 'You have no assigned classes matching the current filter criteria.'}
+              ? `No classes are scheduled for you in the current week${selectedExamFilter !== 'all' ? ` in ${exams.find(e => e.id === selectedExamFilter)?.name || 'this track'}` : ''}.`
+              : `You have no assigned classes matching the current filter criteria.`}
           </p>
           <div className="pt-2">
             <Link
@@ -530,6 +550,7 @@ export default function FacultySchedulePage() {
                       </Link>
                     )}
 
+                    {/* Preview Delivery Day button commented out as requested
                     <a
                       href={`/day/${slot.dayNumber}`}
                       target="_blank"
@@ -540,6 +561,7 @@ export default function FacultySchedulePage() {
                       <span>Preview Delivery Day</span>
                       <ExternalLink className="w-2.5 h-2.5" />
                     </a>
+                    */}
                   </div>
                 </div>
               </div>
