@@ -6,6 +6,7 @@
 import { PROTOTYPE_STORAGE_KEYS, getStoredData, setStoredData } from '../utils/examStorage.js';
 import { validateQuestion, detectDuplicateIds } from '../utils/examValidation.js';
 import { DEMO_QUESTIONS } from '../data/exam/examDemoData.js';
+import { curriculumService } from './curriculumService.js';
 
 class QuestionService {
   constructor() {
@@ -18,6 +19,50 @@ class QuestionService {
     if (!existing || !Array.isArray(existing) || existing.length === 0) {
       this.resetToDefaults();
     }
+  }
+
+  /**
+   * Validates that subject, module, and lecture belong to the correct curriculum hierarchy.
+   * @param {{ examId?: string, subjectId?: string, moduleId?: string, lectureId?: string }} scope
+   * @returns {{ isValid: boolean, errors: string[] }}
+   */
+  validateCurriculumHierarchy(scope = {}) {
+    const errors = [];
+    const { examId, subjectId, moduleId, lectureId } = scope;
+
+    if (subjectId && subjectId !== 'all') {
+      const subject = curriculumService.getSubjectById(subjectId);
+      if (!subject) {
+        errors.push(`Subject "${subjectId}" not found in curriculum.`);
+      } else if (examId && examId !== 'all' && subject.examId && subject.examId !== examId) {
+        errors.push(`Subject "${subject.name || subjectId}" belongs to exam "${subject.examId}", not "${examId}".`);
+      }
+    }
+
+    if (moduleId && moduleId !== 'all') {
+      const moduleObj = curriculumService.getModuleById(moduleId);
+      if (!moduleObj) {
+        errors.push(`Module "${moduleId}" not found in curriculum.`);
+      } else {
+        if (subjectId && subjectId !== 'all' && moduleObj.subjectId && moduleObj.subjectId !== subjectId) {
+          errors.push(`Module "${moduleObj.name || moduleId}" belongs to subject "${moduleObj.subjectId}", not "${subjectId}".`);
+        }
+        if (examId && examId !== 'all' && moduleObj.examId && moduleObj.examId !== examId) {
+          errors.push(`Module "${moduleObj.name || moduleId}" belongs to exam "${moduleObj.examId}", not "${examId}".`);
+        }
+      }
+    }
+
+    if (lectureId && lectureId !== 'all') {
+      const lecture = curriculumService.getLectureById(lectureId);
+      if (!lecture) {
+        errors.push(`Lecture "${lectureId}" not found in curriculum.`);
+      } else if (moduleId && moduleId !== 'all' && lecture.moduleId && lecture.moduleId !== moduleId) {
+        errors.push(`Lecture "${lecture.name || lectureId}" belongs to module "${lecture.moduleId}", not "${moduleId}".`);
+      }
+    }
+
+    return { isValid: errors.length === 0, errors };
   }
 
   resetToDefaults() {
@@ -309,6 +354,87 @@ class QuestionService {
     }
 
     return list;
+  }
+
+  /**
+   * Retrieves all questions that are published and eligible for inclusion in official tests.
+   * @param {object} filters
+   * @returns {Array<object>}
+   */
+  getPublishedQuestions(filters = {}) {
+    return this.searchQuestions({
+      ...filters,
+      status: 'published'
+    });
+  }
+
+  /**
+   * Canonical authoring bridge: converts simple authoring form inputs
+   * into a standardized Question Bank item and persists it.
+   * @param {object} authoringData
+   * @returns {{ success: boolean, question?: object, errors?: string[] }}
+   */
+  createFromAuthoring(authoringData) {
+    const rawOptions = authoringData.options || [
+      { id: 'A', text: authoringData.optA || '' },
+      { id: 'B', text: authoringData.optB || '' },
+      { id: 'C', text: authoringData.optC || '' },
+      { id: 'D', text: authoringData.optD || '' }
+    ];
+
+    const options = rawOptions.map((opt, idx) => ({
+      id: opt.id || opt.key || String.fromCharCode(65 + idx),
+      text: opt.text || ''
+    }));
+
+    const correctKey = authoringData.correct || authoringData.correctOption || 'A';
+
+    // Validate curriculum hierarchy if provided
+    if (authoringData.examId || authoringData.subjectId || authoringData.moduleId) {
+      const hierVal = this.validateCurriculumHierarchy({
+        examId: authoringData.examId,
+        subjectId: authoringData.subjectId,
+        moduleId: authoringData.moduleId,
+        lectureId: authoringData.lectureId
+      });
+      if (!hierVal.isValid) {
+        return { success: false, errors: hierVal.errors };
+      }
+    }
+
+    const questionItem = {
+      id: authoringData.id || `q-auth-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      type: authoringData.type || 'single_choice',
+      status: authoringData.status || 'published',
+      content: {
+        vignette: (authoringData.vignette || '').trim(),
+        prompt: (authoringData.question || authoringData.prompt || 'What is the most appropriate next clinical step or diagnosis?').trim()
+      },
+      responseSchema: {
+        options
+      },
+      answer: {
+        correct: [correctKey]
+      },
+      scoring: {
+        marks: Number(authoringData.marks) || 5,
+        negativeMarks: Number(authoringData.negativeMarks) !== undefined ? Number(authoringData.negativeMarks) : -1
+      },
+      explanation: (authoringData.explanation || authoringData.rationale || '').trim(),
+      metadata: {
+        examId: authoringData.examId || 'neet-pg',
+        subjectId: authoringData.subjectId || null,
+        moduleId: authoringData.moduleId || null,
+        lectureId: authoringData.lectureId || null,
+        subject: authoringData.subject || 'Medicine',
+        topic: authoringData.topic || 'Clinical Vignettes',
+        difficulty: authoringData.difficulty || 'medium',
+        guidelineRef: authoringData.guidelineRef || 'National Medical Curriculum Guidelines',
+        tags: Array.isArray(authoringData.tags) ? authoringData.tags : ['Clinical Vignette', 'High-Yield']
+      }
+    };
+
+    return this.createQuestion(questionItem);
   }
 }
 

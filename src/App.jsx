@@ -6,8 +6,6 @@ import HomePage from './pages/HomePage';
 import PackageSelectionPage from './pages/PackageSelectionPage';
 import DashboardPage from './pages/DashboardPage';
 import DayContentView from './pages/DayContentView';
-import FacultyLoginPage from './pages/FacultyLoginPage';
-import FacultyDashboardPage from './pages/FacultyDashboardPage';
 import LoginPage from './pages/LoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import TestExperiencePage from './pages/TestExperiencePage';
@@ -39,6 +37,8 @@ import FacultyDirectUploadPage from './pages/faculty/FacultyDirectUploadPage';
 import FacultyLiveSessionsPage from './pages/faculty/FacultyLiveSessionsPage';
 import FacultyTestsPage from './pages/faculty/FacultyTestsPage';
 import FacultyStudentsPage from './pages/faculty/FacultyStudentsPage';
+import FacultyStudentDetailPage from './pages/faculty/FacultyStudentDetailPage';
+import FacultyDoubtsPage from './pages/faculty/FacultyDoubtsPage';
 import FacultyAnalyticsPage from './pages/faculty/FacultyAnalyticsPage';
 import FacultySchedulePage from './pages/faculty/FacultySchedulePage';
 import FacultyAvailabilityPage from './pages/faculty/FacultyAvailabilityPage';
@@ -266,6 +266,8 @@ export default function App() {
             <Route path="/faculty/tests/:testId/questions" element={<FacultyQuestionAuthoringPage />} />
             <Route path="/faculty/tests/:testId/results" element={<FacultyTestResultsPage />} />
             <Route path="/faculty/students" element={<FacultyStudentsPage />} />
+            <Route path="/faculty/students/:studentId" element={<FacultyStudentDetailPage />} />
+            <Route path="/faculty/doubts" element={<FacultyDoubtsPage />} />
             <Route path="/faculty/analytics" element={<FacultyAnalyticsPage />} />
           </Route>
 

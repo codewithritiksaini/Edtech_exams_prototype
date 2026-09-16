@@ -15,8 +15,12 @@ export default function AdminLayout() {
     const user = authService.getCurrentUser();
     if (!user) {
       navigate('/login?redirect=' + encodeURIComponent(location.pathname));
-    } else if (user.role === USER_ROLES.STUDENT) {
-      navigate('/dashboard');
+    } else if (user.role !== USER_ROLES.ADMIN) {
+      if (user.role === USER_ROLES.FACULTY) {
+        navigate('/faculty');
+      } else {
+        navigate('/student/dashboard');
+      }
     } else {
       setCurrentUser(user);
     }
@@ -24,8 +28,12 @@ export default function AdminLayout() {
     const unsubscribe = authService.subscribe((updatedUser) => {
       if (!updatedUser) {
         navigate('/login');
-      } else if (updatedUser.role === USER_ROLES.STUDENT) {
-        navigate('/dashboard');
+      } else if (updatedUser.role !== USER_ROLES.ADMIN) {
+        if (updatedUser.role === USER_ROLES.FACULTY) {
+          navigate('/faculty');
+        } else {
+          navigate('/student/dashboard');
+        }
       } else {
         setCurrentUser(updatedUser);
       }

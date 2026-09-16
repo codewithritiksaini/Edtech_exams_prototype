@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { peopleService } from '../services/peopleService';
 import { curriculumService } from '../services/curriculumService';
+import { doubtsService } from '../services/doubtsService';
 
 export default function FacultySidebar({ 
   activeTab, 
@@ -36,9 +37,10 @@ export default function FacultySidebar({
   const location = useLocation();
   const [isHovered, setIsHovered] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({
-    curriculum: false,
-    people: false,
-    contentSchedule: false
+    academic: false,
+    teaching: false,
+    assessments: false,
+    students: false
   });
 
   // Support both external onTogglePin and local internal toggle fallback
@@ -85,6 +87,7 @@ export default function FacultySidebar({
     availability: '/faculty/availability',
     upload: '/faculty/upload',
     students: '/faculty/students',
+    doubts: '/faculty/doubts',
     live: '/faculty/live-sessions',
     tests: '/faculty/tests',
     questions: '/faculty/questions',
@@ -108,6 +111,7 @@ export default function FacultySidebar({
     if (tabId === 'availability') return p.startsWith('/faculty/availability');
     if (tabId === 'upload') return p.startsWith('/faculty/upload');
     if (tabId === 'students') return p.startsWith('/faculty/students');
+    if (tabId === 'doubts') return p.startsWith('/faculty/doubts');
     if (tabId === 'live') return p.startsWith('/faculty/live-sessions');
     if (tabId === 'tests') return p.startsWith('/faculty/tests');
     if (tabId === 'questions') return p.startsWith('/faculty/questions');
@@ -139,9 +143,7 @@ export default function FacultySidebar({
         />
       )}
 
-      {/* Desktop Layout Spacer:
-          When pinned: takes full 305px in document flow.
-          When unpinned: takes compact 80px rail space so content doesn't jump on hover! */}
+      {/* Desktop Layout Spacer */}
       <div 
         className={`hidden lg:block shrink-0 transition-all duration-200 ease-in-out ${
           effectivePinned ? 'w-[305px]' : 'w-20'
@@ -169,10 +171,10 @@ export default function FacultySidebar({
         }`}
       >
         
-        {/* Navigation Items Area with Sleek Custom Scrollbar */}
+        {/* Navigation Items Area */}
         <div className="p-2.5 space-y-2 overflow-y-auto custom-sidebar-scroll flex-grow overflow-x-hidden">
           
-          {/* Mobile Close Bar (Mobile Only) */}
+          {/* Mobile Close Bar */}
           <div className="flex lg:hidden items-center justify-between pb-2 border-b border-slate-100">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Faculty Portal
@@ -190,7 +192,7 @@ export default function FacultySidebar({
             {isExpanded ? (
               <>
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 pl-1.5 whitespace-nowrap">
-                  Faculty Console
+                  Command Center
                 </span>
                 <button
                   id="btn-faculty-sidebar-pin-toggle"
@@ -201,7 +203,7 @@ export default function FacultySidebar({
                       ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 shadow-2xs' 
                       : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/60 border border-transparent hover:border-indigo-100'
                   }`}
-                  title={effectivePinned ? 'Sidebar is Pinned (Click to Unpin & auto-collapse)' : 'Sidebar is Unpinned (Click to Pin open)'}
+                  title={effectivePinned ? 'Sidebar is Pinned' : 'Sidebar is Unpinned'}
                 >
                   {effectivePinned ? (
                     <>
@@ -223,7 +225,7 @@ export default function FacultySidebar({
                   type="button"
                   onClick={togglePin}
                   className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                  title="Click to Pin sidebar open (or hover to extend)"
+                  title="Click to Pin sidebar open"
                 >
                   <PinOff className="w-4 h-4" />
                 </button>
@@ -231,7 +233,7 @@ export default function FacultySidebar({
             )}
           </div>
 
-          {/* SECTION 1: DASHBOARD OVERVIEW */}
+          {/* SECTION 1: COMMAND CENTER (DASHBOARD) */}
           <div className="space-y-1">
             <button
               onClick={() => handleTabClick('overview')}
@@ -245,30 +247,30 @@ export default function FacultySidebar({
               }`}
             >
               <LayoutDashboard className={`w-4 h-4 shrink-0 ${isTabActive('overview') ? 'text-indigo-600' : 'text-slate-400'}`} />
-              {isExpanded && <span className="whitespace-nowrap">Dashboard (Overview)</span>}
+              {isExpanded && <span className="whitespace-nowrap">Dashboard</span>}
             </button>
           </div>
 
-          {/* SECTION 2: EXAMS & CURRICULUM */}
+          {/* SECTION 2: ACADEMIC (MY PROGRAMS) */}
           <div className="space-y-1 pt-1.5 border-t border-slate-100">
             {isExpanded ? (
               <button
-                onClick={() => toggleSection('curriculum')}
+                onClick={() => toggleSection('academic')}
                 className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
               >
-                <span className="whitespace-nowrap">Exams & Curriculum</span>
-                {collapsedSections.curriculum ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                <span className="whitespace-nowrap">Academic</span>
+                {collapsedSections.academic ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
             ) : (
               <div className="my-1 border-t border-slate-100" />
             )}
 
-            {(!collapsedSections.curriculum || !isExpanded) && (
+            {(!collapsedSections.academic || !isExpanded) && (
               <div className="space-y-1">
-                {/* Exams & Curriculum */}
+                {/* My Programs */}
                 <button
                   onClick={() => handleTabClick('exams')}
-                  title={!isExpanded ? 'Exams & Curriculum (Assigned)' : undefined}
+                  title={!isExpanded ? 'My Programs (Assigned Curriculum)' : undefined}
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
@@ -279,7 +281,7 @@ export default function FacultySidebar({
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                     <BookOpen className={`w-4 h-4 shrink-0 ${isTabActive('exams') ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {isExpanded && <span className="whitespace-nowrap shrink-0">Exams & Curriculum</span>}
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">My Programs</span>}
                   </div>
                   {isExpanded && (
                     <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
@@ -288,10 +290,52 @@ export default function FacultySidebar({
                   )}
                 </button>
 
+                {/* Upload Content */}
+                <button
+                  onClick={() => handleTabClick('upload')}
+                  title={!isExpanded ? 'Upload Content (Rapid Studio)' : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
+                    isTabActive('upload')
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+                    <UploadCloud className={`w-4 h-4 shrink-0 ${isTabActive('upload') ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Upload Content</span>}
+                  </div>
+                  {isExpanded && (
+                    <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
+                      Studio
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 3: TEACHING */}
+          <div className="space-y-1 pt-1.5 border-t border-slate-100">
+            {isExpanded ? (
+              <button
+                onClick={() => toggleSection('teaching')}
+                className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <span className="whitespace-nowrap">Teaching</span>
+                {collapsedSections.teaching ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            ) : (
+              <div className="my-1 border-t border-slate-100" />
+            )}
+
+            {(!collapsedSections.teaching || !isExpanded) && (
+              <div className="space-y-1">
                 {/* Teaching Schedule */}
                 <button
                   onClick={() => handleTabClick('schedule')}
-                  title={!isExpanded ? 'Teaching Schedule' : undefined}
+                  title={!isExpanded ? 'My Schedule (Classes)' : undefined}
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
@@ -302,7 +346,7 @@ export default function FacultySidebar({
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                     <Calendar className={`w-4 h-4 shrink-0 ${isTabActive('schedule') ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {isExpanded && <span className="whitespace-nowrap shrink-0">Teaching Schedule</span>}
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">My Schedule</span>}
                   </div>
                   {isExpanded && (
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
@@ -314,7 +358,7 @@ export default function FacultySidebar({
                 {/* My Availability */}
                 <button
                   onClick={() => handleTabClick('availability')}
-                  title={!isExpanded ? 'My Availability' : undefined}
+                  title={!isExpanded ? 'My Availability (Slots)' : undefined}
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
@@ -334,94 +378,10 @@ export default function FacultySidebar({
                   )}
                 </button>
 
-                {/* Upload Content */}
-                <button
-                  onClick={() => handleTabClick('upload')}
-                  title={!isExpanded ? 'Upload Content (Main Flow)' : undefined}
-                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
-                  } ${
-                    isTabActive('upload')
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <UploadCloud className={`w-4 h-4 shrink-0 ${isTabActive('upload') ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {isExpanded && <span className="whitespace-nowrap shrink-0">Upload Content</span>}
-                  </div>
-                  {isExpanded && (
-                    <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
-                      Main Flow
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* SECTION 3: PEOPLE */}
-          <div className="space-y-1 pt-1.5 border-t border-slate-100">
-            {isExpanded ? (
-              <button
-                onClick={() => toggleSection('people')}
-                className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
-                <span className="whitespace-nowrap">People</span>
-                {collapsedSections.people ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-            ) : (
-              <div className="my-1 border-t border-slate-100" />
-            )}
-
-            {(!collapsedSections.people || !isExpanded) && (
-              <div className="space-y-1">
-                {/* My Students */}
-                <button
-                  onClick={() => handleTabClick('students')}
-                  title={!isExpanded ? 'My Students (1.4k)' : undefined}
-                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
-                  } ${
-                    isTabActive('students')
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-                    <Users className={`w-4 h-4 shrink-0 ${isTabActive('students') ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {isExpanded && <span className="whitespace-nowrap shrink-0">My Students</span>}
-                  </div>
-                  {isExpanded && (
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
-                      1.4k
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* SECTION 4: LIVE & ASSESSMENTS */}
-          <div className="space-y-1 pt-1.5 border-t border-slate-100">
-            {isExpanded ? (
-              <button
-                onClick={() => toggleSection('contentSchedule')}
-                className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
-                <span className="whitespace-nowrap">Live & Assessments</span>
-                {collapsedSections.contentSchedule ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-            ) : (
-              <div className="my-1 border-t border-slate-100" />
-            )}
-
-            {(!collapsedSections.contentSchedule || !isExpanded) && (
-              <div className="space-y-1">
-                {/* Schedule Live Session */}
+                {/* Live Sessions */}
                 <button
                   onClick={() => handleTabClick('live')}
-                  title={!isExpanded ? 'Schedule Live Session (Tonight)' : undefined}
+                  title={!isExpanded ? 'Live Sessions' : undefined}
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
@@ -432,19 +392,38 @@ export default function FacultySidebar({
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                     <Video className={`w-4 h-4 shrink-0 ${isTabActive('live') ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {isExpanded && <span className="whitespace-nowrap shrink-0">Schedule Live Session</span>}
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Live Sessions</span>}
                   </div>
                   {isExpanded && (
                     <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
-                      Tonight
+                      Live
                     </span>
                   )}
                 </button>
+              </div>
+            )}
+          </div>
 
-                {/* Manage Tests */}
+          {/* SECTION 4: ASSESSMENTS */}
+          <div className="space-y-1 pt-1.5 border-t border-slate-100">
+            {isExpanded ? (
+              <button
+                onClick={() => toggleSection('assessments')}
+                className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <span className="whitespace-nowrap">Assessments</span>
+                {collapsedSections.assessments ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            ) : (
+              <div className="my-1 border-t border-slate-100" />
+            )}
+
+            {(!collapsedSections.assessments || !isExpanded) && (
+              <div className="space-y-1">
+                {/* Tests */}
                 <button
                   onClick={() => handleTabClick('tests')}
-                  title={!isExpanded ? 'Manage Tests (CBT Engine)' : undefined}
+                  title={!isExpanded ? 'Tests & CBT Engine' : undefined}
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
@@ -455,7 +434,7 @@ export default function FacultySidebar({
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                     <FileText className={`w-4 h-4 shrink-0 ${isTabActive('tests') ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {isExpanded && <span className="whitespace-nowrap shrink-0">Manage Tests</span>}
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Tests</span>}
                   </div>
                   {isExpanded && (
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
@@ -464,7 +443,7 @@ export default function FacultySidebar({
                   )}
                 </button>
 
-                {/* Question Bank (Phase 3 Reusable Item Repository) */}
+                {/* Question Bank */}
                 <button
                   onClick={() => handleTabClick('questions')}
                   title={!isExpanded ? 'Question Bank (Item Repository)' : undefined}
@@ -487,10 +466,10 @@ export default function FacultySidebar({
                   )}
                 </button>
 
-                {/* Sample Papers (Assigned Modules PDF Practice) */}
+                {/* Sample Papers */}
                 <button
                   onClick={() => handleTabClick('samplePapers')}
-                  title={!isExpanded ? 'Module Sample Papers & PDFs' : undefined}
+                  title={!isExpanded ? 'Sample Papers & PDFs' : undefined}
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
@@ -513,11 +492,82 @@ export default function FacultySidebar({
             )}
           </div>
 
-          {/* SECTION 5: REPORTS & ANALYTICS */}
+          {/* SECTION 5: STUDENTS */}
+          <div className="space-y-1 pt-1.5 border-t border-slate-100">
+            {isExpanded ? (
+              <button
+                onClick={() => toggleSection('students')}
+                className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <span className="whitespace-nowrap">Students</span>
+                {collapsedSections.students ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            ) : (
+              <div className="my-1 border-t border-slate-100" />
+            )}
+
+            {(!collapsedSections.students || !isExpanded) && (
+              <div className="space-y-1">
+                {/* My Students */}
+                <button
+                  onClick={() => handleTabClick('students')}
+                  title={!isExpanded ? `My Students (${peopleService.getStudentsForScope(currentFaculty?.assignedExams || []).length})` : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
+                    isTabActive('students')
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+                    <Users className={`w-4 h-4 shrink-0 ${isTabActive('students') ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">My Students</span>}
+                  </div>
+                  {isExpanded && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
+                      {peopleService.getStudentsForScope(currentFaculty?.assignedExams || []).length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Doubts & Q&A */}
+                <button
+                  onClick={() => handleTabClick('doubts')}
+                  title={!isExpanded ? 'Doubts & Q&A Hub' : undefined}
+                  className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
+                  } ${
+                    isTabActive('doubts')
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+                    <HelpCircle className={`w-4 h-4 shrink-0 ${isTabActive('doubts') ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Doubts & Q&A</span>}
+                  </div>
+                  {isExpanded && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto ${
+                      (doubtsService.getDoubtStatsForScope ? doubtsService.getDoubtStatsForScope(currentFaculty?.assignedExams || []).unresolved : 0) > 0
+                        ? 'bg-rose-100 text-rose-700 font-black'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {(doubtsService.getDoubtStatsForScope ? doubtsService.getDoubtStatsForScope(currentFaculty?.assignedExams || []).unresolved : 0) > 0
+                        ? `${doubtsService.getDoubtStatsForScope(currentFaculty?.assignedExams || []).unresolved} Open`
+                        : 'Resolved'}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 6: INSIGHTS (ANALYTICS) */}
           <div className="space-y-1 pt-1.5 border-t border-slate-100">
             <button
               onClick={() => handleTabClick('analytics')}
-              title={!isExpanded ? 'Reports & Analytics' : undefined}
+              title={!isExpanded ? 'Analytics & Performance' : undefined}
               className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
               } ${
@@ -528,7 +578,7 @@ export default function FacultySidebar({
             >
               <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                 <BarChart3 className={`w-4 h-4 shrink-0 ${isTabActive('analytics') ? 'text-indigo-600' : 'text-slate-400'}`} />
-                {isExpanded && <span className="whitespace-nowrap shrink-0">Reports & Analytics</span>}
+                {isExpanded && <span className="whitespace-nowrap shrink-0">Analytics</span>}
               </div>
               {isExpanded && (
                 <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">

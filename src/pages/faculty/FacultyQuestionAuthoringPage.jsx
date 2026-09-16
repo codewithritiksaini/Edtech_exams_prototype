@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -12,9 +12,14 @@ import {
   Eye, 
   Check, 
   BookOpen,
-  Award
+  Award,
+  Database,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { cbtTestService } from '../../services/cbtTestService';
+import { questionService } from '../../services/questionService';
+import { peopleService } from '../../services/peopleService';
 
 const defaultSampleQuestions = [
   {
@@ -53,6 +58,11 @@ export default function FacultyQuestionAuthoringPage() {
   const { testId } = useParams();
   const navigate = useNavigate();
 
+  const [currentFaculty, setCurrentFaculty] = useState(() => peopleService.getCurrentFacultyProfile());
+  const assignedExamIds = useMemo(() => {
+    return currentFaculty?.assignedExams?.length ? currentFaculty.assignedExams : ['neet-pg', 'usmle'];
+  }, [currentFaculty]);
+
   const [currentTest, setCurrentTest] = useState(() => {
     return cbtTestService.getTestById(testId) || {
       id: testId,
@@ -62,28 +72,43 @@ export default function FacultyQuestionAuthoringPage() {
     };
   });
 
-  // Load questions from currentTest or default seeds
+  const testTrack = currentTest?.examTrack || currentTest?.courseId || 'neet-pg';
+  const isOutOfScope = !assignedExamIds.includes(testTrack) && testTrack !== 'all';
+
+  // Load questions from currentTest (resolving questionIds if present) or default seeds
   const [questions, setQuestions] = useState(() => {
-    if (currentTest.questions && Array.isArray(currentTest.questions) && currentTest.questions.length > 0) {
-      return currentTest.questions.map((q, idx) => ({
-        id: q.id || idx + 1,
-        vignette: q.vignette || '',
-        question: q.question || '',
-        options: (q.options || []).map(o => ({
-          id: o.id || o.key,
-          key: o.key || o.id,
-          text: o.text || ''
-        })),
-        correctOption: q.correctOption || q.correct || 'A',
-        explanation: q.explanation || '',
-        guidelineRef: q.guidelineRef || ''
-      }));
+    const test = cbtTestService.getTestById(testId);
+    if (test) {
+      const resolved = cbtTestService.getQuestionsForTest(test);
+      if (resolved && Array.isArray(resolved) && resolved.length > 0) {
+        return resolved.map((q, idx) => ({
+          id: q.id || idx + 1,
+          vignette: q.vignette || '',
+          question: q.question || 'What is the most appropriate next clinical step or diagnosis?',
+          options: (q.options || []).map(o => ({
+            id: o.id || o.key,
+            key: o.key || o.id,
+            text: o.text || ''
+          })),
+          correctOption: q.correctOption || q.correct || 'A',
+          explanation: q.explanation || '',
+          guidelineRef: q.guidelineRef || ''
+        }));
+      }
     }
     return defaultSampleQuestions;
   });
 
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // Available published questions from Question Bank
+  const availableBankQuestions = useMemo(() => {
+    return questionService.getPublishedQuestions({
+      examId: testTrack
+    });
+  }, [testTrack]);
 
   const currentQ = questions[activeQuestionIndex] || questions[0] || defaultSampleQuestions[0];
 
@@ -137,8 +162,51 @@ export default function FacultyQuestionAuthoringPage() {
     // Persist to central cbtTestService
     cbtTestService.updateTestQuestions(testId, updatedList);
 
+    // Sync to Question Bank
+    try {
+      questionService.createFromAuthoring({
+        id: updatedQ.id,
+        vignette: updatedQ.vignette,
+        prompt: updatedQ.question,
+        question: updatedQ.question,
+        optA: optA.trim(),
+        optB: optB.trim(),
+        optC: optC.trim(),
+        optD: optD.trim(),
+        correct: correctOpt,
+        explanation: explanation.trim(),
+        guidelineRef: guidelineRef.trim(),
+        examId: currentTest.examTrack || currentTest.courseId || 'neet-pg',
+        subjectId: currentTest.subjectId,
+        moduleId: currentTest.moduleId,
+        lectureId: currentTest.lectureId
+      });
+    } catch (err) {
+      console.warn('Sync to question bank:', err);
+    }
+
     setToastMessage(`Saved Question #${activeQuestionIndex + 1} to Assessment Bank & synced to CBT Engine!`);
     setTimeout(() => setToastMessage(''), 3500);
+  };
+
+  const handleImportQuestion = (bankQ) => {
+    const normalized = cbtTestService.normalizeQuestion(bankQ, questions.length + 1);
+    const newQ = {
+      id: normalized.id,
+      vignette: normalized.vignette,
+      question: normalized.question,
+      options: normalized.options,
+      correctOption: normalized.correctOption,
+      explanation: normalized.explanation,
+      guidelineRef: normalized.guidelineRef
+    };
+    const nextList = [...questions, newQ];
+    setQuestions(nextList);
+    cbtTestService.updateTestQuestions(testId, nextList);
+    setIsImportModalOpen(false);
+    handleSelectQuestion(nextList.length - 1);
+    setToastMessage(`Imported vignette from Question Bank into Assessment!`);
+    setTimeout(() => setToastMessage(''), 3000);
   };
 
   const handleAddNewQuestion = () => {
@@ -184,6 +252,29 @@ export default function FacultyQuestionAuthoringPage() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
+  if (isOutOfScope) {
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Assessment Scope Restricted</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          The assessment <strong className="text-slate-800">"{currentTest?.name || testId}"</strong> belongs to exam track <strong className="text-slate-800">{testTrack.toUpperCase()}</strong>, which is outside your assigned teaching programs ({assignedExamIds.join(', ').toUpperCase()}).
+        </p>
+        <div className="pt-2">
+          <Link
+            to="/faculty/tests"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to My Assessments</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in max-w-7xl">
       {/* Toast */}
@@ -219,14 +310,36 @@ export default function FacultyQuestionAuthoringPage() {
           </p>
         </div>
 
-        <button
-          onClick={handleAddNewQuestion}
-          className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Add Next Question</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="px-4 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shrink-0 border border-indigo-200/80"
+          >
+            <Database className="w-4 h-4 text-indigo-600" />
+            <span>Import from Bank</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleAddNewQuestion}
+            className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Add Next Question</span>
+          </button>
+        </div>
       </div>
+
+      {/* Scope Integrity Banner */}
+      {isOutOfScope && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-3 text-xs">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div>
+            <span className="font-bold">Faculty Scope Notice:</span> This assessment belongs to track <strong>{testTrack.toUpperCase()}</strong>, which is outside your primary assigned programs ({assignedExamIds.join(', ').toUpperCase()}). Any edits made will be flagged for departmental review.
+          </div>
+        </div>
+      )}
 
       {/* Main Studio Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -447,6 +560,83 @@ export default function FacultyQuestionAuthoringPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal: Import from Question Bank */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-6 animate-in zoom-in-95 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Import from Question Bank</h3>
+                  <p className="text-xs text-slate-500">
+                    Published vignettes for {testTrack.toUpperCase()} ({availableBankQuestions.length} available)
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsImportModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-2xl p-2 bg-slate-50/50 space-y-1.5">
+              {availableBankQuestions.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  No published clinical questions found for this exam program in the Question Bank.
+                </div>
+              ) : (
+                availableBankQuestions.map(bq => {
+                  const promptText = bq.content?.prompt || bq.prompt || bq.question || bq.title || 'Clinical Question';
+                  const vignetteSnippet = bq.content?.vignette || bq.vignette || '';
+                  return (
+                    <div
+                      key={bq.id}
+                      className="p-3.5 bg-white rounded-xl border border-slate-200/80 hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="space-y-1 max-w-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">
+                            {bq.metadata?.subject || 'Clinical Vignette'}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            +{bq.scoring?.marks || 5} marks • -1 neg
+                          </span>
+                        </div>
+                        <div className="font-bold text-slate-900 line-clamp-1">{promptText}</div>
+                        {vignetteSnippet && (
+                          <div className="text-[11px] text-slate-500 line-clamp-2">{vignetteSnippet}</div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleImportQuestion(bq)}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shrink-0 flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-600/20"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Import</span>
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

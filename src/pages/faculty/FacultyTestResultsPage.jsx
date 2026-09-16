@@ -10,13 +10,18 @@ import {
   CheckCircle2, 
   Clock, 
   FileText,
-  Filter
+  Filter,
+  AlertTriangle
 } from 'lucide-react';
 import { cbtTestService } from '../../services/cbtTestService';
+import { peopleService } from '../../services/peopleService';
 
 export default function FacultyTestResultsPage() {
   const { testId } = useParams();
   const navigate = useNavigate();
+
+  const [currentFaculty] = useState(() => peopleService.getCurrentFacultyProfile());
+  const assignedExamIds = currentFaculty?.assignedExams || ['neet-pg', 'usmle'];
 
   const [attemptsData, setAttemptsData] = useState(() => cbtTestService.getAttemptsForTest(testId));
 
@@ -34,6 +39,9 @@ export default function FacultyTestResultsPage() {
     course: 'NEET PG & NExT 2026',
     totalMarks: 100
   };
+
+  const testTrack = currentTest?.examTrack || currentTest?.courseId || 'neet-pg';
+  const isOutOfScope = !assignedExamIds.includes(testTrack) && testTrack !== 'all';
 
   const candidatesList = attemptsData.candidates || [];
   const summary = attemptsData.summary || {
@@ -59,6 +67,29 @@ export default function FacultyTestResultsPage() {
     setTimeout(() => setToastMessage('Scorecard CSV downloaded successfully!'), 1500);
     setTimeout(() => setToastMessage(''), 4500);
   };
+
+  if (isOutOfScope) {
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xs text-center max-w-lg mx-auto my-12 space-y-4 animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Assessment Results Restricted</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          The cohort results for assessment <strong className="text-slate-800">"{currentTest?.name || testId}"</strong> belong to program track <strong className="text-slate-800">{testTrack.toUpperCase()}</strong>, which is outside your assigned teaching scope ({assignedExamIds.join(', ').toUpperCase()}).
+        </p>
+        <div className="pt-2">
+          <Link
+            to="/faculty/tests"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to My Assessments</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in max-w-6xl">

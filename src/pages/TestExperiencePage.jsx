@@ -36,11 +36,15 @@ import {
   getTestTimes, 
   formatTestCountdown 
 } from '../services/cbtTestService';
+import { authService } from '../services/authService';
 import { sampleCbtQuestionBank } from '../data/mockData';
 
 export default function TestExperiencePage() {
   const { testId } = useParams();
   const navigate = useNavigate();
+
+  const currentUser = authService.getCurrentUser();
+  const currentStudentId = currentUser?.id || 'student-ritik';
 
   // Reactive clock updating every 1s
   const [now, setNow] = useState(() => Date.now());
@@ -51,16 +55,16 @@ export default function TestExperiencePage() {
 
   // Retrieve test definition
   const [test, setTest] = useState(() => cbtTestService.getTestById(testId));
-  const [attempt, setAttempt] = useState(() => cbtTestService.getActiveAttempt(testId) || cbtTestService.getCompletedAttempt(testId));
+  const [attempt, setAttempt] = useState(() => cbtTestService.getActiveAttempt(testId, currentStudentId) || cbtTestService.getCompletedAttempt(testId, currentStudentId));
 
   // Sync with service updates
   useEffect(() => {
     const unsub = cbtTestService.subscribe(() => {
       setTest(cbtTestService.getTestById(testId));
-      setAttempt(cbtTestService.getActiveAttempt(testId) || cbtTestService.getCompletedAttempt(testId));
+      setAttempt(cbtTestService.getActiveAttempt(testId, currentStudentId) || cbtTestService.getCompletedAttempt(testId, currentStudentId));
     });
     return unsub;
-  }, [testId]);
+  }, [testId, currentStudentId]);
 
   // Current view state: 'barrier' | 'instructions' | 'taking' | 'paused' | 'result'
   const isCompleted = attempt && attempt.status === CBT_STATUS.SUBMITTED;
@@ -117,10 +121,10 @@ export default function TestExperiencePage() {
     };
   }, [isTaking]);
 
-  // Questions to use
-  const questionsToUse = (test?.questions && Array.isArray(test.questions) && test.questions.length > 0)
-    ? test.questions
-    : sampleCbtQuestionBank;
+  // Questions to use - canonical resolution supporting Question Bank questionIds or inline items
+  const questionsToUse = useMemo(() => {
+    return cbtTestService.getQuestionsForTest(test || testId);
+  }, [test, testId]);
   const totalQuestions = questionsToUse.length;
 
   // Active question index
@@ -165,7 +169,7 @@ export default function TestExperiencePage() {
 
   // Actions
   const handleStartExam = () => {
-    const newAttempt = cbtTestService.startAttempt(test.id);
+    const newAttempt = cbtTestService.startAttempt(test.id, currentStudentId);
     setAttempt(newAttempt);
     window.scrollTo(0, 0);
   };

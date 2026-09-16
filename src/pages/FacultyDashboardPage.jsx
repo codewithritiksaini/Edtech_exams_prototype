@@ -33,11 +33,11 @@ import {
   facultySummaryMetrics, 
   facultyRecentActivity, 
   facultyStudentDirectory,
-  dashboardLiveSessions, 
   dashboardTests,
   testService,
   initialCohortTestResults 
 } from '../data/mockData';
+import { liveSessionsService } from '../services/liveSessionsService';
 
 export default function FacultyDashboardPage() {
   const navigate = useNavigate();
@@ -74,7 +74,12 @@ export default function FacultyDashboardPage() {
   const [newAnswer, setNewAnswer] = useState('');
 
   // Live Session form state
-  const [liveSessionsList, setLiveSessionsList] = useState(dashboardLiveSessions);
+  const [liveSessionsList, setLiveSessionsList] = useState(() => liveSessionsService.getAllSessions());
+
+  React.useEffect(() => {
+    const unsub = liveSessionsService.subscribe((updated) => setLiveSessionsList([...updated]));
+    return () => unsub();
+  }, []);
   const [liveCourse, setLiveCourse] = useState('neet-pg');
   const [liveDay, setLiveDay] = useState('Day 3 (Week 1)');
   const [liveTopic, setLiveTopic] = useState('STEMI & Acute Coronary Syndrome Grand Rounds');
@@ -136,18 +141,17 @@ export default function FacultyDashboardPage() {
 
   const handleScheduleLiveSession = (e) => {
     e.preventDefault();
-    const newSession = {
-      id: `live-${Date.now()}`,
+    liveSessionsService.addSession({
       title: liveTopic,
       faculty: facultyProfileData.name,
-      time: `${liveTime} IST (${liveDuration})`,
+      time: `${liveTime} IST`,
+      duration: liveDuration,
       date: liveDate,
-      status: 'Scheduled',
-      badge: 'New Scheduled',
-      attendeesCount: 0,
-      description: `Live interactive session for ${liveCourse.toUpperCase()} • ${liveDay}`
-    };
-    setLiveSessionsList([newSession, ...liveSessionsList]);
+      course: liveCourse,
+      dayInfo: liveDay,
+      description: `Live interactive session for ${liveCourse.toUpperCase()} • ${liveDay}`,
+      zoomLink: liveLink
+    });
     triggerUploadSuccess(`Live session "${liveTopic}" scheduled successfully!`);
   };
 

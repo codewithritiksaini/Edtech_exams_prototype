@@ -4,10 +4,10 @@
 // Hierarchy: Exam -> Subject -> Module -> Sample Papers (1 or multiple PDFs)
 // =============================================================================
 
-import { curriculumService } from './curriculumService';
-import { peopleService } from './peopleService';
-import { catalogService } from './catalogService';
-import { authService, USER_ROLES } from './authService';
+import { curriculumService } from './curriculumService.js';
+import { peopleService } from './peopleService.js';
+import { catalogService } from './catalogService.js';
+import { authService, USER_ROLES } from './authService.js';
 
 const STORAGE_KEY_SAMPLE_PAPERS = 'medprep_sample_papers_v1';
 const EVENT_SAMPLE_PAPERS_UPDATED = 'medprep-sample-papers-updated';

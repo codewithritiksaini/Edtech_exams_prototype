@@ -39,9 +39,9 @@ import ReportsAnalyticsTab from '../components/admin/ReportsAnalyticsTab';
 import { authService, USER_ROLES } from '../services/authService';
 import { 
   testService, 
-  initialCohortTestResults, 
-  dashboardLiveSessions 
+  initialCohortTestResults 
 } from '../data/mockData';
+import { liveSessionsService } from '../services/liveSessionsService';
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
@@ -142,7 +142,11 @@ export default function AdminDashboardPage() {
   // =========================================================================
   // LIVE SESSIONS STATE
   // =========================================================================
-  const [liveSessions, setLiveSessions] = useState(dashboardLiveSessions);
+  const [liveSessions, setLiveSessions] = useState(() => liveSessionsService.getAllSessions());
+  useEffect(() => {
+    const unsub = liveSessionsService.subscribe((updated) => setLiveSessions([...updated]));
+    return () => unsub();
+  }, []);
   const [sessionTitle, setSessionTitle] = useState('');
   const [sessionDate, setSessionDate] = useState('2026-09-06');
   const [sessionTime, setSessionTime] = useState('20:00');
@@ -225,16 +229,13 @@ export default function AdminDashboardPage() {
   const handleScheduleSession = (e) => {
     e.preventDefault();
     if (!sessionTitle) return;
-    const newSession = {
-      id: Date.now(),
+    liveSessionsService.addSession({
       title: sessionTitle,
       faculty: currentUser?.name || 'Dr. Siddharth V.',
       time: `${sessionTime} IST`,
       topic: sessionTopic,
-      attendees: 120,
-      zoomUrl: sessionLink
-    };
-    setLiveSessions([newSession, ...liveSessions]);
+      zoomLink: sessionLink
+    });
     setSessionTitle('');
     alert('Live Grand Round session broadcast scheduled successfully!');
   };

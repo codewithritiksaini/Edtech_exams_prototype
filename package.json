@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test:exam": "node scripts/testPhase2Model.js",
     "test:questions": "node scripts/testPhase3QuestionBank.js",
-    "test": "node scripts/testPhase2Model.js && node scripts/testPhase3QuestionBank.js"
+    "test:phase5": "node scripts/testPhase5Assessment.js",
+    "test:phase6": "node scripts/testPhase6Integration.js",
+    "test:phase7": "node scripts/testPhase7FinalVerification.js",
+    "test": "node scripts/testPhase2Model.js && node scripts/testPhase3QuestionBank.js && node scripts/testPhase5Assessment.js && node scripts/testPhase6Integration.js && node scripts/testPhase7FinalVerification.js"
   },
   "dependencies": {
     "lucide-react": "^0.441.0",

@@ -422,6 +422,41 @@ export const peopleService = {
     return all.filter(s => assignedExams.includes(s.examId));
   },
 
+  getStudentRawById: (studentId) => {
+    const all = peopleService.getStudents();
+    return all.find(s => s.id === studentId || s.email?.toLowerCase() === studentId?.toLowerCase()) || null;
+  },
+
+  getStudentById: (studentId, requestingFacultyEmailOrId = null) => {
+    const student = peopleService.getStudentRawById(studentId);
+    if (!student) {
+      return { student: null, authorized: false, reason: 'Student not found.' };
+    }
+
+    if (!requestingFacultyEmailOrId) {
+      return { student, authorized: true };
+    }
+
+    // Resolve requesting faculty
+    const facultyList = peopleService.getFacultyList();
+    const faculty = facultyList.find(f => 
+      f.id === requestingFacultyEmailOrId || 
+      f.email?.toLowerCase() === String(requestingFacultyEmailOrId).toLowerCase()
+    ) || peopleService.getCurrentFacultyProfile();
+
+    if (!faculty || !faculty.assignedExams || faculty.assignedExams.length === 0) {
+      return { student, authorized: true };
+    }
+
+    const isAuthorized = faculty.assignedExams.includes(student.examId);
+    return {
+      student: isAuthorized ? student : null,
+      rawStudent: student, // for contextual display in Access Denied view
+      authorized: isAuthorized,
+      reason: isAuthorized ? null : `Access Denied: Candidate is enrolled in ${student.examName || student.examId}, which is outside your assigned faculty scope (${faculty.assignedExamsLabels?.join(', ') || faculty.assignedExams.join(', ')}).`
+    };
+  },
+
   extendStudentPackage: (studentId, additionalMonths = 3) => {
     const list = peopleService.getStudents();
     const updated = list.map(s => {
