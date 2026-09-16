@@ -1035,7 +1035,279 @@ export const INITIAL_LECTURES = [
   }
 ];
 
+export function getRelativeScheduleDate(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().split('T')[0];
+}
+
 export const INITIAL_SCHEDULE = [
+  // Dr. Siddharth V. (MD, DM Interventional Cardiology — AIIMS New Delhi) Teaching Calendar
+  {
+    id: 'sched-sid-live-today-morning',
+    examId: 'neet-pg',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiology & ECG Foundations',
+    dayNumber: 3,
+    dayTitle: 'Day 3 (Morning) — Cardiac Arrhythmias & Clinical ECG Mastery (Grand Rounds)',
+    subjectId: 'sub-neet-cardio',
+    subjectName: 'Cardiology & Hemodynamics',
+    moduleId: 'mod-neet-arrhythmias',
+    moduleTitle: 'Cardiac Arrhythmias & Clinical ECG Mastery',
+    lectureIds: ['lec-ecg-arrhythmias'],
+    scheduledDate: getRelativeScheduleDate(0),
+    status: 'Confirmed',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '09:30 AM - 11:00 AM IST',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: false,
+    notes: 'Live bedside clinical grand round on SVT vs VT aberrancy, delta waves in WPW, and Brugada pattern.'
+  },
+  {
+    id: 'sched-sid-live-today-pci',
+    examId: 'neet-pg',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiology & ECG Foundations',
+    dayNumber: 4,
+    dayTitle: 'Day 4 — Interventional Cardiology: Acute STEMI & Primary PCI Catheterization Protocols',
+    subjectId: 'sub-neet-cardio',
+    subjectName: 'Cardiology & Hemodynamics',
+    moduleId: 'mod-neet-cad',
+    moduleTitle: 'Acute Coronary Syndromes & STEMI Pathways',
+    lectureIds: ['lec-cad-stemi'],
+    scheduledDate: getRelativeScheduleDate(0),
+    status: 'Scheduled',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '02:30 PM - 04:00 PM IST',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: false,
+    notes: 'Cath lab angiogram case studies, TIMI 3 flow restoration, bifurcation stenting indications, and door-to-balloon quality metrics.'
+  },
+  {
+    id: 'sched-sid-live-today-pharma',
+    examId: 'neet-pg',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Clinical Pharmacology Foundations',
+    dayNumber: 3,
+    dayTitle: 'Clinical Review: Antiarrhythmic Drug Protocols & Channel Blockade',
+    subjectId: 'sub-neet-pharma',
+    subjectName: 'Clinical Pharmacology & Toxicology',
+    moduleId: 'mod-neet-pharm-antiarrhythmics',
+    moduleTitle: 'Antiarrhythmics & Vaughan-Williams Pharmacology',
+    lectureIds: [],
+    scheduledDate: getRelativeScheduleDate(0),
+    status: 'Scheduled',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '07:00 PM - 08:30 PM IST',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: false,
+    notes: 'Interactive clinical case analysis on Vaughan-Williams Class I-IV drugs, amiodarone organ toxicities, and ACLS cardiac arrest algorithms.'
+  },
+  {
+    id: 'sched-sid-live-tomorrow-valvular',
+    examId: 'neet-pg',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiology & ECG Foundations',
+    dayNumber: 1,
+    dayTitle: 'Day 1 — Valvular Heart Diseases: Severe AS vs MR Hemodynamic Diagnostic Traps',
+    subjectId: 'sub-neet-cardio',
+    subjectName: 'Cardiology & Hemodynamics',
+    moduleId: 'mod-neet-valvular',
+    moduleTitle: 'Valvular Heart Diseases & Auscultation Dynamics',
+    lectureIds: ['lec-valvular-murmurs'],
+    scheduledDate: getRelativeScheduleDate(1),
+    status: 'Confirmed',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '10:00 AM - 11:30 AM IST',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: false,
+    notes: 'Echocardiography Doppler velocity gradients, dynamic bedside maneuvers, and TAVR vs SAVR clinical criteria.'
+  },
+  {
+    id: 'sched-sid-live-upcoming-hf',
+    examId: 'neet-pg',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiology & ECG Foundations',
+    dayNumber: 2,
+    dayTitle: 'Day 2 — Congestive Heart Failure (HFrEF) & Guideline Pharmacotherapy',
+    subjectId: 'sub-neet-cardio',
+    subjectName: 'Cardiology & Hemodynamics',
+    moduleId: 'mod-neet-hf',
+    moduleTitle: 'Heart Failure & Guideline Pharmacotherapy',
+    lectureIds: ['lec-hf-gdmt'],
+    scheduledDate: getRelativeScheduleDate(2),
+    status: 'Scheduled',
+    estimatedTime: '2.0 hours',
+    lectureTimeSlot: '09:00 AM - 11:00 AM IST',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: false,
+    hasTest: false,
+    notes: 'Quadruple therapy optimization (ARNI, beta-blocker, MRA, SGLT2 inhibitor) and ICD/CRT device therapy indications.'
+  },
+  {
+    id: 'sched-sid-live-upcoming-usmle',
+    examId: 'usmle',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiovascular Physiology & Pathology',
+    dayNumber: 3,
+    dayTitle: 'USMLE Cardiovascular Hemodynamics & Pressure-Volume Loops Workshop',
+    subjectId: 'sub-usmle-cvs',
+    subjectName: 'Cardiovascular Systems & Hemodynamics',
+    moduleId: 'mod-neet-cad',
+    moduleTitle: 'Cardiac Electrophysiology & Hemodynamic Cycles',
+    lectureIds: [],
+    scheduledDate: getRelativeScheduleDate(3),
+    status: 'Scheduled',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '04:30 PM - 06:00 PM IST',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: false,
+    notes: 'Wiggers diagram synchronization, PV loops in valvular pathologies, and jugular venous pulse wave derivations.'
+  },
+  {
+    id: 'sched-sid-live-today-usmle',
+    examId: 'usmle',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiovascular Physiology & Pathology',
+    dayNumber: 1,
+    dayTitle: 'USMLE Step 1 & 2 CK — Ventricular Pressure-Volume Loops & Dynamic Murmurs',
+    subjectId: 'sub-usmle-cvs',
+    subjectName: 'Cardiovascular Physiology & Pathology',
+    moduleId: 'mod-usmle-pvloops',
+    moduleTitle: 'Ventricular Pressure-Volume Loops & Murmurs',
+    lectureIds: ['lec-usmle-pvloops'],
+    scheduledDate: getRelativeScheduleDate(0),
+    status: 'Confirmed',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '05:00 PM - 06:30 PM IST',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: false,
+    notes: 'High-yield USMLE Step 1/Step 2 CK question breakdown on dynamic maneuvers (Valsalva, Handgrip, Amyl Nitrite) and PV loops.'
+  },
+  {
+    id: 'sched-sid-live-today-plab',
+    examId: 'plab',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — NHS Acute Clinical Presentations & Guidelines',
+    dayNumber: 1,
+    dayTitle: 'PLAB 1 / UKMLA — NHS Acute Chest Pain Triage & NICE Cardiac Guidelines',
+    subjectId: 'sub-plab-acute',
+    subjectName: 'NHS Acute Clinical Presentations & Guidelines',
+    moduleId: 'mod-plab-chestpain',
+    moduleTitle: 'Chest Pain Triage & NICE Cardiac Guidelines',
+    lectureIds: ['lec-plab-chestpain'],
+    scheduledDate: getRelativeScheduleDate(0),
+    status: 'Scheduled',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '03:30 PM - 05:00 PM GMT',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: false,
+    notes: 'NICE guideline CG95 chest pain triage, high-sensitivity troponin algorithms, and emergency cardiac referrals in NHS practice.'
+  },
+  {
+    id: 'sched-sid-live-upcoming-plab',
+    examId: 'plab',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — NHS Acute Clinical Presentations & Guidelines',
+    dayNumber: 3,
+    dayTitle: 'PLAB 2 Clinical OSCE Station — Precordial Auscultation & Patient Counseling',
+    subjectId: 'sub-plab-acute',
+    subjectName: 'NHS Acute Clinical Presentations & Guidelines',
+    moduleId: 'mod-plab-chestpain',
+    moduleTitle: 'Chest Pain Triage & NICE Cardiac Guidelines',
+    lectureIds: [],
+    scheduledDate: getRelativeScheduleDate(2),
+    status: 'Confirmed',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '02:00 PM - 03:30 PM GMT',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: false,
+    notes: 'Simulated patient station for PLAB 2: 8-minute timed station on precordial auscultation, explaining murmur to patient, and addressing concerns.'
+  },
+  {
+    id: 'sched-sid-live-today-eur',
+    examId: 'europe',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Fachsprachprüfung (FSP) Medical Terminology',
+    dayNumber: 1,
+    dayTitle: 'Europe Approbation & FSP — Notfall-Kardiologie: Akutes Koronarsyndrom & EKG',
+    subjectId: 'sub-eur-fsp',
+    subjectName: 'Fachsprachprüfung (FSP) Medical Terminology',
+    moduleId: 'mod-eur-anamnese',
+    moduleTitle: 'Klinische Notfälle & Fachsprachliche Arztbriefe',
+    lectureIds: ['lec-eur-dialogue'],
+    scheduledDate: getRelativeScheduleDate(0),
+    status: 'Scheduled',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '06:00 PM - 07:30 PM CET',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: false,
+    notes: 'Strukturierte Schmerzanamnese bei retrosternalem Druckgefühl, Differenzialdiagnosen (Aortendissektion vs Lungenembolie vs ACS), und Übergabegespräch.'
+  },
+  {
+    id: 'sched-sid-live-upcoming-eur',
+    examId: 'europe',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Fachsprachprüfung (FSP) Medical Terminology',
+    dayNumber: 5,
+    dayTitle: 'Europe Approbation KP — Herzinsuffizienz & Echokardiographie Fallbesprechung',
+    subjectId: 'sub-eur-fsp',
+    subjectName: 'Fachsprachprüfung (FSP) Medical Terminology',
+    moduleId: 'mod-eur-anamnese',
+    moduleTitle: 'Klinische Notfälle & Fachsprachliche Arztbriefe',
+    lectureIds: [],
+    scheduledDate: getRelativeScheduleDate(4),
+    status: 'Confirmed',
+    estimatedTime: '1.5 hours',
+    lectureTimeSlot: '05:00 PM - 06:30 PM CET',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: false,
+    notes: 'Klinisches Kolloquium zur Kenntnisprüfung (KP): NYHA-Klassifikation, Leitlinien-Therapie und EKG-Rhythmusstreifen.'
+  },
+  {
+    id: 'sched-sid-live-upcoming-mock',
+    examId: 'neet-pg',
+    weekNumber: 1,
+    weekTitle: 'Week 1 — Cardiology & ECG Foundations',
+    dayNumber: 7,
+    dayTitle: 'National All-India Cardiology Grand Rounds & Rapid-Fire Vignette CBT Analysis',
+    subjectId: 'sub-neet-cardio',
+    subjectName: 'Cardiology & Hemodynamics',
+    moduleId: 'mod-neet-arrhythmias',
+    moduleTitle: 'Cardiac Arrhythmias & Clinical ECG Mastery',
+    lectureIds: ['lec-ecg-arrhythmias'],
+    scheduledDate: getRelativeScheduleDate(5),
+    status: 'Scheduled',
+    estimatedTime: '2.0 hours',
+    lectureTimeSlot: '06:00 PM - 08:00 PM IST',
+    facultyName: 'Dr. Siddharth V.',
+    facultyEmail: 'faculty@demo.com',
+    hasLive: true,
+    hasTest: true,
+    notes: 'Interactive bedside diagnostic puzzles, ECG spotters, and high-yield national mock examination review.'
+  },
+
   // NEET PG — Week 1 (Days 1 to 7 Complete Curriculum)
   {
     id: 'sched-neet-w1-d1',
@@ -1565,6 +1837,33 @@ class CurriculumService {
           return true;
         });
         parsed = cleaned;
+
+        // Dynamically synchronize Dr. Siddharth V. real-time slots to today and upcoming offsets
+        const sidDateMap = {
+          'sched-sid-live-today-morning': 0,
+          'sched-sid-live-today-pci': 0,
+          'sched-sid-live-today-pharma': 0,
+          'sched-sid-live-today-usmle': 0,
+          'sched-sid-live-today-plab': 0,
+          'sched-sid-live-today-eur': 0,
+          'sched-sid-live-tomorrow-valvular': 1,
+          'sched-sid-live-upcoming-hf': 2,
+          'sched-sid-live-upcoming-plab': 2,
+          'sched-sid-live-upcoming-usmle': 3,
+          'sched-sid-live-upcoming-eur': 4,
+          'sched-sid-live-upcoming-mock': 5
+        };
+
+        parsed = parsed.map(slot => {
+          if (sidDateMap[slot.id] !== undefined) {
+            const expectedDate = getRelativeScheduleDate(sidDateMap[slot.id]);
+            if (slot.scheduledDate !== expectedDate) {
+              updated = true;
+              return { ...slot, scheduledDate: expectedDate };
+            }
+          }
+          return slot;
+        });
 
         const existingIds = new Set(parsed.map(s => s.id));
         const missing = INITIAL_SCHEDULE.filter(s => !existingIds.has(s.id));

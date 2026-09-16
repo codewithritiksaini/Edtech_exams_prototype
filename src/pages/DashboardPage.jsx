@@ -300,7 +300,7 @@ export default function DashboardPage() {
               <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm relative overflow-hidden text-slate-900">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
 
-                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-2">
                   <div className="space-y-2">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

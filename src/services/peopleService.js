@@ -15,10 +15,10 @@ export const INITIAL_FACULTY = [
     id: 'fac-1',
     name: 'Dr. Siddharth V.',
     email: 'faculty@demo.com',
-    specialty: 'MD Cardiology (AIIMS New Delhi)',
-    assignedExams: ['neet-pg', 'usmle'],
-    assignedExamsLabels: ['NEET PG & NExT', 'USMLE Step 1 & 2'],
-    assignedSubjects: ['sub-neet-cardio', 'sub-usmle-cvs'],
+    specialty: 'MD, DM (Interventional Cardiology) • AIIMS New Delhi Senior Clinical Faculty',
+    assignedExams: ['neet-pg', 'usmle', 'plab', 'europe'],
+    assignedExamsLabels: ['NEET PG & NExT', 'USMLE Step 1 & 2', 'PLAB 1 & 2 / UKMLA', 'Europe Licensing'],
+    assignedSubjects: ['sub-neet-cardio', 'sub-neet-pharma', 'sub-usmle-cvs', 'sub-plab-acute', 'sub-eur-fsp'],
     assignedWeeks: 'Weeks 1–4 (Cardiology & ECG)',
     contentUploadedCount: 14,
     liveSessionsCount: 6,
@@ -262,7 +262,25 @@ export const peopleService = {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_FACULTY);
       if (stored) {
-        return JSON.parse(stored);
+        let parsed = JSON.parse(stored);
+        const sid = parsed.find(f => f.email === 'faculty@demo.com');
+        let needsSave = false;
+        if (sid) {
+          if (!sid.specialty || !sid.specialty.includes('DM')) {
+            sid.specialty = 'MD, DM (Interventional Cardiology) • AIIMS New Delhi Senior Clinical Faculty';
+            needsSave = true;
+          }
+          if (!sid.assignedExams || sid.assignedExams.length < 4) {
+            sid.assignedExams = ['neet-pg', 'usmle', 'plab', 'europe'];
+            sid.assignedExamsLabels = ['NEET PG & NExT', 'USMLE Step 1 & 2', 'PLAB 1 & 2 / UKMLA', 'Europe Licensing'];
+            sid.assignedSubjects = ['sub-neet-cardio', 'sub-neet-pharma', 'sub-usmle-cvs', 'sub-plab-acute', 'sub-eur-fsp'];
+            needsSave = true;
+          }
+        }
+        if (needsSave) {
+          localStorage.setItem(STORAGE_KEY_FACULTY, JSON.stringify(parsed));
+        }
+        return parsed;
       }
     } catch (e) {
       console.warn('Faculty storage read error:', e);
