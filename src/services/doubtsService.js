@@ -119,19 +119,56 @@ class DoubtsService {
     return this.doubts.filter(d => d.examId === examId);
   }
 
+  getDoubtsForFacultyScope(assignedExams = [], facultyId = null) {
+    if (!assignedExams || assignedExams.length === 0) {
+      return this.doubts;
+    }
+    return this.doubts.filter(d => {
+      // Must match assigned exam track
+      const matchesExam = !d.examId || assignedExams.includes(d.examId);
+      if (!matchesExam) return false;
+
+      // If doubt is explicitly assigned to another faculty member, exclude unless assigned to current faculty
+      if (facultyId && d.assignedFacultyId && d.assignedFacultyId !== facultyId) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  getDoubtsByStudent(studentId) {
+    if (!studentId) return [];
+    return this.doubts.filter(d => d.studentId === studentId);
+  }
+
   getDoubtById(id) {
     return this.doubts.find(d => d.id === id) || null;
+  }
+
+  getDoubtStatsForScope(assignedExams = []) {
+    const scoped = this.getDoubtsForFacultyScope(assignedExams);
+    const unresolved = scoped.filter(d => d.status === 'unresolved' || d.status === 'OPEN').length;
+    const resolved = scoped.filter(d => d.status === 'resolved' || d.status === 'ANSWERED').length;
+    return {
+      total: scoped.length,
+      unresolved,
+      resolved
+    };
   }
 
   submitDoubt(doubtPayload) {
     const newDoubt = {
       id: `doubt-${Date.now()}`,
-      studentId: doubtPayload.studentId || 'st-curr',
+      studentId: doubtPayload.studentId || 'st-1',
       studentName: doubtPayload.studentName || 'Doctor Candidate',
       studentAvatar: doubtPayload.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
       course: doubtPayload.course || 'NEET PG & NExT 2026',
       examId: doubtPayload.examId || 'neet-pg',
+      subjectId: doubtPayload.subjectId || null,
       subjectName: doubtPayload.subjectName || 'General Medicine',
+      moduleId: doubtPayload.moduleId || null,
+      lectureId: doubtPayload.lectureId || null,
+      resourceId: doubtPayload.resourceId || null,
       topic: doubtPayload.topic || 'Clinical Lecture Topic',
       dayNumber: doubtPayload.dayNumber || 1,
       title: doubtPayload.title || 'Clinical Question',
@@ -139,9 +176,11 @@ class DoubtsService {
       submittedAt: new Date().toISOString(),
       status: 'unresolved',
       urgency: doubtPayload.urgency || 'normal',
+      assignedFacultyId: doubtPayload.assignedFacultyId || doubtPayload.facultyId || null,
       facultyReply: null,
       repliedAt: null,
-      repliedBy: null
+      repliedBy: null,
+      facultyId: null
     };
 
     this.doubts = [newDoubt, ...this.doubts];
@@ -149,7 +188,7 @@ class DoubtsService {
     return newDoubt;
   }
 
-  replyToDoubt(doubtId, pearlText, facultyName = 'Faculty Lead') {
+  replyToDoubt(doubtId, pearlText, facultyName = 'Faculty Lead', facultyId = null) {
     const index = this.doubts.findIndex(d => d.id === doubtId);
     if (index === -1) return null;
 
@@ -158,7 +197,8 @@ class DoubtsService {
       status: 'resolved',
       facultyReply: pearlText,
       repliedAt: new Date().toISOString(),
-      repliedBy: facultyName
+      repliedBy: facultyName,
+      facultyId: facultyId || this.doubts[index].facultyId
     };
 
     this.save();

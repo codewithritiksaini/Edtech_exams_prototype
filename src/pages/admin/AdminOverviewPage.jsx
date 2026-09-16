@@ -23,13 +23,11 @@ import {
 } from 'lucide-react';
 import { authService, USER_ROLES } from '../../services/authService';
 import { catalogService } from '../../services/catalogService';
-import { testService, dashboardLiveSessions } from '../../data/mockData';
 
 export default function AdminOverviewPage() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(authService.getCurrentUser());
   const [exams] = useState(() => catalogService.getExams());
-  const [tests] = useState(() => testService.getTests());
 
   useEffect(() => {
     const unsub = authService.subscribe((u) => setCurrentUser(u));

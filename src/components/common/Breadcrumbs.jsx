@@ -290,6 +290,27 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
         });
       }
     }
+  } else if (segments.includes('questions') && !testId) {
+    crumbs.push({
+      label: 'Question Bank',
+      path: `/${rootSegment}/questions`
+    });
+    if (segments.includes('new')) {
+      crumbs.push({
+        label: 'Create Question',
+        path: null
+      });
+    } else if (segments.includes('edit')) {
+      crumbs.push({
+        label: 'Edit Question',
+        path: null
+      });
+    } else if (segments.includes('preview')) {
+      crumbs.push({
+        label: 'Question Preview',
+        path: null
+      });
+    }
   } else if (segments.includes('packages')) {
     crumbs.push({
       label: 'Packages & Pricing',

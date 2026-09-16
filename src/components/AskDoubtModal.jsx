@@ -10,24 +10,36 @@ import {
   Paperclip
 } from 'lucide-react';
 
+import { authService } from '../services/authService';
 import { doubtsService } from '../services/doubtsService';
 
-export default function AskDoubtModal({ isOpen, onClose, dayTitle }) {
+export default function AskDoubtModal({ isOpen, onClose, dayTitle, contextData = {} }) {
   if (!isOpen) return null;
 
-  const [subject, setSubject] = useState('ECG Rhythm Confusion: VT vs Aberrant SVT');
-  const [doubtText, setDoubtText] = useState('In lead V1, how do we reliably differentiate a rabbit-ear right bundle branch block pattern from ventricular tachycardia when both show positive concordance?');
+  const currentUser = authService.getCurrentUser();
+
+  const [subject, setSubject] = useState(() => contextData.defaultTitle || 'Clinical Interpretation Question');
+  const [doubtText, setDoubtText] = useState('Could faculty provide clarification or high-yield differential diagnostic pearls for this topic?');
   const [urgency, setUrgency] = useState('normal');
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     doubtsService.submitDoubt({
+      studentId: currentUser?.id || 'std-1',
+      studentName: currentUser?.name || 'Dr. Ritik Saini',
+      studentAvatar: currentUser?.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=120&auto=format&fit=crop&q=80',
       title: subject,
       question: doubtText,
       urgency,
-      topic: dayTitle || 'Clinical Study Day',
-      dayNumber: 3
+      topic: contextData.topic || dayTitle || 'Clinical Study Day',
+      examId: contextData.examId || 'neet-pg',
+      subjectId: contextData.subjectId || null,
+      subjectName: contextData.subjectName || null,
+      moduleId: contextData.moduleId || null,
+      lectureId: contextData.lectureId || null,
+      resourceId: contextData.resourceId || null,
+      dayNumber: contextData.dayNumber || 3
     });
     setSubmitted(true);
     setTimeout(() => {

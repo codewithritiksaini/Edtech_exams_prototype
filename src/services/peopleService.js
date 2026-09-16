@@ -4,8 +4,8 @@
 // Persists in localStorage and synchronizes with authService
 // =============================================================================
 
-import { authService, USER_ROLES } from './authService';
-import { curriculumService } from './curriculumService';
+import { authService, USER_ROLES } from './authService.js';
+import { curriculumService } from './curriculumService.js';
 
 const STORAGE_KEY_FACULTY = 'medprep_phase5_faculty_v1';
 const STORAGE_KEY_STUDENTS = 'medprep_phase5_students_v1';
@@ -420,6 +420,41 @@ export const peopleService = {
     const all = peopleService.getStudents();
     if (!assignedExams || assignedExams.length === 0) return all;
     return all.filter(s => assignedExams.includes(s.examId));
+  },
+
+  getStudentRawById: (studentId) => {
+    const all = peopleService.getStudents();
+    return all.find(s => s.id === studentId || s.email?.toLowerCase() === studentId?.toLowerCase()) || null;
+  },
+
+  getStudentById: (studentId, requestingFacultyEmailOrId = null) => {
+    const student = peopleService.getStudentRawById(studentId);
+    if (!student) {
+      return { student: null, authorized: false, reason: 'Student not found.' };
+    }
+
+    if (!requestingFacultyEmailOrId) {
+      return { student, authorized: true };
+    }
+
+    // Resolve requesting faculty
+    const facultyList = peopleService.getFacultyList();
+    const faculty = facultyList.find(f => 
+      f.id === requestingFacultyEmailOrId || 
+      f.email?.toLowerCase() === String(requestingFacultyEmailOrId).toLowerCase()
+    ) || peopleService.getCurrentFacultyProfile();
+
+    if (!faculty || !faculty.assignedExams || faculty.assignedExams.length === 0) {
+      return { student, authorized: true };
+    }
+
+    const isAuthorized = faculty.assignedExams.includes(student.examId);
+    return {
+      student: isAuthorized ? student : null,
+      rawStudent: student, // for contextual display in Access Denied view
+      authorized: isAuthorized,
+      reason: isAuthorized ? null : `Access Denied: Candidate is enrolled in ${student.examName || student.examId}, which is outside your assigned faculty scope (${faculty.assignedExamsLabels?.join(', ') || faculty.assignedExams.join(', ')}).`
+    };
   },
 
   extendStudentPackage: (studentId, additionalMonths = 3) => {

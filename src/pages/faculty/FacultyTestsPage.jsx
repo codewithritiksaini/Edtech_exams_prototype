@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FileText, 
@@ -13,7 +13,10 @@ import {
   Search, 
   HelpCircle,
   Eye,
-  Award
+  Award,
+  Database,
+  Check,
+  BookOpen
 } from 'lucide-react';
 import { 
   cbtTestService, 
@@ -21,6 +24,10 @@ import {
   getTestStatus, 
   formatTestCountdown 
 } from '../../services/cbtTestService';
+import { peopleService } from '../../services/peopleService';
+import { catalogService } from '../../services/catalogService';
+import { questionService } from '../../services/questionService';
+import { curriculumService } from '../../services/curriculumService';
 
 export default function FacultyTestsPage() {
   const [testsList, setTestsList] = useState(() => cbtTestService.getAllTests('all'));
@@ -30,22 +37,62 @@ export default function FacultyTestsPage() {
   const [selectedTestForQuestions, setSelectedTestForQuestions] = useState(null);
   const [successToast, setSuccessToast] = useState('');
 
+  // Faculty profile & exam scope
+  const [currentFaculty, setCurrentFaculty] = useState(() => peopleService.getCurrentFacultyProfile());
+  const assignedExamIds = useMemo(() => {
+    return currentFaculty?.assignedExams?.length ? currentFaculty.assignedExams : ['neet-pg', 'usmle'];
+  }, [currentFaculty]);
+
+  const activeCatalogExams = useMemo(() => {
+    const list = catalogService.getExams().filter(e => assignedExamIds.includes(e.id));
+    return list.length > 0 ? list : catalogService.getExams().slice(0, 2);
+  }, [assignedExamIds]);
+
   // Subscribe to central cbtTestService
   useEffect(() => {
     const unsubscribe = cbtTestService.subscribe(() => {
       setTestsList(cbtTestService.getAllTests('all'));
     });
-    return unsubscribe;
+    const handlePeople = () => setCurrentFaculty(peopleService.getCurrentFacultyProfile());
+    window.addEventListener('medprep-people-updated', handlePeople);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('medprep-people-updated', handlePeople);
+    };
   }, []);
 
-  // Create Test Form
-  const [testCourse, setTestCourse] = useState('NEET PG & NExT 2026');
+  // Filter tests strictly to Faculty Exam Scope
+  const scopedTests = useMemo(() => {
+    return testsList.filter(t => {
+      const track = t.examTrack || t.courseId;
+      return !track || assignedExamIds.includes(track) || track === 'all';
+    });
+  }, [testsList, assignedExamIds]);
+
+  // Create Test Form State
+  const [selectedExamTrack, setSelectedExamTrack] = useState(() => assignedExamIds[0] || 'neet-pg');
+  const [selectedSubjectId, setSelectedSubjectId] = useState('all');
   const [testName, setTestName] = useState('');
   const [testDate, setTestDate] = useState('2026-09-20');
   const [testTime, setTestTime] = useState('18:00');
   const [testDuration, setTestDuration] = useState('45 mins');
   const [testTotalMarks, setTestTotalMarks] = useState('100');
   const [testQuestionCount, setTestQuestionCount] = useState('25');
+  const [questionSource, setQuestionSource] = useState('auto'); // 'auto' | 'bank'
+  const [selectedBankQuestionIds, setSelectedBankQuestionIds] = useState([]);
+
+  // Curricular subjects for current exam track
+  const availableSubjects = useMemo(() => {
+    return curriculumService.getSubjects(selectedExamTrack);
+  }, [selectedExamTrack]);
+
+  // Available published questions from Question Bank
+  const availableBankQuestions = useMemo(() => {
+    return questionService.getPublishedQuestions({
+      examId: selectedExamTrack,
+      subjectId: selectedSubjectId !== 'all' ? selectedSubjectId : undefined
+    });
+  }, [selectedExamTrack, selectedSubjectId]);
 
   // Question Authoring Form
   const [vignette, setVignette] = useState('');
@@ -56,26 +103,42 @@ export default function FacultyTestsPage() {
   const [correctOpt, setCorrectOpt] = useState('A');
   const [rationale, setRationale] = useState('');
 
+  const toggleBankQuestion = (qId) => {
+    setSelectedBankQuestionIds(prev => 
+      prev.includes(qId) ? prev.filter(id => id !== qId) : [...prev, qId]
+    );
+  };
+
   const handleCreateTest = (e) => {
     e.preventDefault();
     if (!testName.trim()) return;
 
+    const examObj = catalogService.getExamById(selectedExamTrack);
+    const qCount = questionSource === 'bank' && selectedBankQuestionIds.length > 0
+      ? selectedBankQuestionIds.length
+      : (Number(testQuestionCount) || 20);
+
     const newTest = cbtTestService.createTest({
       name: testName.trim(),
-      course: testCourse,
+      examTrack: selectedExamTrack,
+      courseId: selectedExamTrack,
+      course: examObj?.name || 'NEET PG & NExT 2026',
+      subjectId: selectedSubjectId !== 'all' ? selectedSubjectId : null,
       batchTier: 'All Enrolled Candidates',
       date: testDate,
       time: `${testTime} IST`,
       durationMinutes: parseInt(testDuration, 10) || 45,
-      totalMarks: Number(testTotalMarks) || 100,
-      questionCount: Number(testQuestionCount) || 25,
+      totalMarks: Number(testTotalMarks) || (qCount * 5),
+      questionCount: qCount,
+      questionIds: questionSource === 'bank' ? selectedBankQuestionIds : [],
       status: 'upcoming'
     });
 
     setTestsList(cbtTestService.getAllTests('all'));
     setIsCreateModalOpen(false);
     setTestName('');
-    setSuccessToast(`CBT Test "${newTest.name}" scheduled successfully and synced to Student LMS!`);
+    setSelectedBankQuestionIds([]);
+    setSuccessToast(`CBT Test "${newTest.name}" scheduled with ${qCount} questions and synced to Student LMS!`);
     setTimeout(() => setSuccessToast(''), 4000);
   };
 
@@ -91,11 +154,15 @@ export default function FacultyTestsPage() {
       optD: optD.trim(),
       correct: correctOpt,
       explanation: rationale.trim(),
-      guidelineRef: 'ACC/AHA Clinical Guidelines'
+      guidelineRef: 'ACC/AHA Clinical Guidelines',
+      examId: selectedTestForQuestions.examTrack || selectedTestForQuestions.courseId,
+      subjectId: selectedTestForQuestions.subjectId,
+      moduleId: selectedTestForQuestions.moduleId,
+      lectureId: selectedTestForQuestions.lectureId
     });
 
     setTestsList(cbtTestService.getAllTests('all'));
-    setSuccessToast(`Clinical question authored & saved to "${selectedTestForQuestions.name}"!`);
+    setSuccessToast(`Clinical question authored & saved to "${selectedTestForQuestions.name}" and synced to Question Bank!`);
     setTimeout(() => setSuccessToast(''), 4000);
     setIsQuestionModalOpen(false);
     setVignette('');
@@ -154,9 +221,14 @@ export default function FacultyTestsPage() {
       {/* Tests Roster */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-black text-slate-900">
-            Scheduled CBT Assessments ({testsList.length})
-          </h2>
+          <div>
+            <h2 className="text-base font-black text-slate-900">
+              Assigned CBT Assessments ({scopedTests.length})
+            </h2>
+            <p className="text-[11px] text-slate-400 font-medium">
+              Scoped to your authorized programs: {assignedExamIds.join(', ').toUpperCase()}
+            </p>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -172,7 +244,7 @@ export default function FacultyTestsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {testsList.map((test) => {
+              {scopedTests.map((test) => {
                 const effectiveStatus = getTestStatus(test);
                 const isLive = effectiveStatus === CBT_STATUS.AVAILABLE || effectiveStatus === CBT_STATUS.IN_PROGRESS;
                 const isCompleted = effectiveStatus === CBT_STATUS.SUBMITTED;
@@ -258,7 +330,7 @@ export default function FacultyTestsPage() {
       {/* Modal: Create Test */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-in zoom-in-95">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full border border-slate-200 shadow-2xl space-y-6 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
@@ -266,7 +338,7 @@ export default function FacultyTestsPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">Schedule New CBT Assessment</h3>
-                  <p className="text-xs text-slate-500">Configure timing, questions, and release date</p>
+                  <p className="text-xs text-slate-500">Configure academic scope, timing, and Question Bank</p>
                 </div>
               </div>
               <button onClick={() => setIsCreateModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700">
@@ -275,25 +347,44 @@ export default function FacultyTestsPage() {
             </div>
 
             <form onSubmit={handleCreateTest} className="space-y-4 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700">Exam Track</label>
-                <select
-                  value={testCourse}
-                  onChange={(e) => setTestCourse(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-medium"
-                >
-                  <option value="NEET PG & NExT 2026">NEET PG & NExT 2026</option>
-                  <option value="USMLE Step 1 & 2 CK">USMLE Step 1 & 2 CK</option>
-                  <option value="PLAB 1 & 2 / UKMLA">PLAB 1 & 2 / UKMLA</option>
-                  <option value="Europe Medical Licensing">Europe Medical Licensing</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Authorized Program</label>
+                  <select
+                    value={selectedExamTrack}
+                    onChange={(e) => {
+                      setSelectedExamTrack(e.target.value);
+                      setSelectedSubjectId('all');
+                      setSelectedBankQuestionIds([]);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-medium"
+                  >
+                    {activeCatalogExams.map(ex => (
+                      <option key={ex.id} value={ex.id}>{ex.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Curricular Subject Scope</label>
+                  <select
+                    value={selectedSubjectId}
+                    onChange={(e) => setSelectedSubjectId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-medium"
+                  >
+                    <option value="all">Exam-wide (All Subjects)</option>
+                    {availableSubjects.map(sub => (
+                      <option key={sub.id} value={sub.id}>{sub.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-700">Assessment Name</label>
+                <label className="font-bold text-slate-700">Assessment Title</label>
                 <input
                   type="text"
-                  placeholder="e.g. Cardiology Mock Examination 2"
+                  placeholder="e.g. Cardiology Grand Mock Test #03"
                   value={testName}
                   onChange={(e) => setTestName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-medium"
@@ -303,7 +394,7 @@ export default function FacultyTestsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Date</label>
+                  <label className="font-bold text-slate-700">Exam Date</label>
                   <input
                     type="date"
                     value={testDate}
@@ -312,7 +403,7 @@ export default function FacultyTestsPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Time</label>
+                  <label className="font-bold text-slate-700">Start Time</label>
                   <input
                     type="time"
                     value={testTime}
@@ -322,7 +413,7 @@ export default function FacultyTestsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700">Duration</label>
                   <select
@@ -334,6 +425,7 @@ export default function FacultyTestsPage() {
                     <option value="45 mins">45 mins</option>
                     <option value="60 mins">60 mins</option>
                     <option value="120 mins">120 mins</option>
+                    <option value="180 mins">180 mins</option>
                   </select>
                 </div>
                 <div className="space-y-1">
@@ -345,15 +437,91 @@ export default function FacultyTestsPage() {
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-medium"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Questions</label>
-                  <input
-                    type="number"
-                    value={testQuestionCount}
-                    onChange={(e) => setTestQuestionCount(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-medium"
-                  />
+              </div>
+
+              {/* Question Source Tabs */}
+              <div className="pt-2 border-t border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700">Question Source</label>
+                  <div className="flex bg-slate-100 p-0.5 rounded-xl text-[11px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setQuestionSource('auto')}
+                      className={`px-3 py-1 rounded-lg transition-all ${
+                        questionSource === 'auto'
+                          ? 'bg-white text-indigo-600 shadow-2xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      Auto Preset ({testQuestionCount} Qs)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuestionSource('bank')}
+                      className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 ${
+                        questionSource === 'bank'
+                          ? 'bg-white text-indigo-600 shadow-2xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Database className="w-3 h-3" />
+                      <span>Pick from Bank ({selectedBankQuestionIds.length})</span>
+                    </button>
+                  </div>
                 </div>
+
+                {questionSource === 'auto' ? (
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-500">Number of Vignettes to Provision</label>
+                    <input
+                      type="number"
+                      value={testQuestionCount}
+                      onChange={(e) => setTestQuestionCount(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-medium"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-[11px] text-slate-500 flex items-center justify-between">
+                      <span>Select published vignettes from Question Bank:</span>
+                      <span className="font-bold text-indigo-600">{availableBankQuestions.length} Available</span>
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl bg-slate-50/50 p-2 space-y-1">
+                      {availableBankQuestions.length === 0 ? (
+                        <div className="text-center py-4 text-slate-400 text-xs">
+                          No published questions found for {selectedExamTrack.toUpperCase()}. 
+                        </div>
+                      ) : (
+                        availableBankQuestions.map(bq => {
+                          const isSelected = selectedBankQuestionIds.includes(bq.id);
+                          const promptText = bq.content?.prompt || bq.prompt || bq.question || bq.title || 'Clinical Question';
+                          return (
+                            <div
+                              key={bq.id}
+                              onClick={() => toggleBankQuestion(bq.id)}
+                              className={`p-2 rounded-lg cursor-pointer flex items-start gap-2 text-xs transition-colors ${
+                                isSelected ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-slate-100'
+                              }`}
+                            >
+                              <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center border shrink-0 ${
+                                isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'
+                              }`}>
+                                {isSelected && <Check className="w-3 h-3" />}
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-bold text-slate-800 line-clamp-1">{promptText}</div>
+                                <div className="text-[10px] text-slate-400">
+                                  {bq.metadata?.subject || 'Clinical'} • {bq.type || 'Single Choice'} • +{bq.scoring?.marks || 5} marks
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">

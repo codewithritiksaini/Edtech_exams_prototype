@@ -3,7 +3,8 @@
 // Centralized state machine: UPCOMING -> AVAILABLE -> IN_PROGRESS -> SUBMITTED / EXPIRED
 // =============================================================================
 
-import { testService, sampleCbtQuestionBank } from '../data/mockData';
+import { sampleCbtQuestionBank } from '../data/cbtQuestionBankData.js';
+import { questionService } from './questionService.js';
 
 export const CBT_STATUS = {
   UPCOMING: 'upcoming',
@@ -218,6 +219,31 @@ export function getTestTimes(test) {
     };
   }
 
+  if (test.date && test.time) {
+    try {
+      const timeClean = test.time.replace(/IST|AM|PM/gi, '').trim();
+      const isPM = /PM/i.test(test.time);
+      const isAM = /AM/i.test(test.time);
+      let [hours, mins] = timeClean.split(':').map(Number);
+      if (isPM && hours < 12) hours += 12;
+      if (isAM && hours === 12) hours = 0;
+      const hh = String(hours || 0).padStart(2, '0');
+      const mm = String(mins || 0).padStart(2, '0');
+      const schedDate = new Date(`${test.date}T${hh}:${mm}:00`);
+      if (!isNaN(schedDate.getTime())) {
+        const durationMinutes = Number(test.durationMinutes) || 
+          (typeof test.duration === 'string' ? parseInt(test.duration, 10) : 45) || 45;
+        const windowEnd = new Date(schedDate.getTime() + (durationMinutes + 120) * 60000);
+        return {
+          startTime: schedDate,
+          endTime: windowEnd
+        };
+      }
+    } catch (e) {
+      console.warn('Date parsing fallback:', e);
+    }
+  }
+
   if (typeof test.startOffsetMinutes === 'number' && typeof test.endOffsetMinutes === 'number') {
     return {
       startTime: new Date(PROTOTYPE_EPOCH + test.startOffsetMinutes * 60000),
@@ -230,15 +256,99 @@ export function getTestTimes(test) {
 }
 
 /**
+ * Pure canonical assessment evaluation function.
+ * Calculates score (+marks / -negativeMarks), totals, accuracy, and performance percentiles.
+ * @param {object} attempt
+ * @param {object} test
+ * @returns {object}
+ */
+export function evaluateAttempt(attempt, test) {
+  if (!test || !attempt) return null;
+  const questions = cbtTestService.getQuestionsForTest(test);
+  const totalQuestions = questions.length;
+  const userAnswers = attempt.answers || {};
+
+  let correctCount = 0;
+  let incorrectCount = 0;
+  let unattemptedCount = 0;
+
+  const defaultMarksPerCorrect = Number(test.marksPerCorrect) || 5;
+  const defaultMarksPerIncorrect = Number(test.marksPerIncorrect) !== undefined ? Number(test.marksPerIncorrect) : -1;
+
+  let rawScore = 0;
+  let maxMarks = 0;
+
+  questions.forEach((q) => {
+    const qMarks = Number(q.marks) || defaultMarksPerCorrect;
+    const qNeg = Number(q.negativeMarks) !== undefined ? Number(q.negativeMarks) : defaultMarksPerIncorrect;
+    maxMarks += qMarks;
+
+    const chosen = userAnswers[q.id];
+    const correctKey = q.correct || q.correctOption || 
+      (Array.isArray(q.answer?.correct) ? q.answer.correct[0] : q.answer?.correct);
+
+    if (!chosen) {
+      unattemptedCount++;
+    } else if (String(chosen).trim().toUpperCase() === String(correctKey).trim().toUpperCase()) {
+      correctCount++;
+      rawScore += qMarks;
+    } else {
+      incorrectCount++;
+      rawScore += qNeg; // Apply configured negative marking
+    }
+  });
+
+  rawScore = Math.max(0, rawScore);
+  const percentage = maxMarks > 0 ? Math.round((rawScore / maxMarks) * 100) : 0;
+  const passingScore = Number(test.passingScore) || 50;
+  const passed = percentage >= passingScore;
+
+  const attemptedCount = correctCount + incorrectCount;
+  const accuracy = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
+
+  const percentile = percentage >= 85 ? '97.4%ile' : percentage >= 70 ? '89.6%ile' : percentage >= 50 ? '71.2%ile' : '48.5%ile';
+  const rank = percentage >= 85 ? 'AIR 34' : percentage >= 70 ? 'AIR 92' : 'AIR 240';
+
+  const durationSec = ((Number(test.durationMinutes) || 45) * 60);
+  const elapsedSeconds = attempt.startedAt 
+    ? Math.min(durationSec, Math.max(1, Math.round(((attempt.submittedTimestamp || Date.now()) - attempt.startedAt) / 1000)))
+    : durationSec;
+  const elapsedMins = Math.floor(elapsedSeconds / 60);
+  const elapsedSecs = elapsedSeconds % 60;
+  const timeTakenFormatted = `${elapsedMins}m ${elapsedSecs}s`;
+
+  return {
+    score: rawScore,
+    totalMarks: maxMarks,
+    percentage,
+    passed,
+    statusLabel: passed ? 'Pass' : 'Fail',
+    percentile,
+    rank,
+    correctCount,
+    incorrectCount,
+    unattemptedCount,
+    unansweredCount: unattemptedCount,
+    accuracy,
+    timeTakenFormatted
+  };
+}
+
+/**
  * Derives the effective test status:
- * 1. If submitted attempt exists -> 'submitted'
- * 2. If active attempt exists and now < endAt -> 'in-progress'
- * 3. If now < startTime -> 'upcoming'
- * 4. If startTime <= now < endTime -> 'available'
- * 5. If now >= endTime -> 'expired'
+ * 1. If test status is draft or archived -> 'draft' | 'archived'
+ * 2. If submitted attempt exists -> 'submitted'
+ * 3. If active attempt exists and now < endAt -> 'in-progress'
+ * 4. If now < startTime -> 'upcoming'
+ * 5. If startTime <= now < endTime -> 'available'
+ * 6. If now >= endTime -> 'expired'
  */
 export function getTestStatus(test, now = new Date()) {
   if (!test) return CBT_STATUS.EXPIRED;
+
+  // Explicit draft or archived status
+  if (test.status === 'draft' || test.status === 'Draft') return 'draft';
+  if (test.status === 'archived' || test.status === 'Archived') return 'archived';
 
   // 1. Check completed attempt
   const completed = cbtTestService.getCompletedAttempt(test.id);
@@ -273,15 +383,55 @@ export function getTestStatus(test, now = new Date()) {
   return CBT_STATUS.EXPIRED;
 }
 
-export function canStartTest(test, now = new Date()) {
+/**
+ * Centralized test eligibility and access gate.
+ * @param {object} test
+ * @param {Date|number} now
+ * @param {object|null} student
+ * @returns {boolean}
+ */
+export function canStartTest(test, now = new Date(), student = null) {
   if (!test) return false;
+
+  // Cannot start draft, archived, or cancelled tests
+  if (test.status === 'draft' || test.status === 'Draft' || 
+      test.status === 'archived' || test.status === 'Archived' ||
+      test.status === 'cancelled') {
+    return false;
+  }
+
+  // Validate student course enrollment if student provided
+  if (student) {
+    const studentCourse = student.enrolledExamId || student.courseId || student.course;
+    const testCourse = test.examTrack || test.courseId;
+    if (studentCourse && testCourse && testCourse !== 'all' && testCourse !== 'all-courses') {
+      const cleanStudent = String(studentCourse).toLowerCase();
+      const cleanTest = String(testCourse).toLowerCase();
+      if (!cleanStudent.includes(cleanTest) && !cleanTest.includes(cleanStudent)) {
+        return false;
+      }
+    }
+  }
+
   const status = getTestStatus(test, now);
   return status === CBT_STATUS.AVAILABLE || status === CBT_STATUS.IN_PROGRESS || status === CBT_STATUS.PAUSED;
 }
 
-export function formatTestCountdown(test, now = new Date()) {
-  if (!test) return '';
-  const { startTime, endTime } = getTestTimes(test);
+export function formatTestCountdown(testOrDate, now = new Date()) {
+  if (!testOrDate) return '';
+  let startTime, endTime;
+  let formattedWindow = '';
+
+  if (testOrDate instanceof Date || (typeof testOrDate === 'number' && !isNaN(testOrDate))) {
+    startTime = testOrDate instanceof Date ? testOrDate : new Date(testOrDate);
+    endTime = new Date(startTime.getTime() + 7200000);
+  } else {
+    const times = getTestTimes(testOrDate);
+    startTime = times.startTime;
+    endTime = times.endTime;
+    formattedWindow = testOrDate.formattedWindow || '';
+  }
+
   const current = (now instanceof Date ? now : new Date(now)).getTime();
   const diffMs = startTime.getTime() - current;
 
@@ -308,7 +458,7 @@ export function formatTestCountdown(test, now = new Date()) {
     return `Starts in ${diffHours}h ${remMins}m`;
   }
   if (diffDays === 1) {
-    return `Starts Tomorrow • ${test.formattedWindow ? test.formattedWindow.split('•').pop().trim() : '10:00 AM IST'}`;
+    return `Starts Tomorrow • ${formattedWindow ? formattedWindow.split('•').pop().trim() : '10:00 AM IST'}`;
   }
   return `Starts in ${diffDays} days`;
 }
@@ -332,6 +482,14 @@ class CbtTestService {
           return parsed;
         }
       }
+      // Migration from legacy phase6 tests if available
+      const legacyStored = localStorage.getItem('medprep_phase6_tests');
+      if (legacyStored) {
+        const legacyParsed = JSON.parse(legacyStored);
+        if (Array.isArray(legacyParsed) && legacyParsed.length > 0) {
+          return legacyParsed;
+        }
+      }
     } catch (e) {
       console.warn('CBT tests read error:', e);
     }
@@ -341,8 +499,12 @@ class CbtTestService {
   saveTests() {
     try {
       localStorage.setItem(STORAGE_KEY_TESTS, JSON.stringify(this.tests));
+      // Sync legacy storage key for complete backward compatibility
+      localStorage.setItem('medprep_phase6_tests', JSON.stringify(this.tests));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('medprep-cbt-tests-updated', { detail: this.tests }));
+        window.dispatchEvent(new CustomEvent('medprep-tests-updated', { detail: this.tests }));
+        window.dispatchEvent(new CustomEvent('medprep-assessment-updated', { detail: { tests: this.tests } }));
       }
     } catch (e) {
       console.warn('CBT tests save error:', e);
@@ -366,6 +528,8 @@ class CbtTestService {
       localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(this.attempts));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('medprep-cbt-attempts-updated', { detail: this.attempts }));
+        window.dispatchEvent(new CustomEvent('medprep-results-updated', { detail: this.attempts }));
+        window.dispatchEvent(new CustomEvent('medprep-assessment-updated', { detail: { attempts: this.attempts } }));
       }
     } catch (e) {
       console.warn('CBT attempts save error:', e);
@@ -380,10 +544,98 @@ class CbtTestService {
     return this.tests.find(t => t.id === id) || null;
   }
 
+  /**
+   * Normalizes question objects from Question Bank, CBT, or manual authoring formats.
+   */
+  normalizeQuestion(q, defaultIndex = 1) {
+    if (!q) return null;
+    const id = q.id || defaultIndex;
+    const vignette = q.vignette || q.content?.vignette || '';
+    const question = q.question || q.content?.prompt || q.prompt || 'What is the most appropriate next clinical step or diagnosis?';
+    
+    let options = [];
+    if (Array.isArray(q.options) && q.options.length > 0) {
+      options = q.options.map((opt, idx) => {
+        const key = opt.key || opt.id || String.fromCharCode(65 + idx);
+        return {
+          id: key,
+          key: key,
+          text: opt.text || ''
+        };
+      });
+    } else if (Array.isArray(q.responseSchema?.options)) {
+      options = q.responseSchema.options.map((opt, idx) => {
+        const key = opt.id || opt.key || String.fromCharCode(65 + idx);
+        return {
+          id: key,
+          key: key,
+          text: opt.text || ''
+        };
+      });
+    } else if (q.optA || q.optB) {
+      options = [
+        { id: 'A', key: 'A', text: q.optA || '' },
+        { id: 'B', key: 'B', text: q.optB || '' },
+        { id: 'C', key: 'C', text: q.optC || '' },
+        { id: 'D', key: 'D', text: q.optD || '' }
+      ];
+    }
+
+    const correct = q.correct || q.correctOption || 
+      (Array.isArray(q.answer?.correct) ? q.answer.correct[0] : q.answer?.correct) || 'A';
+
+    const explanation = q.explanation || q.rationale || '';
+    const guidelineRef = q.guidelineRef || q.metadata?.guidelineRef || '';
+    const marks = Number(q.marks) || Number(q.scoring?.marks) || 5;
+    const negativeMarks = Number(q.negativeMarks) !== undefined 
+      ? Number(q.negativeMarks) 
+      : (Number(q.scoring?.negativeMarks) !== undefined ? Number(q.scoring?.negativeMarks) : -1);
+
+    return {
+      id,
+      vignette,
+      question,
+      options,
+      correct,
+      correctOption: correct,
+      explanation,
+      guidelineRef,
+      marks,
+      negativeMarks
+    };
+  }
+
+  /**
+   * Resolves questions for a test.
+   * Prioritizes questionIds from Question Bank, falls back to inline questions.
+   * @param {string|object} testOrId
+   * @returns {Array<object>}
+   */
+  getQuestionsForTest(testOrId) {
+    const test = typeof testOrId === 'object' ? testOrId : this.getTestById(testOrId);
+    if (!test) return sampleCbtQuestionBank;
+
+    // 1. If test references question IDs from canonical Question Bank
+    if (Array.isArray(test.questionIds) && test.questionIds.length > 0) {
+      const bankQuestions = questionService.getQuestionsByIds(test.questionIds);
+      if (bankQuestions.length > 0) {
+        return bankQuestions.map((q, idx) => this.normalizeQuestion(q, idx + 1));
+      }
+    }
+
+    // 2. If test has inline questions
+    if (Array.isArray(test.questions) && test.questions.length > 0) {
+      return test.questions.map((q, idx) => this.normalizeQuestion(q, idx + 1));
+    }
+
+    return sampleCbtQuestionBank.map((q, idx) => this.normalizeQuestion(q, idx + 1));
+  }
+
   // Retrieve active (in-progress or paused) attempt for a test
-  getActiveAttempt(testId) {
+  getActiveAttempt(testId, studentId = null) {
     const attempt = this.attempts[testId];
     if (!attempt) return null;
+    if (studentId && attempt.studentId && attempt.studentId !== studentId) return null;
 
     if (attempt.status === CBT_STATUS.PAUSED) {
       return attempt;
@@ -436,9 +688,10 @@ class CbtTestService {
     return attempt;
   }
 
-  getCompletedAttempt(testId) {
+  getCompletedAttempt(testId, studentId = null) {
     const attempt = this.attempts[testId];
     if (attempt && attempt.status === CBT_STATUS.SUBMITTED) {
+      if (studentId && attempt.studentId && attempt.studentId !== studentId) return null;
       return attempt;
     }
     return null;
@@ -446,14 +699,15 @@ class CbtTestService {
 
   /**
    * Starts or resumes an attempt.
-   * End timestamp rule: endAt = Math.min(startedAt + durationMs, testEndTimeMs)
+   * Guarantees EXACTLY ONE active attempt per test per student.
+   * Timestamp-based effective deadline: min(startedAt + duration, windowEnd).
    */
-  startAttempt(testId) {
+  startAttempt(testId, studentId = 'student-ritik') {
     const test = this.getTestById(testId);
     if (!test) return null;
 
-    // Check if active or paused attempt already exists
-    const existing = this.getActiveAttempt(testId);
+    // Check if active or paused attempt already exists - resume it!
+    const existing = this.getActiveAttempt(testId, studentId);
     if (existing) {
       if (existing.status === CBT_STATUS.PAUSED) {
         return this.resumeAttempt(testId);
@@ -463,18 +717,23 @@ class CbtTestService {
 
     const { endTime } = getTestTimes(test);
     const startedAt = Date.now();
-    const durationMs = (test.durationMinutes || 45) * 60000;
-    // End time is the earlier of attempt duration or test window closing
+    const durationMinutes = Number(test.durationMinutes) || 
+      (typeof test.duration === 'string' ? parseInt(test.duration, 10) : 45) || 45;
+    const durationMs = durationMinutes * 60000;
+
+    // Effective deadline is the earlier of attempt duration or test window closing
     const calculatedEnd = startedAt + durationMs;
     const windowEnd = endTime.getTime();
     const endAt = Math.min(calculatedEnd, windowEnd > startedAt ? windowEnd : calculatedEnd);
 
     const newAttempt = {
       testId,
-      attemptId: `attempt-${testId}-${startedAt}`,
+      attemptId: `attempt-${testId}-${studentId}-${startedAt}`,
+      studentId,
       status: CBT_STATUS.IN_PROGRESS,
       startedAt,
       endAt,
+      durationMs,
       currentQuestionIndex: 0,
       answers: {},
       markedForReview: {},
@@ -531,87 +790,37 @@ class CbtTestService {
   }
 
   /**
-   * Finalizes and scores the attempt.
+   * Finalizes and scores the attempt using the canonical pure evaluateAttempt function.
    */
   submitAttempt(testId, reason = 'normal') {
     const test = this.getTestById(testId);
     const attempt = this.attempts[testId];
     if (!test || !attempt) return null;
 
-    const questions = test.questions || sampleCbtQuestionBank;
-    const totalQuestions = questions.length;
-    const userAnswers = attempt.answers || {};
-
-    let correctCount = 0;
-    let incorrectCount = 0;
-    let unattemptedCount = 0;
-
-    questions.forEach((q) => {
-      const chosen = userAnswers[q.id];
-      if (!chosen) {
-        unattemptedCount++;
-      } else if (chosen === q.correct || chosen === q.correctOption) {
-        correctCount++;
-      } else {
-        incorrectCount++;
-      }
-    });
-
-    const marksCorrect = test.marksPerCorrect || 5;
-    const marksIncorrect = test.marksPerIncorrect || -1;
-    const rawScore = Math.max(0, (correctCount * marksCorrect) + (incorrectCount * marksIncorrect));
-    const maxMarks = totalQuestions * marksCorrect;
-    const percentage = Math.round((rawScore / maxMarks) * 100);
-    const passed = percentage >= (test.passingScore || 50);
-
-    const elapsedSeconds = Math.min(
-      (test.durationMinutes || 45) * 60,
-      Math.max(1, Math.round((Date.now() - attempt.startedAt) / 1000))
-    );
-    const elapsedMins = Math.floor(elapsedSeconds / 60);
-    const elapsedSecs = elapsedSeconds % 60;
-    const timeTakenFormatted = `${elapsedMins}m ${elapsedSecs}s`;
+    const evalResult = evaluateAttempt(attempt, test);
+    if (!evalResult) return null;
 
     const completedAttempt = {
       ...attempt,
       status: CBT_STATUS.SUBMITTED,
       submissionReason: reason, // 'normal' | 'time-expired' | 'navigation-exit'
       submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      score: rawScore,
-      totalMarks: maxMarks,
-      percentage,
-      statusLabel: passed ? 'Pass' : 'Fail',
-      percentile: percentage >= 85 ? '97.4%ile' : percentage >= 70 ? '89.6%ile' : percentage >= 50 ? '71.2%ile' : '48.5%ile',
-      rank: percentage >= 85 ? 'AIR 34' : percentage >= 70 ? 'AIR 92' : 'AIR 240',
-      correctCount,
-      incorrectCount,
-      unattemptedCount,
-      accuracy: (correctCount + incorrectCount) > 0 ? Math.round((correctCount / (correctCount + incorrectCount)) * 100) : 0,
-      timeTakenFormatted
+      submittedTimestamp: Date.now(),
+      score: evalResult.score,
+      totalMarks: evalResult.totalMarks,
+      percentage: evalResult.percentage,
+      statusLabel: evalResult.statusLabel,
+      percentile: evalResult.percentile,
+      rank: evalResult.rank,
+      correctCount: evalResult.correctCount,
+      incorrectCount: evalResult.incorrectCount,
+      unattemptedCount: evalResult.unattemptedCount,
+      accuracy: evalResult.accuracy,
+      timeTakenFormatted: evalResult.timeTakenFormatted
     };
 
     this.attempts[testId] = completedAttempt;
     this.saveAttempts();
-
-    // Also synchronize with legacy testService so Faculty/Admin portal reflects the submission!
-    try {
-      testService.submitStudentAttempt(testId, {
-        score: rawScore,
-        totalMarks: maxMarks,
-        percentage,
-        status: passed ? 'Pass' : 'Fail',
-        percentile: completedAttempt.percentile,
-        rank: completedAttempt.rank,
-        correctCount,
-        incorrectCount,
-        unattemptedCount,
-        accuracy: completedAttempt.accuracy,
-        timeTakenFormatted,
-        submittedAt: completedAttempt.submittedAt
-      });
-    } catch (e) {
-      console.warn('Legacy testService sync error:', e);
-    }
 
     return completedAttempt;
   }
@@ -642,18 +851,27 @@ class CbtTestService {
       'NEET PG & NExT 2026'
     );
 
-    // Questions
-    const questions = Array.isArray(testData.questions) && testData.questions.length > 0
-      ? testData.questions
-      : sampleCbtQuestionBank.slice(0, Math.min(testData.questionCount || testData.totalQuestions || 20, sampleCbtQuestionBank.length));
+    // Support questionIds from Question Bank, or inline questions
+    let questionIds = Array.isArray(testData.questionIds) ? testData.questionIds : [];
+    let questions = Array.isArray(testData.questions) ? testData.questions : [];
+
+    if (questionIds.length > 0 && questions.length === 0) {
+      const resolved = questionService.getQuestionsByIds(questionIds);
+      questions = resolved.map((q, idx) => this.normalizeQuestion(q, idx + 1));
+    } else if (questions.length > 0 && questionIds.length === 0) {
+      questionIds = questions.map((q, idx) => q.id || `q-inline-${id}-${idx + 1}`);
+    } else if (questions.length === 0 && questionIds.length === 0) {
+      questions = sampleCbtQuestionBank.slice(0, Math.min(testData.questionCount || testData.totalQuestions || 20, sampleCbtQuestionBank.length));
+      questionIds = questions.map(q => q.id);
+    }
     
     const totalQuestions = questions.length || Number(testData.questionCount) || Number(testData.totalQuestions) || 20;
     const totalMarks = Number(testData.totalMarks) || (totalQuestions * (testData.marksPerCorrect || 5));
 
     // Calculate window offsets
-    let startOffsetMinutes = 60; // Default: starts in 1 hour
-    let endOffsetMinutes = startOffsetMinutes + durationMinutes + 120; // 2 hour exam window
-    let formattedWindow = 'Upcoming • Scheduled';
+    let startOffsetMinutes = typeof testData.startOffsetMinutes === 'number' ? testData.startOffsetMinutes : 60;
+    let endOffsetMinutes = typeof testData.endOffsetMinutes === 'number' ? testData.endOffsetMinutes : (startOffsetMinutes + durationMinutes + 120);
+    let formattedWindow = testData.formattedWindow || 'Upcoming • Scheduled';
 
     if (testData.date && testData.time) {
       try {
@@ -676,6 +894,11 @@ class CbtTestService {
       examTrack,
       courseId: examTrack,
       course,
+      // Academic hierarchy & delivery scope
+      subjectId: testData.subjectId || null,
+      moduleId: testData.moduleId || null,
+      lectureId: testData.lectureId || null,
+      deliveryDayId: testData.deliveryDayId || null,
       batch: testData.batch || testData.batchTier || 'All Enrolled Candidates',
       batchTier: testData.batchTier || testData.batch || 'All Enrolled Candidates',
       date: testData.date || 'Upcoming',
@@ -702,22 +925,13 @@ class CbtTestService {
         'Timer starts immediately upon clicking "Start Examination".',
         'Answers are saved automatically in real time and persist across page refreshes.'
       ],
+      questionIds,
       questions,
       status: testData.status || 'upcoming'
     };
 
     this.tests = [newTest, ...this.tests.filter(t => t.id !== id)];
     this.saveTests();
-
-    // Bidirectional sync to legacy testService
-    try {
-      testService.saveTest({
-        ...newTest,
-        questionsCount: totalQuestions
-      });
-    } catch (e) {
-      console.warn('Legacy sync error on createTest:', e);
-    }
 
     return newTest;
   }
@@ -737,16 +951,21 @@ class CbtTestService {
       updated.totalQuestions = patch.questions.length;
       updated.questionCount = patch.questions.length;
       updated.totalMarks = patch.questions.length * (updated.marksPerCorrect || 5);
+      if (!patch.questionIds) {
+        updated.questionIds = patch.questions.map((q, idx) => q.id || `q-${id}-${idx + 1}`);
+      }
+    }
+
+    if (patch.questionIds && !patch.questions) {
+      const resolved = questionService.getQuestionsByIds(patch.questionIds);
+      updated.questions = resolved.map((q, idx) => this.normalizeQuestion(q, idx + 1));
+      updated.totalQuestions = patch.questionIds.length;
+      updated.questionCount = patch.questionIds.length;
+      updated.totalMarks = patch.questionIds.length * (updated.marksPerCorrect || 5);
     }
 
     this.tests[index] = updated;
     this.saveTests();
-
-    try {
-      testService.saveTest(updated);
-    } catch (e) {
-      console.warn('Legacy sync error on updateTest:', e);
-    }
 
     return updated;
   }
@@ -756,14 +975,6 @@ class CbtTestService {
     delete this.attempts[id];
     this.saveTests();
     this.saveAttempts();
-
-    try {
-      const legacyTests = testService.getTests().filter(t => t.id !== id);
-      localStorage.setItem('medprep_phase6_tests', JSON.stringify(legacyTests));
-      window.dispatchEvent(new CustomEvent('medprep-tests-updated', { detail: legacyTests }));
-    } catch (e) {
-      console.warn('Legacy sync error on deleteTest:', e);
-    }
     return true;
   }
 
@@ -771,23 +982,12 @@ class CbtTestService {
     const test = this.getTestById(testId);
     if (!test) return null;
 
-    const normalized = questions.map((q, idx) => ({
-      id: q.id || idx + 1,
-      vignette: q.vignette || '',
-      question: q.question || 'What is the most appropriate next clinical step or diagnosis?',
-      options: (q.options || []).map(o => ({
-        id: o.id || o.key,
-        key: o.key || o.id,
-        text: o.text || ''
-      })),
-      correct: q.correct || q.correctOption || 'A',
-      correctOption: q.correctOption || q.correct || 'A',
-      explanation: q.explanation || q.rationale || '',
-      guidelineRef: q.guidelineRef || ''
-    }));
+    const normalized = questions.map((q, idx) => this.normalizeQuestion(q, idx + 1));
+    const questionIds = normalized.map(q => q.id);
 
     return this.updateTest(testId, {
       questions: normalized,
+      questionIds,
       totalQuestions: normalized.length,
       questionCount: normalized.length,
       totalMarks: normalized.length * (test.marksPerCorrect || 5)
@@ -798,30 +998,48 @@ class CbtTestService {
     const test = this.getTestById(testId);
     if (!test) return null;
 
+    // Persist into canonical Question Bank as well!
+    let bankQuestion = null;
+    try {
+      const bankResult = questionService.createFromAuthoring({
+        ...questionData,
+        examId: test.examTrack || test.courseId || 'neet-pg',
+        subjectId: test.subjectId,
+        moduleId: test.moduleId,
+        lectureId: test.lectureId
+      });
+      if (bankResult.success) {
+        bankQuestion = bankResult.question;
+      }
+    } catch (e) {
+      console.warn('Question Bank sync error:', e);
+    }
+
     const currentQuestions = Array.isArray(test.questions) ? test.questions : [];
-    const newQ = {
-      id: questionData.id || currentQuestions.length + 1,
-      vignette: questionData.vignette || '',
-      question: questionData.question || 'What is the most appropriate management or diagnosis?',
-      options: questionData.options?.map(o => ({
-        id: o.id || o.key,
-        key: o.key || o.id,
-        text: o.text || ''
-      })) || [
-        { id: 'A', key: 'A', text: questionData.optA || '' },
-        { id: 'B', key: 'B', text: questionData.optB || '' },
-        { id: 'C', key: 'C', text: questionData.optC || '' },
-        { id: 'D', key: 'D', text: questionData.optD || '' }
-      ],
-      correct: questionData.correct || questionData.correctOption || 'A',
-      correctOption: questionData.correctOption || questionData.correct || 'A',
-      explanation: questionData.explanation || questionData.rationale || '',
-      guidelineRef: questionData.guidelineRef || ''
-    };
+    const newQ = bankQuestion 
+      ? this.normalizeQuestion(bankQuestion, currentQuestions.length + 1)
+      : this.normalizeQuestion(questionData, currentQuestions.length + 1);
 
     const updatedQuestions = [...currentQuestions, newQ];
     this.updateTestQuestions(testId, updatedQuestions);
     return newQ;
+  }
+
+  getCohortResults(testId) {
+    const attemptsForTest = this.getAttemptsForTest(testId);
+    return {
+      testId,
+      testName: attemptsForTest.test?.name || 'Scheduled Mock Test',
+      summary: {
+        averageScore: attemptsForTest.summary?.batchMeanScore || '78.4 / 100',
+        highestScore: attemptsForTest.summary?.highestMark || '96 / 100',
+        attemptedCount: attemptsForTest.candidates?.length || 10,
+        totalEligible: 450,
+        passRate: attemptsForTest.summary?.passingPercentage || '88.5%',
+        cutoffScore: attemptsForTest.test?.passingScore || 50
+      },
+      students: attemptsForTest.candidates || []
+    };
   }
 
   getAttemptsForTest(testId) {

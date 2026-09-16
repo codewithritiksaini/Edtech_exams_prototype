@@ -272,13 +272,7 @@ export default function ManageTestsTab() {
   // Cancel Test Handler
   const handleCancelTest = (test) => {
     if (confirm(`Are you sure you want to cancel "${test.name}"?`)) {
-      const remaining = allTests.filter(t => t.id !== test.id);
-      try {
-        localStorage.setItem('medprep_phase6_tests', JSON.stringify(remaining));
-        window.dispatchEvent(new CustomEvent('medprep-tests-updated', { detail: remaining }));
-      } catch (err) {
-        console.warn('Cancel test err:', err);
-      }
+      testService.deleteTest(test.id);
       showToast(`Test "${test.name}" cancelled.`);
     }
   };

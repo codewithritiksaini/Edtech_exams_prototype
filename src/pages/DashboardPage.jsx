@@ -47,10 +47,10 @@ import TestTakingModal from '../components/TestTakingModal';
 import { 
   dashboardUserData, 
   studyPlanWeeks, 
-  dashboardLiveSessions, 
   dashboardTests,
   testService 
 } from '../data/mockData';
+import { liveSessionsService, getFeaturedSession } from '../services/liveSessionsService';
 import { curriculumService } from '../services/curriculumService';
 
 export default function DashboardPage() {
@@ -61,6 +61,16 @@ export default function DashboardPage() {
   // Dynamic query params from Phase 2 or fallback to default mock
   // Dynamic query params or active state
   const enrolledPlan = searchParams.get('plan') || dashboardUserData.packageTier;
+
+  // Live Sessions integration
+  const [dashboardLiveSessions, setDashboardLiveSessions] = useState(() => liveSessionsService.getAllSessions());
+  useEffect(() => {
+    const unsub = liveSessionsService.subscribe((updated) => {
+      setDashboardLiveSessions([...updated]);
+    });
+    return () => unsub();
+  }, []);
+  const featuredSession = getFeaturedSession(dashboardLiveSessions) || dashboardLiveSessions[0] || {};
   const examParam = searchParams.get('exam');
   
   const [selectedExamTrack, setSelectedExamTrack] = useState(() => {
@@ -399,7 +409,7 @@ export default function DashboardPage() {
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-xs text-slate-500">340+ Registered</span>
                     <button
-                      onClick={() => handleJoinLive(dashboardLiveSessions[0])}
+                      onClick={() => handleJoinLive(featuredSession)}
                       className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors flex items-center gap-1 cursor-pointer"
                     >
                       <Radio className="w-3.5 h-3.5" />
@@ -1073,7 +1083,7 @@ export default function DashboardPage() {
 
                   <div className="flex flex-col gap-3 shrink-0">
                     <button
-                      onClick={() => handleJoinLive(dashboardLiveSessions[0])}
+                      onClick={() => handleJoinLive(featuredSession)}
                       className="px-6 py-3.5 bg-white text-red-700 hover:bg-red-50 font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
                     >
                       <Radio className="w-4 h-4 text-red-600 animate-pulse" />

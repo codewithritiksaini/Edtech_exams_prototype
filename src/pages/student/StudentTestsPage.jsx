@@ -23,16 +23,19 @@ import {
   cbtTestService, 
   CBT_STATUS, 
   getTestStatus, 
+  canStartTest,
   formatTestCountdown, 
   getTestTimes 
 } from '../../services/cbtTestService';
+import { dashboardUserData } from '../../data/mockData';
 
 export default function StudentTestsPage() {
   const navigate = useNavigate();
+  const enrolledExamId = dashboardUserData?.examCategory || 'neet-pg';
 
   // Reactive time updated every 10 seconds
   const [currentTime, setCurrentTime] = useState(() => new Date());
-  const [tests, setTests] = useState(() => cbtTestService.getAllTests('neet-pg'));
+  const [tests, setTests] = useState(() => cbtTestService.getAllTests(enrolledExamId));
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'available' | 'upcoming' | 'completed' | 'expired'
   const [selectedTestForStart, setSelectedTestForStart] = useState(null);
   const [infoToast, setInfoToast] = useState('');
@@ -46,11 +49,11 @@ export default function StudentTestsPage() {
 
   // Subscribe to central service
   useEffect(() => {
-    const unsubscribe = cbtTestService.subscribe((updatedTests) => {
-      setTests(cbtTestService.getAllTests('neet-pg'));
+    const unsubscribe = cbtTestService.subscribe(() => {
+      setTests(cbtTestService.getAllTests(enrolledExamId));
     });
     return unsubscribe;
-  }, []);
+  }, [enrolledExamId]);
 
   const showToast = (msg) => {
     setInfoToast(msg);

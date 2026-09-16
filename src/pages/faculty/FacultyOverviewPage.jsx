@@ -24,23 +24,37 @@ import { authService, USER_ROLES } from '../../services/authService';
 import { catalogService } from '../../services/catalogService';
 import { curriculumService } from '../../services/curriculumService';
 import { peopleService } from '../../services/peopleService';
-import { facultyProfileData, dashboardLiveSessions, testService } from '../../data/mockData';
+import { facultyProfileData } from '../../data/mockData';
+import { liveSessionsService, getLiveSessionStatus, SESSION_STATUS } from '../../services/liveSessionsService';
+import { facultyAnalyticsService } from '../../services/facultyAnalyticsService';
+import { questionService } from '../../services/questionService';
 
 export default function FacultyOverviewPage() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(authService.getCurrentUser());
   const [exams] = useState(() => catalogService.getExams());
-  const [liveSessions] = useState(dashboardLiveSessions);
+  const [liveSessions, setLiveSessions] = useState(() => liveSessionsService.getAllSessions());
+
+  useEffect(() => {
+    const unsub = liveSessionsService.subscribe((updated) => setLiveSessions([...updated]));
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const unsub = authService.subscribe((u) => setCurrentUser(u));
     return unsub;
   }, []);
 
-  const profile = facultyProfileData;
-  const tonightSession = liveSessions.find(s => s.status === 'upcoming') || liveSessions[0];
-
   const currentFaculty = peopleService.getCurrentFacultyProfile();
+  const profile = currentFaculty ? {
+    name: currentFaculty.name || 'Dr. Siddharth V.',
+    specialization: currentFaculty.specialty || 'Interventional Cardiology & Electrophysiology',
+    department: currentFaculty.department || 'Clinical Medicine & Therapeutics',
+    degrees: currentFaculty.degrees || 'MD, DM (Cardiology), FACC',
+    rating: currentFaculty.rating || '4.95'
+  } : facultyProfileData;
+
+  const tonightSession = liveSessions.find(s => getLiveSessionStatus(s) === SESSION_STATUS.UPCOMING || getLiveSessionStatus(s) === SESSION_STATUS.LIVE) || liveSessions[0];
   const assignedSubjectIds = currentFaculty?.assignedSubjects || [];
   const cleanFacultyName = currentFaculty?.name ? currentFaculty.name.replace(/^Dr\.\s*/i, '').toLowerCase().trim() : '';
   const allSubjects = curriculumService.getSubjects ? curriculumService.getSubjects() : [];
@@ -49,6 +63,10 @@ export default function FacultyOverviewPage() {
     (currentFaculty?.email && s.facultyEmail && s.facultyEmail.toLowerCase() === currentFaculty.email.toLowerCase()) ||
     (cleanFacultyName && s.assignedFacultyName && s.assignedFacultyName.toLowerCase().includes(cleanFacultyName))
   );
+
+  // Derive pure metrics for faculty scope
+  const summary = facultyAnalyticsService.getDashboardSummary(currentFaculty);
+  const questionsCount = questionService.getQuestions ? questionService.getQuestions().length : 86;
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -86,13 +104,13 @@ export default function FacultyOverviewPage() {
         </div>
       </div>
 
-      {/* KPI Metrics Strip */}
+      {/* KPI Metrics Strip - Derived from canonical data */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Active Candidates', val: profile.stats?.activeStudents || '1,420', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-200' },
-          { label: 'Questions Authored', val: '86 MCQs', icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
-          { label: 'Live Masterclasses', val: `${profile.stats?.totalLectures || 48} Delivered`, icon: Video, color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200' },
-          { label: 'Student Satisfaction', val: `${profile.rating || 4.9} / 5.0`, icon: Star, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+          { label: 'Active Candidates', val: `${summary.activeStudents} Doctors`, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-200' },
+          { label: 'Questions Authored', val: `${questionsCount} MCQs`, icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+          { label: 'Live Masterclasses', val: `${summary.liveSessionsDelivered} Delivered`, icon: Video, color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200' },
+          { label: 'Pending Doubts', val: `${summary.unresolvedDoubts} Open`, icon: HelpCircle, color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200' },
         ].map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
@@ -127,7 +145,7 @@ export default function FacultyOverviewPage() {
               </div>
 
               <h2 className="text-xl sm:text-2xl font-black tracking-tight">
-                {tonightSession.lecture}
+                {tonightSession.title || tonightSession.lecture}
               </h2>
 
               <p className="text-xs text-slate-300 flex flex-wrap items-center gap-4">

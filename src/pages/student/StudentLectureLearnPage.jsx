@@ -22,8 +22,10 @@ import {
   Play,
   Award,
   Lock,
-  Unlock
+  Unlock,
+  HelpCircle
 } from 'lucide-react';
+import AskDoubtModal from '../../components/AskDoubtModal';
 import { catalogService } from '../../services/catalogService';
 import { curriculumService } from '../../services/curriculumService';
 import { learningProgressService } from '../../services/learningProgressService';
@@ -42,6 +44,7 @@ export default function StudentLectureLearnPage() {
   const [isCompleted, setIsCompleted] = useState(() => learningProgressService.isLectureCompleted(lectureId));
   const [toastMessage, setToastMessage] = useState('');
   const [lightboxImage, setLightboxImage] = useState(null);
+  const [isDoubtModalOpen, setIsDoubtModalOpen] = useState(false);
 
   // Flashcards state
   const [cardIndex, setCardIndex] = useState(0);
@@ -184,8 +187,17 @@ export default function StudentLectureLearnPage() {
           </div>
         </div>
 
-        {/* Completion Action */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Completion & Doubt Actions */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            onClick={() => setIsDoubtModalOpen(true)}
+            className="px-4 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center gap-1.5 transition-all border border-indigo-200 shadow-2xs cursor-pointer"
+            title="Submit a question to MD faculty mentor"
+          >
+            <HelpCircle className="w-4 h-4 text-indigo-600" />
+            <span>Ask Doubt</span>
+          </button>
+
           <button
             onClick={handleToggleComplete}
             disabled={isLocked}
@@ -618,6 +630,22 @@ export default function StudentLectureLearnPage() {
           </div>
         </div>
       )}
+
+      {/* Ask Doubt Modal with Curriculum Context */}
+      <AskDoubtModal
+        isOpen={isDoubtModalOpen}
+        onClose={() => setIsDoubtModalOpen(false)}
+        dayTitle={`${exam?.name || 'Curriculum'} • ${subject?.name || ''} • ${lecture?.title || ''}`}
+        contextData={{
+          examId,
+          subjectId,
+          subjectName: subject?.name,
+          moduleId,
+          lectureId,
+          topic: lecture?.title,
+          defaultTitle: `Question on ${lecture?.title || 'Clinical Lecture'}`
+        }}
+      />
     </div>
   );
 }
