@@ -58,13 +58,13 @@ export default function FacultyNavbar({ onToggleSidebar, isSidebarOpen }) {
           {/* Right: Quick Switch to Student LMS + Faculty Profile Dropdown */}
           <div className="flex items-center gap-3">
             
-            {/* Quick Toggle to Student LMS for Presentation */}
+            {/* Quick Demo Shortcut to Student LMS for Presentation Preview */}
             <Link
               to="/dashboard"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-colors shadow-xs"
-              title="Jump to Student LMS View for Demo"
+              title="Preview Student LMS experience for demo presentation (read-only)"
             >
-              <span>View as Student</span>
+              <span>Preview Student Experience</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
 

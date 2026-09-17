@@ -33,7 +33,8 @@ import {
   Calendar,
   Layers,
   BookOpen,
-  FileCheck
+  FileCheck,
+  Eye
 } from 'lucide-react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import DashboardSidebar from '../components/DashboardSidebar';
@@ -49,17 +50,23 @@ import {
   RESOURCE_TITLES 
 } from '../services/learningProgressService';
 
-export default function DayContentView() {
-  const { dayId = '3' } = useParams();
+export default function DayContentView({
+  mode = 'student',
+  previewSlot = null,
+  onBackToSchedule = null
+}) {
+  const isFacultyPreview = mode === 'faculty-preview';
+  const { dayId: routeDayId = '3' } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const requestedTab = searchParams.get('tab');
 
-  const currentNum = parseInt(dayId, 10) || 1;
+  const dayId = isFacultyPreview && previewSlot ? (previewSlot.id || String(previewSlot.dayNumber)) : routeDayId;
+  const currentNum = isFacultyPreview && previewSlot ? previewSlot.dayNumber : (parseInt(routeDayId, 10) || 1);
 
-  // Day Gate: Verify if this day is unlocked
-  const isThisDayUnlocked = learningProgressService.isDayUnlocked(currentNum);
+  // Day Gate: Verify if this day is unlocked (bypassed in Faculty Preview)
+  const isThisDayUnlocked = isFacultyPreview ? true : learningProgressService.isDayUnlocked(currentNum);
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState('');
@@ -70,16 +77,27 @@ export default function DayContentView() {
 
   // Day Inspection Mode: Notify with informative banner/toast on upcoming days without blocking redirect
   useEffect(() => {
-    if (!isThisDayUnlocked) {
+    if (!isFacultyPreview && !isThisDayUnlocked) {
       const highest = learningProgressService.getHighestUnlockedDay();
       showToast(`Viewing Day ${currentNum} in inspection mode. Complete Day ${highest} first for active progress tracking.`);
     }
-  }, [currentNum, isThisDayUnlocked]);
+  }, [currentNum, isThisDayUnlocked, isFacultyPreview]);
 
   // Load day data dynamically from curriculumService with studyPlanCurriculumData & mockData fallback
-  const studyPlanDay = useMemo(() => getStudyPlanDay(currentNum), [currentNum]);
+  const studyPlanDay = useMemo(() => isFacultyPreview ? null : getStudyPlanDay(currentNum), [currentNum, isFacultyPreview]);
 
   const [currentDayData, setCurrentDayData] = useState(() => {
+    if (isFacultyPreview && previewSlot) {
+      const resolved = curriculumService.getDayResolvedContent(previewSlot.dayNumber, previewSlot.examId, previewSlot.id);
+      return {
+        ...resolved,
+        weekNumber: previewSlot.weekNumber || resolved?.weekNumber || 1,
+        dayNumber: previewSlot.dayNumber || resolved?.dayNumber || 1,
+        title: previewSlot.dayTitle || resolved?.title || `Day ${previewSlot.dayNumber}`,
+        subjectName: previewSlot.subjectName || resolved?.subjectName || 'Clinical Medicine',
+        moduleTitle: previewSlot.moduleTitle || resolved?.moduleTitle || 'Clinical Module'
+      };
+    }
     const resolved = curriculumService.getDayResolvedContent(dayId) || dayContentStore[dayId] || dayContentStore['3'];
     return {
       ...resolved,
@@ -89,6 +107,18 @@ export default function DayContentView() {
 
   useEffect(() => {
     const loadDayData = () => {
+      if (isFacultyPreview && previewSlot) {
+        const resolved = curriculumService.getDayResolvedContent(previewSlot.dayNumber, previewSlot.examId, previewSlot.id);
+        setCurrentDayData({
+          ...resolved,
+          weekNumber: previewSlot.weekNumber || resolved?.weekNumber || 1,
+          dayNumber: previewSlot.dayNumber || resolved?.dayNumber || 1,
+          title: previewSlot.dayTitle || resolved?.title || `Day ${previewSlot.dayNumber}`,
+          subjectName: previewSlot.subjectName || resolved?.subjectName || 'Clinical Medicine',
+          moduleTitle: previewSlot.moduleTitle || resolved?.moduleTitle || 'Clinical Module'
+        });
+        return;
+      }
       const resolved = curriculumService.getDayResolvedContent(dayId) || dayContentStore[dayId] || dayContentStore['3'];
       setCurrentDayData({
         ...resolved,
@@ -104,16 +134,17 @@ export default function DayContentView() {
       unsubCurriculum();
       unsubSchedule();
     };
-  }, [dayId, studyPlanDay]);
+  }, [dayId, studyPlanDay, isFacultyPreview, previewSlot]);
 
-  // Reactive subscription to learning progress
+  // Reactive subscription to learning progress (Student mode only)
   const [progressVersion, setProgressVersion] = useState(0);
   useEffect(() => {
+    if (isFacultyPreview) return;
     const unsub = learningProgressService.subscribe(() => {
       setProgressVersion(v => v + 1);
     });
     return unsub;
-  }, []);
+  }, [isFacultyPreview]);
 
   // Determine whether an actual live session exists for this Day/Lecture
   const hasLiveSession = Boolean(
@@ -129,6 +160,9 @@ export default function DayContentView() {
 
   // Tab state — automatically set to active incomplete resource or requested tab if unlocked
   const [activeTab, setActiveTab] = useState(() => {
+    if (isFacultyPreview) {
+      return currentDayData.activeTabs?.[0] || 'notes';
+    }
     if (requestedTab && learningProgressService.isResourceUnlocked(dayId, requestedTab, currentDayData)) {
       return requestedTab;
     }
@@ -137,6 +171,14 @@ export default function DayContentView() {
 
   // Guard activeTab if it becomes locked or if URL has an unauthorized tab
   useEffect(() => {
+    if (isFacultyPreview) {
+      if (currentDayData.activeTabs && currentDayData.activeTabs.length > 0) {
+        if (!currentDayData.activeTabs.includes(activeTab)) {
+          setActiveTab(currentDayData.activeTabs[0]);
+        }
+      }
+      return;
+    }
     if (!isThisDayUnlocked) return; // Allow freely inspecting tabs on upcoming days
     const isMandatory = mandatorySequence.includes(activeTab);
     if (isMandatory) {
@@ -147,10 +189,21 @@ export default function DayContentView() {
         showToast(`This resource is not available yet. Complete ${RESOURCE_TITLES[activeRes] || activeRes} first.`);
       }
     }
-  }, [dayId, currentDayData, mandatorySequence, progressVersion, activeTab, isThisDayUnlocked]);
+  }, [dayId, currentDayData, mandatorySequence, progressVersion, activeTab, isThisDayUnlocked, isFacultyPreview]);
 
-  // Handle Tab Selection with Strict Sequential Check
+  // Centralized Mutation Guard for Faculty Preview Mode
+  const saveProgressSafe = (resourceKey, data) => {
+    if (isFacultyPreview) return;
+    learningProgressService.saveResourceProgress(dayId, resourceKey, data, currentDayData);
+  };
+
+  // Handle Tab Selection with Strict Sequential Check (Bypassed for Faculty Preview)
   const handleSelectTab = (tabKey) => {
+    if (isFacultyPreview) {
+      setActiveTab(tabKey);
+      return;
+    }
+
     // If student is inspecting an upcoming day, allow inspecting all scheduled tabs in preview mode
     if (!isThisDayUnlocked) {
       setActiveTab(tabKey);
@@ -185,22 +238,28 @@ export default function DayContentView() {
   };
 
   // Day Completion status
-  const isDayFullyCompleted = learningProgressService.isDayCompleted(dayId, currentDayData);
-  const completedMandatoryCount = mandatorySequence.filter(key => 
+  const isDayFullyCompleted = isFacultyPreview ? false : learningProgressService.isDayCompleted(dayId, currentDayData);
+  const completedMandatoryCount = isFacultyPreview ? 0 : mandatorySequence.filter(key => 
     learningProgressService.isResourceCompleted(dayId, key, currentDayData)
   ).length;
-  const completionPercentage = mandatorySequence.length > 0 
-    ? Math.round((completedMandatoryCount / mandatorySequence.length) * 100) 
-    : 0;
+  const completionPercentage = isFacultyPreview 
+    ? 0 
+    : (mandatorySequence.length > 0 
+      ? Math.round((completedMandatoryCount / mandatorySequence.length) * 100) 
+      : 0);
 
   // Active resource determination
-  const currentActiveResource = learningProgressService.getCurrentActiveResource(dayId, currentDayData);
-  const activeResourceState = learningProgressService.getResourceState(dayId, activeTab, currentDayData);
+  const currentActiveResource = isFacultyPreview 
+    ? (currentDayData.activeTabs?.[0] || 'notes')
+    : learningProgressService.getCurrentActiveResource(dayId, currentDayData);
+  const activeResourceState = isFacultyPreview 
+    ? { status: RESOURCE_STATUS.AVAILABLE, progress: 0 }
+    : learningProgressService.getResourceState(dayId, activeTab, currentDayData);
   const isActiveTabCompleted = activeResourceState.status === RESOURCE_STATUS.COMPLETED;
 
   // Active day status
-  const highestUnlockedDay = learningProgressService.getHighestUnlockedDay();
-  const isCurrentActiveDay = currentNum === highestUnlockedDay && !isDayFullyCompleted;
+  const highestUnlockedDay = isFacultyPreview ? currentNum : learningProgressService.getHighestUnlockedDay();
+  const isCurrentActiveDay = isFacultyPreview ? false : (currentNum === highestUnlockedDay && !isDayFullyCompleted);
 
   // Clinical Description
   const dayDescription = currentDayData.description || currentDayData.summary || 
@@ -270,8 +329,8 @@ export default function DayContentView() {
             return 100;
           }
           const next = Math.min(100, prev + 2);
-          learningProgressService.saveResourceProgress(dayId, 'video', { progress: next }, currentDayData);
-          if (next >= 95 && prev < 95) {
+          saveProgressSafe('video', { progress: next });
+          if (!isFacultyPreview && next >= 95 && prev < 95) {
             handleCompleteResource('video');
           }
           return next;
@@ -279,7 +338,7 @@ export default function DayContentView() {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, activeTab, dayId, currentDayData]);
+  }, [isPlaying, activeTab, dayId, currentDayData, isFacultyPreview]);
 
   // PDF State
   const [selectedPdfIndex, setSelectedPdfIndex] = useState(0);
@@ -291,7 +350,7 @@ export default function DayContentView() {
     author: 'Dr. Siddharth V. (AIIMS)'
   };
   const totalPdfPages = activePdf?.pages || 24;
-  const pdfResourceState = learningProgressService.getResourceState(dayId, 'notes', currentDayData);
+  const pdfResourceState = isFacultyPreview ? { currentPage: 1 } : learningProgressService.getResourceState(dayId, 'notes', currentDayData);
   const [pdfPage, setPdfPage] = useState(() => pdfResourceState.currentPage || 1);
 
   const handlePdfNextPage = () => {
@@ -299,7 +358,7 @@ export default function DayContentView() {
       const nextPage = pdfPage + 1;
       setPdfPage(nextPage);
       const pageProgress = Math.round((nextPage / totalPdfPages) * 100);
-      learningProgressService.saveResourceProgress(dayId, 'notes', { currentPage: nextPage, progress: pageProgress }, currentDayData);
+      saveProgressSafe('notes', { currentPage: nextPage, progress: pageProgress });
     }
   };
 
@@ -310,7 +369,7 @@ export default function DayContentView() {
   };
 
   // ECG / Images State
-  const imagesResourceState = learningProgressService.getResourceState(dayId, 'images', currentDayData);
+  const imagesResourceState = isFacultyPreview ? { viewedIds: [] } : learningProgressService.getResourceState(dayId, 'images', currentDayData);
   const [viewedImageIds, setViewedImageIds] = useState(() => new Set(imagesResourceState.viewedIds || []));
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxActiveIndex, setLightboxActiveIndex] = useState(0);
@@ -324,7 +383,7 @@ export default function DayContentView() {
 
     const totalImages = currentDayData.images?.length || 2;
     const progress = Math.round((updated.size / totalImages) * 100);
-    learningProgressService.saveResourceProgress(dayId, 'images', { viewedIds: Array.from(updated), progress }, currentDayData);
+    saveProgressSafe('images', { viewedIds: Array.from(updated), progress });
   };
 
   // Flashcards State
@@ -339,7 +398,7 @@ export default function DayContentView() {
     updated.add(currentFlashcardIndex);
     setReviewedCardIndices(updated);
     const progress = Math.round((updated.size / Math.max(flashcardsList.length, 1)) * 100);
-    learningProgressService.saveResourceProgress(dayId, 'flashcards', { reviewedCount: updated.size, progress }, currentDayData);
+    saveProgressSafe('flashcards', { reviewedCount: updated.size, progress });
   };
 
   const handleNextFlashcard = () => {
@@ -361,6 +420,10 @@ export default function DayContentView() {
 
   // Generic Completion Handler for any active resource
   const handleCompleteResource = (resourceKey) => {
+    if (isFacultyPreview) {
+      showToast(`Preview: "${RESOURCE_TITLES[resourceKey] || resourceKey}" read-only preview. Progress is not saved.`);
+      return;
+    }
     if (!isThisDayUnlocked) {
       showToast(`Day ${currentNum} is in preview mode. Complete Day ${learningProgressService.getHighestUnlockedDay()} first to record progress.`);
       return;
@@ -392,12 +455,19 @@ export default function DayContentView() {
   // Personal Study Notepad State
   const storageKeyNotes = `medprep_student_notes_day_${dayId}`;
   const [studentNotes, setStudentNotes] = useState(() => {
+    if (isFacultyPreview) {
+      return 'Preview Mode: Clinical study notes are not persisted to student records during preview.';
+    }
     return localStorage.getItem(storageKeyNotes) || 
       'Key takeaway: Always assess hemodynamics first in wide QRS tachycardia. If unstable -> synchronized cardioversion. If stable -> Brugada criteria algorithm.';
   });
   const [notesSaved, setNotesSaved] = useState(false);
 
   const handleSaveNotes = () => {
+    if (isFacultyPreview) {
+      showToast('Preview Mode: Note saving is disabled in read-only preview.');
+      return;
+    }
     localStorage.setItem(storageKeyNotes, studentNotes);
     setNotesSaved(true);
     setTimeout(() => setNotesSaved(false), 2500);
@@ -429,11 +499,13 @@ export default function DayContentView() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       
-      {/* 1. Top Navbar */}
-      <DashboardNavbar 
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        isSidebarOpen={isSidebarOpen}
-      />
+      {/* 1. Top Navbar (Student mode only) */}
+      {!isFacultyPreview && (
+        <DashboardNavbar 
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          isSidebarOpen={isSidebarOpen}
+        />
+      )}
 
       {/* Floating Toast Notification */}
       {toastMessage && (
@@ -445,44 +517,70 @@ export default function DayContentView() {
 
       <div className="flex-grow flex">
         
-        {/* Persistent Left Sidebar */}
-        <DashboardSidebar 
-          activeTab="plan" 
-          onSelectTab={(tabId) => {
-            if (tabId === 'dashboard') navigate('/dashboard');
-            else navigate(`/dashboard#${tabId}`);
-          }}
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-        />
+        {/* Persistent Left Sidebar (Student mode only) */}
+        {!isFacultyPreview && (
+          <DashboardSidebar 
+            activeTab="plan" 
+            onSelectTab={(tabId) => {
+              if (tabId === 'dashboard') navigate('/dashboard');
+              else navigate(`/dashboard#${tabId}`);
+            }}
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+          />
+        )}
 
         {/* Main Content Area */}
-        <main className="flex-grow p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6 pb-20">
+        <main className={`flex-grow p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6 pb-20 ${isFacultyPreview ? 'pt-4' : ''}`}>
           
           {/* ========================================================================= */}
           {/* 2. Breadcrumb Navigation                                                  */}
           {/* ========================================================================= */}
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-500">
-            <div className="flex items-center gap-2">
-              <Link to="/student/study-plan" className="hover:text-brand-600 transition-colors flex items-center gap-1 font-bold">
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Study Plan</span>
-              </Link>
-              <span className="text-slate-300">•</span>
-              <span>Week {currentDayData.weekNumber} • {currentDayData.subjectName || 'Cardiology & Hemodynamics'}</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-slate-900 font-bold">Day {currentDayData.dayNumber}</span>
-            </div>
+            {isFacultyPreview ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onBackToSchedule ? onBackToSchedule() : navigate('/faculty/schedule')}
+                  className="hover:text-indigo-600 transition-colors flex items-center gap-1 font-bold text-slate-700 cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Faculty Schedule</span>
+                </button>
+                <span className="text-slate-300">•</span>
+                <span>Week {currentDayData.weekNumber} • {currentDayData.subjectName || 'Clinical Subject'}</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-slate-900 font-bold">Preview Day {currentDayData.dayNumber}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link to="/student/study-plan" className="hover:text-brand-600 transition-colors flex items-center gap-1 font-bold">
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Study Plan</span>
+                </Link>
+                <span className="text-slate-300">•</span>
+                <span>Week {currentDayData.weekNumber} • {currentDayData.subjectName || 'Cardiology & Hemodynamics'}</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-slate-900 font-bold">Day {currentDayData.dayNumber}</span>
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-brand-50 text-brand-700 border border-brand-200">
-                Daily Study Mode
-              </span>
+              {isFacultyPreview ? (
+                <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1.5">
+                  <Eye className="w-3 h-3 text-indigo-600" />
+                  <span>Faculty Preview Mode • Read-Only</span>
+                </span>
+              ) : (
+                <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-brand-50 text-brand-700 border border-brand-200">
+                  Daily Study Mode
+                </span>
+              )}
             </div>
           </div>
 
           {/* Inspection / Preview Mode Banner (When inspecting upcoming days) */}
-          {!isThisDayUnlocked && (
+          {!isFacultyPreview && !isThisDayUnlocked && (
             <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs animate-in fade-in">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
@@ -529,7 +627,12 @@ export default function DayContentView() {
                     <span>Day {currentDayData.dayNumber || currentNum} of 7</span>
                   </span>
                   
-                  {isDayFullyCompleted ? (
+                  {isFacultyPreview ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      <Eye className="w-3 h-3 text-indigo-600" />
+                      <span>Faculty Preview</span>
+                    </span>
+                  ) : isDayFullyCompleted ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                       <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                       <span>Completed Day</span>
@@ -588,43 +691,54 @@ export default function DayContentView() {
                   {/* Progress Header Row */}
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${isDayFullyCompleted ? 'bg-emerald-500' : 'bg-brand-600 animate-pulse'}`} />
-                      <span>Learning Progress</span>
+                      <span className={`w-2 h-2 rounded-full ${isFacultyPreview ? 'bg-indigo-500' : isDayFullyCompleted ? 'bg-emerald-500' : 'bg-brand-600 animate-pulse'}`} />
+                      <span>{isFacultyPreview ? 'Preview Mode' : 'Learning Progress'}</span>
                     </span>
                     <span className="text-xs font-bold text-slate-800">
-                      {completedMandatoryCount} of {mandatorySequence.length} completed
+                      {isFacultyPreview ? 'Read-Only Delivery View' : `${completedMandatoryCount} of ${mandatorySequence.length} completed`}
                     </span>
                   </div>
 
                   {/* Horizontal Progress Bar with Percentage */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs font-extrabold">
-                      <span className="text-slate-500 font-medium text-[11px]">Today's Completion</span>
-                      <span className={isDayFullyCompleted ? 'text-emerald-700' : 'text-brand-700'}>
-                        {completionPercentage}%
+                      <span className="text-slate-500 font-medium text-[11px]">
+                        {isFacultyPreview ? 'Student Progress Tracking' : "Today's Completion"}
+                      </span>
+                      <span className={isFacultyPreview ? 'text-indigo-700 font-bold' : isDayFullyCompleted ? 'text-emerald-700' : 'text-brand-700'}>
+                        {isFacultyPreview ? 'Inactive (Preview Only)' : `${completionPercentage}%`}
                       </span>
                     </div>
                     <div className="w-full h-3 rounded-full bg-slate-200/80 overflow-hidden p-0.5">
                       <div 
                         className={`h-full rounded-full transition-all duration-500 ease-out ${
-                          isDayFullyCompleted ? 'bg-emerald-600' : 'bg-brand-600'
+                          isFacultyPreview 
+                            ? 'bg-indigo-500/80' 
+                            : isDayFullyCompleted 
+                              ? 'bg-emerald-600' 
+                              : 'bg-brand-600'
                         }`}
-                        style={{ width: `${completionPercentage}%` }}
+                        style={{ width: isFacultyPreview ? '100%' : `${completionPercentage}%` }}
                       />
                     </div>
                   </div>
 
                   {/* Progress Supporting Text */}
-                  <p className={`text-xs ${isDayFullyCompleted ? 'text-emerald-700 font-bold' : 'text-slate-600 font-medium'}`}>
+                  <p className={`text-xs ${isFacultyPreview ? 'text-slate-600 italic font-medium' : isDayFullyCompleted ? 'text-emerald-700 font-bold' : 'text-slate-600 font-medium'}`}>
                     {progressSupportingText}
                   </p>
 
                   {/* Current Resource Information */}
                   <div className="pt-2.5 border-t border-slate-200/70 flex items-center justify-between text-xs">
                     <span className="text-slate-500 font-medium">
-                      {isDayFullyCompleted ? 'Milestone:' : completedMandatoryCount === 0 ? 'Next up:' : 'Currently studying:'}
+                      {isFacultyPreview ? 'Current Resource:' : isDayFullyCompleted ? 'Milestone:' : completedMandatoryCount === 0 ? 'Next up:' : 'Currently studying:'}
                     </span>
-                    {isDayFullyCompleted ? (
+                    {isFacultyPreview ? (
+                      <span className="font-bold text-indigo-700 flex items-center gap-1.5 truncate max-w-[200px]" title={RESOURCE_TITLES[activeTab] || activeTab}>
+                        <Eye className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <span className="truncate">{RESOURCE_TITLES[activeTab] || activeTab}</span>
+                      </span>
+                    ) : isDayFullyCompleted ? (
                       <span className="font-bold text-emerald-700 flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                         <span>All Content Reviewed</span>
@@ -645,21 +759,32 @@ export default function DayContentView() {
             {/* Bottom Row: Navigation Actions & Optional Live Session Banner */}
             <div className="pt-5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               
-              {/* Left Action: Previous Day */}
-              <button
-                type="button"
-                onClick={() => prevDayNum && navigate(`/day/${prevDayNum}`)}
-                disabled={!prevDayNum}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border shrink-0 ${
-                  prevDayNum
-                    ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 cursor-pointer shadow-2xs'
-                    : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
-                }`}
-                title={prevDayNum ? `Review Day ${prevDayNum}` : 'No previous day'}
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Previous Day</span>
-              </button>
+              {/* Left Action: Previous Day (Student Mode) or Back to Schedule (Preview Mode) */}
+              {isFacultyPreview ? (
+                <button
+                  type="button"
+                  onClick={() => onBackToSchedule ? onBackToSchedule() : navigate('/faculty/schedule')}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 cursor-pointer shadow-2xs shrink-0"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back to Faculty Schedule</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => prevDayNum && navigate(`/day/${prevDayNum}`)}
+                  disabled={!prevDayNum}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border shrink-0 ${
+                    prevDayNum
+                      ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 cursor-pointer shadow-2xs'
+                      : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                  }`}
+                  title={prevDayNum ? `Review Day ${prevDayNum}` : 'No previous day'}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Previous Day</span>
+                </button>
+              )}
 
               {/* Center / Right: Live Session Quick Pill (if scheduled) + Primary Resume + Next Day */}
               <div className="flex flex-wrap items-center gap-3">
@@ -675,17 +800,22 @@ export default function DayContentView() {
                       type="button"
                       onClick={() => {
                         setActiveTab('live');
-                        setLiveModalOpen(true);
+                        if (!isFacultyPreview) setLiveModalOpen(true);
                       }}
                       className="ml-1 text-rose-700 hover:text-rose-900 underline font-bold cursor-pointer"
                     >
-                      Join →
+                      {isFacultyPreview ? 'View Details →' : 'Join →'}
                     </button>
                   </div>
                 )}
 
-                {/* Primary Action Button: Day Completed vs Resume Current */}
-                {isDayFullyCompleted ? (
+                {/* Primary Action Button: Day Completed vs Resume Current vs Faculty Preview */}
+                {isFacultyPreview ? (
+                  <div className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold flex items-center gap-2 select-none">
+                    <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Faculty Preview Mode</span>
+                  </div>
+                ) : isDayFullyCompleted ? (
                   <button
                     type="button"
                     onClick={handleResumeCurrent}
@@ -707,22 +837,24 @@ export default function DayContentView() {
                 )}
 
                 {/* Next Day Button (Progression / Inspection Navigation) */}
-                <button
-                  type="button"
-                  onClick={handleNextDayClick}
-                  disabled={!nextDayNum}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border shrink-0 ${
-                    !nextDayNum
-                      ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
-                      : isDayFullyCompleted
-                        ? 'bg-brand-600 hover:bg-brand-700 text-white border-brand-600 shadow-sm shadow-brand-600/20 cursor-pointer'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 cursor-pointer shadow-2xs'
-                  }`}
-                  title={nextDayNum ? `Navigate to Day ${nextDayNum}` : 'No next day'}
-                >
-                  <span>Next Day</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                {!isFacultyPreview && (
+                  <button
+                    type="button"
+                    onClick={handleNextDayClick}
+                    disabled={!nextDayNum}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border shrink-0 ${
+                      !nextDayNum
+                        ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                        : isDayFullyCompleted
+                          ? 'bg-brand-600 hover:bg-brand-700 text-white border-brand-600 shadow-sm shadow-brand-600/20 cursor-pointer'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 cursor-pointer shadow-2xs'
+                    }`}
+                    title={nextDayNum ? `Navigate to Day ${nextDayNum}` : 'No next day'}
+                  >
+                    <span>Next Day</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
 
               </div>
             </div>
@@ -735,163 +867,170 @@ export default function DayContentView() {
           {/* 5. Resource Navigation Bar                                                */}
           {/* Pill navigation + CONDITIONAL Live Session (Only if actually scheduled)   */}
           {/* ========================================================================= */}
-          <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-2 overflow-x-auto">
-            
-            {/* Video Lecture */}
-            {mandatorySequence.includes('video') && (() => {
-              const isDone = learningProgressService.isResourceCompleted(dayId, 'video', currentDayData);
-              const isUnlocked = learningProgressService.isResourceUnlocked(dayId, 'video', currentDayData);
-              const isActive = activeTab === 'video';
-              return (
-                <button
-                  type="button"
-                  onClick={() => handleSelectTab('video')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                    isActive
-                      ? 'bg-brand-600 text-white shadow-xs'
-                      : isDone
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                        : isUnlocked
-                          ? 'text-slate-700 hover:bg-slate-100'
-                          : 'text-slate-400 bg-slate-50 border border-dashed border-slate-200 hover:bg-slate-100/70'
-                  }`}
-                  title={isDone ? 'Completed (Click to review)' : isUnlocked ? 'Available to study' : 'Locked: complete prior resources'}
-                >
-                  <Video className="w-4 h-4" />
-                  <span>Video Lecture</span>
-                  {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
-                  {!isDone && !isUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
-                </button>
-              );
-            })()}
+          {(() => {
+            const getTabDone = (key) => isFacultyPreview ? false : learningProgressService.isResourceCompleted(dayId, key, currentDayData);
+            const getTabUnlocked = (key) => isFacultyPreview ? true : learningProgressService.isResourceUnlocked(dayId, key, currentDayData);
 
-            {/* Clinical PDF Notes */}
-            {mandatorySequence.includes('notes') && (() => {
-              const isDone = learningProgressService.isResourceCompleted(dayId, 'notes', currentDayData);
-              const isUnlocked = learningProgressService.isResourceUnlocked(dayId, 'notes', currentDayData);
-              const isActive = activeTab === 'notes';
-              return (
-                <button
-                  type="button"
-                  onClick={() => handleSelectTab('notes')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                    isActive
-                      ? 'bg-brand-600 text-white shadow-xs'
-                      : isDone
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                        : isUnlocked
-                          ? 'text-slate-700 hover:bg-slate-100'
-                          : 'text-slate-400 bg-slate-50 border border-dashed border-slate-200 hover:bg-slate-100/70'
-                  }`}
-                  title={isDone ? 'Completed (Click to review)' : isUnlocked ? 'Available to study' : 'Locked: complete prior resources'}
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Clinical PDF Notes</span>
-                  {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
-                  {!isDone && !isUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
-                </button>
-              );
-            })()}
+            return (
+              <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-2 overflow-x-auto">
+                
+                {/* Video Lecture */}
+                {mandatorySequence.includes('video') && (() => {
+                  const isDone = getTabDone('video');
+                  const isUnlocked = getTabUnlocked('video');
+                  const isActive = activeTab === 'video';
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTab('video')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        isActive
+                          ? 'bg-brand-600 text-white shadow-xs'
+                          : isDone
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                            : isUnlocked
+                              ? 'text-slate-700 hover:bg-slate-100'
+                              : 'text-slate-400 bg-slate-50 border border-dashed border-slate-200 hover:bg-slate-100/70'
+                      }`}
+                      title={isFacultyPreview ? 'Video Lecture Preview' : isDone ? 'Completed (Click to review)' : isUnlocked ? 'Available to study' : 'Locked: complete prior resources'}
+                    >
+                      <Video className="w-4 h-4" />
+                      <span>Video Lecture</span>
+                      {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                      {!isDone && !isUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
+                    </button>
+                  );
+                })()}
 
-            {/* ECG & Clinical Diagrams */}
-            {mandatorySequence.includes('images') && (() => {
-              const isDone = learningProgressService.isResourceCompleted(dayId, 'images', currentDayData);
-              const isUnlocked = learningProgressService.isResourceUnlocked(dayId, 'images', currentDayData);
-              const isActive = activeTab === 'images';
-              return (
-                <button
-                  type="button"
-                  onClick={() => handleSelectTab('images')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                    isActive
-                      ? 'bg-brand-600 text-white shadow-xs'
-                      : isDone
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                        : isUnlocked
-                          ? 'text-slate-700 hover:bg-slate-100'
-                          : 'text-slate-400 bg-slate-50 border border-dashed border-slate-200 hover:bg-slate-100/70'
-                  }`}
-                  title={isDone ? 'Completed (Click to review)' : isUnlocked ? 'Available to study' : 'Locked: complete prior resources'}
-                >
-                  <ImageIcon className="w-4 h-4" />
-                  <span>ECG & Clinical Diagrams</span>
-                  {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
-                  {!isDone && !isUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
-                </button>
-              );
-            })()}
+                {/* Clinical PDF Notes */}
+                {mandatorySequence.includes('notes') && (() => {
+                  const isDone = getTabDone('notes');
+                  const isUnlocked = getTabUnlocked('notes');
+                  const isActive = activeTab === 'notes';
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTab('notes')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        isActive
+                          ? 'bg-brand-600 text-white shadow-xs'
+                          : isDone
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                            : isUnlocked
+                              ? 'text-slate-700 hover:bg-slate-100'
+                              : 'text-slate-400 bg-slate-50 border border-dashed border-slate-200 hover:bg-slate-100/70'
+                      }`}
+                      title={isFacultyPreview ? 'Clinical PDF Notes Preview' : isDone ? 'Completed (Click to review)' : isUnlocked ? 'Available to study' : 'Locked: complete prior resources'}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Clinical PDF Notes</span>
+                      {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                      {!isDone && !isUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
+                    </button>
+                  );
+                })()}
 
-            {/* Flashcards */}
-            {mandatorySequence.includes('flashcards') && (() => {
-              const isDone = learningProgressService.isResourceCompleted(dayId, 'flashcards', currentDayData);
-              const isUnlocked = learningProgressService.isResourceUnlocked(dayId, 'flashcards', currentDayData);
-              const isActive = activeTab === 'flashcards';
-              return (
-                <button
-                  type="button"
-                  onClick={() => handleSelectTab('flashcards')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                    isActive
-                      ? 'bg-brand-600 text-white shadow-xs'
-                      : isDone
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                        : isUnlocked
-                          ? 'text-slate-700 hover:bg-slate-100'
-                          : 'text-slate-400 bg-slate-50 border border-dashed border-slate-200 hover:bg-slate-100/70'
-                  }`}
-                  title={isDone ? 'Completed (Click to review)' : isUnlocked ? 'Available to study' : 'Locked: complete prior resources'}
-                >
-                  <Brain className="w-4 h-4" />
-                  <span>Flashcards</span>
-                  {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
-                  {!isDone && !isUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
-                </button>
-              );
-            })()}
+                {/* ECG & Clinical Diagrams */}
+                {mandatorySequence.includes('images') && (() => {
+                  const isDone = getTabDone('images');
+                  const isUnlocked = getTabUnlocked('images');
+                  const isActive = activeTab === 'images';
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTab('images')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        isActive
+                          ? 'bg-brand-600 text-white shadow-xs'
+                          : isDone
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                            : isUnlocked
+                              ? 'text-slate-700 hover:bg-slate-100'
+                              : 'text-slate-400 bg-slate-50 border border-dashed border-slate-200 hover:bg-slate-100/70'
+                      }`}
+                      title={isFacultyPreview ? 'ECG & Clinical Diagrams Preview' : isDone ? 'Completed (Click to review)' : isUnlocked ? 'Available to study' : 'Locked: complete prior resources'}
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      <span>ECG & Clinical Diagrams</span>
+                      {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                      {!isDone && !isUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
+                    </button>
+                  );
+                })()}
 
-            {/* Clinical Assessment (if day has test) */}
-            {mandatorySequence.includes('test') && (() => {
-              const isDone = learningProgressService.isResourceCompleted(dayId, 'test', currentDayData);
-              const isUnlocked = learningProgressService.isResourceUnlocked(dayId, 'test', currentDayData);
-              const isActive = activeTab === 'test';
-              return (
-                <button
-                  type="button"
-                  onClick={() => handleSelectTab('test')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                    isActive
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : isDone
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                        : isUnlocked
-                          ? 'text-amber-800 bg-amber-50 hover:bg-amber-100'
-                          : 'text-slate-400 bg-slate-50 border border-dashed border-slate-200'
-                  }`}
-                >
-                  <CheckCircle2 className="w-4 h-4 text-amber-600" />
-                  <span>CBT Test Series</span>
-                  {!isDone && !isUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
-                </button>
-              );
-            })()}
+                {/* Flashcards */}
+                {mandatorySequence.includes('flashcards') && (() => {
+                  const isDone = getTabDone('flashcards');
+                  const isUnlocked = getTabUnlocked('flashcards');
+                  const isActive = activeTab === 'flashcards';
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTab('flashcards')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        isActive
+                          ? 'bg-brand-600 text-white shadow-xs'
+                          : isDone
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                            : isUnlocked
+                              ? 'text-slate-700 hover:bg-slate-100'
+                              : 'text-slate-400 bg-slate-50 border border-dashed border-slate-200 hover:bg-slate-100/70'
+                      }`}
+                      title={isFacultyPreview ? 'Flashcards Preview' : isDone ? 'Completed (Click to review)' : isUnlocked ? 'Available to study' : 'Locked: complete prior resources'}
+                    >
+                      <Brain className="w-4 h-4" />
+                      <span>Flashcards</span>
+                      {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                      {!isDone && !isUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
+                    </button>
+                  );
+                })()}
 
-            {/* CONDITIONAL Live Session (Only rendered if hasLiveSession is true!) */}
-            {hasLiveSession && (
-              <button
-                type="button"
-                onClick={() => handleSelectTab('live')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                  activeTab === 'live'
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200'
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                <span>🔴 Live Session</span>
-              </button>
-            )}
+                {/* Clinical Assessment (if day has test) */}
+                {mandatorySequence.includes('test') && (() => {
+                  const isDone = getTabDone('test');
+                  const isUnlocked = getTabUnlocked('test');
+                  const isActive = activeTab === 'test';
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectTab('test')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        isActive
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : isDone
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : isUnlocked
+                              ? 'text-amber-800 bg-amber-50 hover:bg-amber-100'
+                              : 'text-slate-400 bg-slate-50 border border-dashed border-slate-200'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                      <span>CBT Test Series</span>
+                      {!isDone && !isUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
+                    </button>
+                  );
+                })()}
 
-          </div>
+                {/* CONDITIONAL Live Session (Only rendered if hasLiveSession is true!) */}
+                {hasLiveSession && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectTab('live')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                      activeTab === 'live'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                    <span>🔴 Live Session</span>
+                  </button>
+                )}
+
+              </div>
+            );
+          })()}
 
           {/* ========================================================================= */}
           {/* 6. Main Study Area — Single Focused Resource Viewer                       */}
@@ -1049,6 +1188,11 @@ export default function DayContentView() {
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <span>Video Masterclass Completed ✓</span>
                       </div>
+                    ) : isFacultyPreview ? (
+                      <div className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs flex items-center gap-2 border border-slate-200">
+                        <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Preview Mode • Read-Only</span>
+                      </div>
                     ) : !isThisDayUnlocked ? (
                       <div className="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 font-bold text-xs flex items-center gap-2 border border-amber-200">
                         <Lock className="w-3.5 h-3.5 text-amber-700" />
@@ -1183,6 +1327,11 @@ export default function DayContentView() {
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <span>PDF Notes Completed ✓</span>
                       </div>
+                    ) : isFacultyPreview ? (
+                      <div className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs flex items-center gap-2 border border-slate-200">
+                        <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Preview Mode • Read-Only</span>
+                      </div>
                     ) : !isThisDayUnlocked ? (
                       <div className="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 font-bold text-xs flex items-center gap-2 border border-amber-200">
                         <Lock className="w-3.5 h-3.5 text-amber-700" />
@@ -1292,6 +1441,11 @@ export default function DayContentView() {
                       <div className="px-4 py-2.5 rounded-xl bg-emerald-50 text-emerald-800 font-bold text-xs flex items-center gap-2 border border-emerald-200">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <span>All Cases Inspected ✓</span>
+                      </div>
+                    ) : isFacultyPreview ? (
+                      <div className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs flex items-center gap-2 border border-slate-200">
+                        <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Preview Mode • Read-Only</span>
                       </div>
                     ) : !isThisDayUnlocked ? (
                       <div className="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 font-bold text-xs flex items-center gap-2 border border-amber-200">
@@ -1414,6 +1568,11 @@ export default function DayContentView() {
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <span>Flashcard Deck Completed ✓</span>
                       </div>
+                    ) : isFacultyPreview ? (
+                      <div className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs flex items-center gap-2 border border-slate-200">
+                        <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Preview Mode • Read-Only</span>
+                      </div>
                     ) : !isThisDayUnlocked ? (
                       <div className="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 font-bold text-xs flex items-center gap-2 border border-amber-200">
                         <Lock className="w-3.5 h-3.5 text-amber-700" />
@@ -1488,14 +1647,21 @@ export default function DayContentView() {
                       Note: Clinical grand rounds conducted live by faculty.
                     </p>
 
-                    <button
-                      type="button"
-                      onClick={() => setLiveModalOpen(true)}
-                      className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-rose-600/20 cursor-pointer shrink-0"
-                    >
-                      <Radio className="w-3.5 h-3.5" />
-                      <span>Join Live Session</span>
-                    </button>
+                    {isFacultyPreview ? (
+                      <div className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-500 font-bold text-xs flex items-center gap-2 border border-slate-200">
+                        <Eye className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Preview Mode: Joining this session is unavailable.</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setLiveModalOpen(true)}
+                        className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-rose-600/20 cursor-pointer shrink-0"
+                      >
+                        <Radio className="w-3.5 h-3.5" />
+                        <span>Join Live Session</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1528,7 +1694,12 @@ export default function DayContentView() {
                   </div>
 
                   <div className="pt-2">
-                    {!isThisDayUnlocked ? (
+                    {isFacultyPreview ? (
+                      <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-100/70 text-amber-900 font-bold text-xs border border-amber-300">
+                        <Eye className="w-3.5 h-3.5 text-amber-800" />
+                        <span>Preview Mode: CBT assessment attempts cannot be created by Faculty.</span>
+                      </div>
+                    ) : !isThisDayUnlocked ? (
                       <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-100/70 text-amber-900 font-bold text-xs border border-amber-300">
                         <Lock className="w-3.5 h-3.5 text-amber-800" />
                         <span>CBT Assessment Locked • Complete Day {learningProgressService.getHighestUnlockedDay()} First</span>
@@ -1573,18 +1744,28 @@ export default function DayContentView() {
 
               <textarea
                 value={studentNotes}
-                onChange={(e) => setStudentNotes(e.target.value)}
-                placeholder="Write down high-yield clinical notes and reminders for this study day..."
+                onChange={(e) => !isFacultyPreview && setStudentNotes(e.target.value)}
+                readOnly={isFacultyPreview}
+                placeholder={isFacultyPreview ? "Preview Mode: Personal notes are disabled in Faculty Preview." : "Write down high-yield clinical notes and reminders for this study day..."}
                 rows={4}
-                className="w-full p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all resize-none font-medium"
+                className={`w-full p-3.5 rounded-2xl border text-xs transition-all resize-none font-medium ${
+                  isFacultyPreview
+                    ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed'
+                    : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500'
+                }`}
               />
 
               <div className="flex items-center justify-between text-xs text-slate-400">
-                <span>Saved locally in your browser session</span>
+                <span>{isFacultyPreview ? 'Read-only preview • Notes not saved' : 'Saved locally in your browser session'}</span>
                 <button
                   type="button"
                   onClick={handleSaveNotes}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                  disabled={isFacultyPreview}
+                  className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors ${
+                    isFacultyPreview
+                      ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer'
+                  }`}
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save Notes</span>
@@ -1630,35 +1811,37 @@ export default function DayContentView() {
           </div>
 
           {/* ========================================================================= */}
-          {/* 8. Discreet Developer Simulator Bar (For Testing)                          */}
+          {/* 8. Discreet Developer Simulator Bar (For Testing - Hidden in Faculty Preview) */}
           {/* ========================================================================= */}
-          <div className="bg-slate-100/80 rounded-2xl p-4 border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-slate-600 font-medium">
-              <Sparkles className="w-4 h-4 text-brand-600 shrink-0" />
-              <span>Study Room Simulator • Active: <strong className="text-slate-900">{RESOURCE_TITLES[activeTab] || activeTab}</strong></span>
-            </div>
+          {!isFacultyPreview && (
+            <div className="bg-slate-100/80 rounded-2xl p-4 border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-slate-600 font-medium">
+                <Sparkles className="w-4 h-4 text-brand-600 shrink-0" />
+                <span>Study Room Simulator • Active: <strong className="text-slate-900">{RESOURCE_TITLES[activeTab] || activeTab}</strong></span>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleSimulateAdvanceResource}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-brand-50 text-brand-700 border border-slate-200 font-bold transition-all flex items-center gap-1 cursor-pointer"
-                title="Complete active resource and advance sequence"
-              >
-                <span>Advance Resource (+1)</span>
-                <ArrowRight className="w-3 h-3" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSimulateAdvanceResource}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-brand-50 text-brand-700 border border-slate-200 font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  title="Complete active resource and advance sequence"
+                >
+                  <span>Advance Resource (+1)</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
 
-              <button
-                type="button"
-                onClick={handleSimulateResetDay}
-                className="p-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition-all cursor-pointer"
-                title="Reset Day progression"
-              >
-                <RotateCw className="w-3.5 h-3.5" />
-              </button>
+                <button
+                  type="button"
+                  onClick={handleSimulateResetDay}
+                  className="p-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition-all cursor-pointer"
+                  title="Reset Day progression"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
         </main>
       </div>

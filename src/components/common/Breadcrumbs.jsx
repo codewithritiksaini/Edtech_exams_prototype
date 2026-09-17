@@ -316,10 +316,30 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
       label: 'Packages & Pricing',
       path: `/${rootSegment}/packages`
     });
-  } else if (segments.includes('faculty')) {
+  } else if (rootSegment === 'faculty' && (segments.length === 1 || segments[1] === 'dashboard')) {
+    crumbs.push({
+      label: 'Command Center',
+      path: '/faculty/dashboard'
+    });
+  } else if (rootSegment === 'admin' && segments.includes('faculty')) {
     crumbs.push({
       label: 'Faculty Directory',
       path: `/${rootSegment}/faculty`
+    });
+  } else if (segments.includes('upload')) {
+    crumbs.push({
+      label: 'Quick Content Import',
+      path: `/${rootSegment}/upload`
+    });
+  } else if (segments.includes('doubts')) {
+    crumbs.push({
+      label: 'Doubts & Q&A Desk',
+      path: `/${rootSegment}/doubts`
+    });
+  } else if (segments.includes('availability')) {
+    crumbs.push({
+      label: 'My Availability',
+      path: `/${rootSegment}/availability`
     });
   } else if (segments.includes('students')) {
     crumbs.push({

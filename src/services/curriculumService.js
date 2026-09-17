@@ -2461,6 +2461,22 @@ class CurriculumService {
     ) || null;
   }
 
+  /**
+   * Exact canonical lookup for schedule/delivery slots by slot.id.
+   * No numeric dayNumber fallback to prevent ambiguous resolution.
+   */
+  getScheduleSlotById(slotId) {
+    if (!slotId) return null;
+    return this.schedule.find(s => s.id === slotId) || null;
+  }
+
+  /**
+   * Canonical delivery slot resolver by exact deliveryDayId.
+   */
+  getDeliverySlotById(deliverySlotId) {
+    return this.getScheduleSlotById(deliverySlotId);
+  }
+
   saveScheduleSlot(slotData) {
     // Key uniquely by id (edit) or by examId + dayNumber + subjectId + lectureTimeSlot
     // This allows multiple distinct time slots per day per subject
