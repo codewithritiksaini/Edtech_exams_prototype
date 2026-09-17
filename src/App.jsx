@@ -44,6 +44,7 @@ import FacultySchedulePage from './pages/faculty/FacultySchedulePage';
 import FacultyAvailabilityPage from './pages/faculty/FacultyAvailabilityPage';
 import FacultyQuestionAuthoringPage from './pages/faculty/FacultyQuestionAuthoringPage';
 import FacultyTestResultsPage from './pages/faculty/FacultyTestResultsPage';
+import FacultyDeliveryPreviewPage from './pages/faculty/FacultyDeliveryPreviewPage';
 import StudentCoursesPage from './pages/student/StudentCoursesPage';
 import StudentExamOverviewPage from './pages/student/StudentExamOverviewPage';
 import StudentSubjectsPage from './pages/student/StudentSubjectsPage';
@@ -224,6 +225,12 @@ export default function App() {
           <Route 
             path="/faculty/legacy" 
             element={<Navigate to="/faculty" replace />} 
+          />
+
+          {/* Read-Only Faculty Delivery Day Preview Route */}
+          <Route 
+            path="/faculty/preview/delivery/:deliveryDayId" 
+            element={<FacultyDeliveryPreviewPage />} 
           />
 
           {/* Phase 4: Faculty Portal with Scoped Hierarchy & Operations */}

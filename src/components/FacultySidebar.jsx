@@ -290,10 +290,10 @@ export default function FacultySidebar({
                   )}
                 </button>
 
-                {/* Upload Content */}
+                {/* Quick Content Import */}
                 <button
                   onClick={() => handleTabClick('upload')}
-                  title={!isExpanded ? 'Upload Content (Rapid Studio)' : undefined}
+                  title={!isExpanded ? 'Quick Content Import' : undefined}
                   className={`w-full flex items-center rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                     isExpanded ? 'justify-between px-3 py-2' : 'justify-center p-2.5'
                   } ${
@@ -304,11 +304,11 @@ export default function FacultySidebar({
                 >
                   <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                     <UploadCloud className={`w-4 h-4 shrink-0 ${isTabActive('upload') ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {isExpanded && <span className="whitespace-nowrap shrink-0">Upload Content</span>}
+                    {isExpanded && <span className="whitespace-nowrap shrink-0">Quick Content Import</span>}
                   </div>
                   {isExpanded && (
                     <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ml-auto">
-                      Studio
+                      Import
                     </span>
                   )}
                 </button>
