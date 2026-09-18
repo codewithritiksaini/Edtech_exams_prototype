@@ -5,6 +5,57 @@
 
 import { sampleCbtQuestionBank } from '../data/cbtQuestionBankData.js';
 import { questionService } from './questionService.js';
+import { catalogService } from './catalogService.js';
+import { curriculumService } from './curriculumService.js';
+import { peopleService } from './peopleService.js';
+import { getStoredData, setStoredData } from '../utils/examStorage.js';
+import { 
+  STRUCTURE_MODES, 
+  UNIT_TYPES, 
+  EXAM_MAPPING_TYPES, 
+  STRUCTURE_ITEM_TYPES,
+  getExamPattern, 
+  createDefaultTestStructure, 
+  generateUnitId, 
+  validateStructure,
+  DEFAULT_UNIT_CONFIGURATION,
+  normalizeUnitConfiguration,
+  validateUnitConfiguration,
+  getExamStages,
+  getStageSubjects,
+  validateCurriculumScope,
+  normalizeTestStructure,
+  validateTestStructureHierarchy,
+  isStructureReady
+} from './examPatternHelper.js';
+
+export { STRUCTURE_ITEM_TYPES, isStructureReady };
+import { 
+  questionTypeService, 
+  QUESTION_TYPES, 
+  QUESTION_TYPE_INHERITANCE_MODES, 
+  DEFAULT_TEST_ALLOWED_QUESTION_TYPES, 
+  DEFAULT_TEST_QUESTION_TYPE_CONFIG 
+} from './questionTypeService.js';
+import { 
+  ASSESSMENT_METHODS, 
+  ASSESSMENT_METHOD_LIST, 
+  VALID_ASSESSMENT_METHOD_IDS,
+  getAssessmentMethodLabel, 
+  getAssessmentMethodBadgeClass, 
+  isValidAssessmentMethod, 
+  validateAssessmentMethod 
+} from './assessmentMethodService.js';
+
+export { 
+  ASSESSMENT_METHODS, 
+  ASSESSMENT_METHOD_LIST, 
+  VALID_ASSESSMENT_METHOD_IDS,
+  getAssessmentMethodLabel, 
+  getAssessmentMethodBadgeClass, 
+  isValidAssessmentMethod, 
+  validateAssessmentMethod 
+};
 
 export const CBT_STATUS = {
   UPCOMING: 'upcoming',
@@ -14,6 +65,141 @@ export const CBT_STATUS = {
   SUBMITTED: 'submitted',
   EXPIRED: 'expired'
 };
+
+export const FACULTY_TEST_STATUS = {
+  DRAFT: 'DRAFT',
+  UPCOMING: 'UPCOMING',
+  LIVE: 'LIVE',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED'
+};
+
+export const FACULTY_TEST_TYPES = [
+  { value: 'SUBJECT_TEST', label: 'Subject Test' },
+  { value: 'CHAPTER_TEST', label: 'Chapter Test' },
+  { value: 'PRACTICE_TEST', label: 'Practice Test' },
+  { value: 'COHORT_TEST', label: 'Cohort Test' },
+  { value: 'CUSTOM', label: 'Custom Test' }
+];
+
+export const getFacultyTestTypeLabel = (typeValue) => {
+  const found = FACULTY_TEST_TYPES.find(t => t.value === typeValue);
+  return found ? found.label : (typeValue || 'Subject Test');
+};
+
+export function generateFacultyTestCode(existingTests = []) {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const datePrefix = `FT-${yyyy}${mm}${dd}`;
+
+  let maxSeq = 0;
+  if (Array.isArray(existingTests)) {
+    existingTests.forEach(t => {
+      if (t && t.code && typeof t.code === 'string' && t.code.startsWith(datePrefix)) {
+        const parts = t.code.split('-');
+        if (parts.length >= 3) {
+          const seq = parseInt(parts[2], 10);
+          if (!isNaN(seq) && seq > maxSeq) {
+            maxSeq = seq;
+          }
+        }
+      }
+    });
+  }
+
+  const nextSeq = String(maxSeq + 1).padStart(3, '0');
+  return `${datePrefix}-${nextSeq}`;
+}
+
+export function getNormalizedFacultyStatus(test) {
+  if (!test) return FACULTY_TEST_STATUS.DRAFT;
+  const rawStatus = (test.status || '').toUpperCase();
+  if (rawStatus === 'DRAFT') return FACULTY_TEST_STATUS.DRAFT;
+  if (rawStatus === 'CANCELLED') return FACULTY_TEST_STATUS.CANCELLED;
+  if (rawStatus === 'UPCOMING') return FACULTY_TEST_STATUS.UPCOMING;
+  if (rawStatus === 'LIVE' || rawStatus === 'AVAILABLE' || rawStatus === 'IN-PROGRESS' || rawStatus === 'IN_PROGRESS') return FACULTY_TEST_STATUS.LIVE;
+  if (rawStatus === 'COMPLETED' || rawStatus === 'SUBMITTED' || rawStatus === 'EXPIRED') return FACULTY_TEST_STATUS.COMPLETED;
+  
+  if (test.startOffsetMinutes !== undefined) {
+    if (test.startOffsetMinutes > 0) return FACULTY_TEST_STATUS.UPCOMING;
+    if (test.endOffsetMinutes !== undefined && test.endOffsetMinutes < 0) return FACULTY_TEST_STATUS.COMPLETED;
+    return FACULTY_TEST_STATUS.LIVE;
+  }
+
+  return FACULTY_TEST_STATUS.UPCOMING;
+}
+
+/**
+ * Helper to check question compatibility with a test's exam and subject scope.
+ * @param {object} question - Question object from questionService
+ * @param {object} test - Test object
+ * @returns {{ compatible: boolean, error?: string }}
+ */
+export function checkQuestionCompatibility(question, test) {
+  if (!question || !question.id) {
+    return { compatible: false, error: 'INVALID_QUESTION_REFERENCE' };
+  }
+
+  const testExamId = (test.examId || test.examTrack || test.courseId || '').toLowerCase().trim();
+
+  // 1. Exam Scope Check
+  const qExamId = question.metadata?.examId ? String(question.metadata.examId).toLowerCase().trim() : null;
+  if (qExamId) {
+    if (qExamId !== testExamId && qExamId !== 'all') {
+      return { compatible: false, error: 'QUESTION_EXAM_MISMATCH' };
+    }
+  } else {
+    // Check heuristics from question ID or metadata
+    const qId = String(question.id).toLowerCase();
+    const qSubject = (question.metadata?.subject || '').toLowerCase();
+    if (qId.startsWith('q-ielts') || qSubject === 'english') {
+      if (testExamId !== 'ielts') {
+        return { compatible: false, error: 'QUESTION_EXAM_MISMATCH' };
+      }
+    }
+    if (qId.startsWith('q-neet') && testExamId !== 'neet-pg') {
+      return { compatible: false, error: 'QUESTION_EXAM_MISMATCH' };
+    }
+    if (qId.startsWith('q-usmle') && testExamId !== 'usmle') {
+      return { compatible: false, error: 'QUESTION_EXAM_MISMATCH' };
+    }
+    if (qId.startsWith('q-plab') && testExamId !== 'plab') {
+      return { compatible: false, error: 'QUESTION_EXAM_MISMATCH' };
+    }
+  }
+
+  // 2. Subject Scope Check (when test is scoped to a specific subject)
+  const testSubjectId = test.subjectId;
+  if (testSubjectId && testSubjectId !== 'all') {
+    const qSubId = question.metadata?.subjectId;
+    if (qSubId && qSubId !== 'all') {
+      if (qSubId !== testSubjectId) {
+        return { compatible: false, error: 'QUESTION_SUBJECT_MISMATCH' };
+      }
+    } else {
+      // Fallback matching against subject names
+      const testSubObj = curriculumService.getSubjectById(testSubjectId);
+      const testSubName = (testSubObj?.name || '').toLowerCase();
+      const qSubName = (question.metadata?.subject || '').toLowerCase();
+      const qTopic = (question.metadata?.topic || '').toLowerCase();
+
+      // Check if question's subject or topic matches test subject
+      if (testSubName && qSubName) {
+        const words = testSubName.split(/[\s,&/-]+/).filter(w => w.length > 3);
+        const match = words.some(w => qSubName.includes(w) || qTopic.includes(w)) || 
+                      qSubName.includes(testSubjectId.toLowerCase()) ||
+                      testSubjectId.toLowerCase().includes(qSubName);
+        if (!match) {
+          return { compatible: false, error: 'QUESTION_SUBJECT_MISMATCH' };
+        }
+      }
+    }
+  }
+
+  return { compatible: true };
+}
 
 const STORAGE_KEY_TESTS = 'medprep_cbt_tests_v2';
 const STORAGE_KEY_ATTEMPTS = 'medprep_cbt_attempts_v2';
@@ -474,34 +660,75 @@ class CbtTestService {
   }
 
   loadTests() {
+    let rawTests = [];
     try {
-      const stored = localStorage.getItem(STORAGE_KEY_TESTS);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+      const storedData = getStoredData(STORAGE_KEY_TESTS, null);
+      if (storedData && Array.isArray(storedData) && storedData.length > 0) {
+        rawTests = storedData;
+      } else if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = localStorage.getItem(STORAGE_KEY_TESTS);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            rawTests = parsed;
+          }
         }
-      }
-      // Migration from legacy phase6 tests if available
-      const legacyStored = localStorage.getItem('medprep_phase6_tests');
-      if (legacyStored) {
-        const legacyParsed = JSON.parse(legacyStored);
-        if (Array.isArray(legacyParsed) && legacyParsed.length > 0) {
-          return legacyParsed;
+        if (rawTests.length === 0) {
+          const legacyStored = localStorage.getItem('medprep_phase6_tests');
+          if (legacyStored) {
+            const legacyParsed = JSON.parse(legacyStored);
+            if (Array.isArray(legacyParsed) && legacyParsed.length > 0) {
+              rawTests = legacyParsed;
+            }
+          }
         }
       }
     } catch (e) {
       console.warn('CBT tests read error:', e);
     }
-    return [...INITIAL_CBT_TESTS];
+    if (rawTests.length === 0) {
+      rawTests = JSON.parse(JSON.stringify(INITIAL_CBT_TESTS));
+    }
+
+    return rawTests.map((t, idx) => {
+      const qIds = Array.isArray(t.content?.questionIds)
+        ? t.content.questionIds
+        : (Array.isArray(t.questionIds) ? t.questionIds : []);
+      const uniqueQIds = Array.from(new Set(qIds));
+
+      return {
+        ...t,
+        code: t.code || `FT-20260910-${String(idx + 1).padStart(3, '0')}`,
+        examId: t.examId || t.examTrack || t.courseId || 'neet-pg',
+        examTrack: t.examTrack || t.examId || t.courseId || 'neet-pg',
+        courseId: t.courseId || t.examTrack || t.examId || 'neet-pg',
+        facultyId: t.facultyId || 'fac-1',
+        facultyName: t.facultyName || 'Dr. Siddharth V.',
+        testType: t.testType || 'SUBJECT_TEST',
+        status: t.status || (t.startOffsetMinutes && t.startOffsetMinutes > 0 ? FACULTY_TEST_STATUS.UPCOMING : FACULTY_TEST_STATUS.UPCOMING),
+        scheduling: t.scheduling || {
+          date: t.date || 'Upcoming',
+          startTime: t.time ? t.time.replace(' IST', '') : '18:00',
+          durationMinutes: t.durationMinutes || 45,
+          timezone: 'Asia/Kolkata'
+        },
+        content: {
+          questionIds: uniqueQIds,
+          questionCount: uniqueQIds.length
+        },
+        questionIds: uniqueQIds,
+        questionCount: uniqueQIds.length,
+        totalQuestions: uniqueQIds.length || t.totalQuestions || 20
+      };
+    });
   }
 
   saveTests() {
     try {
-      localStorage.setItem(STORAGE_KEY_TESTS, JSON.stringify(this.tests));
-      // Sync legacy storage key for complete backward compatibility
-      localStorage.setItem('medprep_phase6_tests', JSON.stringify(this.tests));
-      if (typeof window !== 'undefined') {
+      setStoredData(STORAGE_KEY_TESTS, this.tests);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(STORAGE_KEY_TESTS, JSON.stringify(this.tests));
+        localStorage.setItem('medprep_phase6_tests', JSON.stringify(this.tests));
         window.dispatchEvent(new CustomEvent('medprep-cbt-tests-updated', { detail: this.tests }));
         window.dispatchEvent(new CustomEvent('medprep-tests-updated', { detail: this.tests }));
         window.dispatchEvent(new CustomEvent('medprep-assessment-updated', { detail: { tests: this.tests } }));
@@ -513,9 +740,11 @@ class CbtTestService {
 
   loadAttempts() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY_ATTEMPTS);
-      if (stored) {
-        return JSON.parse(stored);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = localStorage.getItem(STORAGE_KEY_ATTEMPTS);
+        if (stored) {
+          return JSON.parse(stored);
+        }
       }
     } catch (e) {
       console.warn('CBT attempts read error:', e);
@@ -525,8 +754,8 @@ class CbtTestService {
 
   saveAttempts() {
     try {
-      localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(this.attempts));
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(STORAGE_KEY_ATTEMPTS, JSON.stringify(this.attempts));
         window.dispatchEvent(new CustomEvent('medprep-cbt-attempts-updated', { detail: this.attempts }));
         window.dispatchEvent(new CustomEvent('medprep-results-updated', { detail: this.attempts }));
         window.dispatchEvent(new CustomEvent('medprep-assessment-updated', { detail: { attempts: this.attempts } }));
@@ -1105,7 +1334,1830 @@ class CbtTestService {
     };
   }
 
+  // =========================================================================
+  // FACULTY TEST FOUNDATION — PHASE 1 SPECIFICATION METHODS
+  // =========================================================================
+
+  createFacultyTest(data, requestingFaculty = null) {
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+    if (!faculty) {
+      throw new Error('Unauthorized: Faculty profile not found.');
+    }
+
+    const assignedExams = faculty.assignedExams || [];
+    if (!data.examId || !data.examId.trim()) {
+      throw new Error('Associated Medical Exam is required.');
+    }
+
+    const cleanExamId = data.examId.trim();
+    if (!assignedExams.includes(cleanExamId)) {
+      throw new Error(`Unauthorized: Faculty is not assigned to Exam "${cleanExamId}". Allowed exams: ${assignedExams.join(', ')}.`);
+    }
+
+    if (!data.name || !data.name.trim()) {
+      throw new Error('Test Name is required.');
+    }
+
+    const validTypes = FACULTY_TEST_TYPES.map(t => t.value);
+    if (!data.testType || !validTypes.includes(data.testType)) {
+      throw new Error(`Invalid Test Type "${data.testType}". Must be one of: ${validTypes.join(', ')}.`);
+    }
+
+    if (data.assessmentMethod) {
+      const v = validateAssessmentMethod(data.assessmentMethod);
+      if (!v.valid) {
+        throw new Error(v.errors[0]?.message || 'Select a valid assessment method.');
+      }
+    }
+
+    // Validate subject if specified
+    if (data.subjectId && data.subjectId !== 'all') {
+      const subjectsForExam = curriculumService.getSubjects(cleanExamId);
+      const subjectExists = subjectsForExam.some(s => s.id === data.subjectId);
+      if (!subjectExists) {
+        throw new Error(`Selected subject "${data.subjectId}" does not belong to exam "${cleanExamId}".`);
+      }
+      // Check faculty assigned subjects if specified and non-empty
+      if (Array.isArray(faculty.assignedSubjects) && faculty.assignedSubjects.length > 0) {
+        if (!faculty.assignedSubjects.includes(data.subjectId)) {
+          throw new Error(`Unauthorized: Faculty is not assigned to subject "${data.subjectId}".`);
+        }
+      }
+    }
+
+    // Desired status
+    const targetStatus = (data.status || '').toUpperCase() === 'UPCOMING'
+      ? FACULTY_TEST_STATUS.UPCOMING
+      : FACULTY_TEST_STATUS.DRAFT;
+
+    const date = (data.scheduling?.date || data.date || '').trim();
+    const startTime = (data.scheduling?.startTime || data.startTime || data.time || '').trim().replace(' IST', '');
+    const durationMinutes = Number(data.scheduling?.durationMinutes || data.durationMinutes || data.duration) || 45;
+    const timezone = data.scheduling?.timezone || data.timezone || 'Asia/Kolkata';
+
+    // If status is UPCOMING, require full scheduling
+    if (targetStatus === FACULTY_TEST_STATUS.UPCOMING) {
+      if (!date) {
+        throw new Error('Scheduled Date is required to schedule a test as Upcoming.');
+      }
+      if (!startTime) {
+        throw new Error('Start Time is required to schedule a test as Upcoming.');
+      }
+      if (!durationMinutes || durationMinutes < 5) {
+        throw new Error('Valid duration (at least 5 minutes) is required.');
+      }
+    }
+
+    const now = new Date().toISOString();
+    const id = `ft-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const code = generateFacultyTestCode(this.tests);
+    const examObj = catalogService.getExamById(cleanExamId);
+    const rawQIds = Array.isArray(data.content?.questionIds)
+      ? data.content.questionIds
+      : (Array.isArray(data.questionIds) ? data.questionIds : []);
+    const initialQuestionIds = Array.from(new Set(rawQIds));
+    const targetQuestions = Number(data.targetQuestions || data.totalQuestions || data.questionCount) || 25;
+    const derivedCount = initialQuestionIds.length;
+
+    const newTest = {
+      id,
+      facultyId: faculty.id,
+      facultyName: faculty.name,
+      examId: cleanExamId,
+      examTrack: cleanExamId,
+      courseId: cleanExamId,
+      course: examObj?.name || cleanExamId.toUpperCase(),
+      subjectId: data.subjectId && data.subjectId !== 'all' ? data.subjectId : null,
+      name: data.name.trim(),
+      title: data.name.trim(),
+      code,
+      testType: data.testType,
+      assessmentMethod: data.assessmentMethod || null,
+      status: targetStatus,
+      description: (data.description || '').trim(),
+      instructions: Array.isArray(data.instructions) ? data.instructions : (data.instructions || '').trim(),
+      scheduling: {
+        date: date || '',
+        startTime: startTime || '',
+        durationMinutes,
+        timezone
+      },
+      date: date || 'Upcoming',
+      time: startTime ? `${startTime} IST` : '18:00 IST',
+      duration: `${durationMinutes} mins`,
+      durationMinutes,
+      durationSeconds: durationMinutes * 60,
+      formattedWindow: date && startTime ? `${date} • ${startTime} IST` : 'Upcoming Schedule',
+      targetQuestions,
+      cohort: data.cohort || data.batchTier || 'All Enrolled Candidates',
+      batch: data.cohort || data.batchTier || 'All Enrolled Candidates',
+      batchTier: data.cohort || data.batchTier || 'All Enrolled Candidates',
+      totalQuestions: derivedCount || targetQuestions,
+      questionCount: derivedCount,
+      totalMarks: Number(data.totalMarks) || (targetQuestions * 5),
+      passingScore: 50,
+      negativeMarking: true,
+      marksPerCorrect: 5,
+      marksPerIncorrect: -1,
+      marksUnanswered: 0,
+      questions: [],
+      content: {
+        questionIds: initialQuestionIds,
+        questionCount: derivedCount
+      },
+      questionIds: initialQuestionIds,
+      // Phase 2: Test Structure Builder (default normalized structure)
+      structure: createDefaultTestStructure({ testType: data.testType }),
+      questionTypeConfig: { ...DEFAULT_TEST_QUESTION_TYPE_CONFIG },
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.tests = [newTest, ...this.tests];
+    this.saveTests();
+    return newTest;
+  }
+
+  updateFacultyTest(id, patch, requestingFaculty = null) {
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+    const index = this.tests.findIndex(t => t.id === id);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${id}" not found.`);
+    }
+
+    const existing = this.tests[index];
+
+    // Validate ownership
+    if (existing.facultyId && faculty && existing.facultyId !== faculty.id) {
+      throw new Error(`Unauthorized: Cannot edit another faculty member's test.`);
+    }
+
+    // Lifecycle guard: only DRAFT and UPCOMING can be edited
+    const currentStatus = getNormalizedFacultyStatus(existing);
+    if (currentStatus === FACULTY_TEST_STATUS.LIVE || currentStatus === FACULTY_TEST_STATUS.COMPLETED) {
+      throw new Error(`Cannot edit test in ${currentStatus} status. Active and completed assessments are read-only.`);
+    }
+    if (currentStatus === FACULTY_TEST_STATUS.CANCELLED) {
+      throw new Error(`Cannot edit a cancelled assessment.`);
+    }
+
+    // Validate Exam assignment
+    const effectiveExamId = (patch.examId || existing.examId || existing.examTrack).trim();
+    const assignedExams = faculty ? (faculty.assignedExams || []) : [effectiveExamId];
+    if (!assignedExams.includes(effectiveExamId)) {
+      throw new Error(`Unauthorized: Faculty is not assigned to Exam "${effectiveExamId}".`);
+    }
+
+    // Validate Subject
+    const effectiveSubjectId = patch.subjectId !== undefined ? patch.subjectId : existing.subjectId;
+    if (effectiveSubjectId && effectiveSubjectId !== 'all') {
+      const subjectsForExam = curriculumService.getSubjects(effectiveExamId);
+      if (!subjectsForExam.some(s => s.id === effectiveSubjectId)) {
+        throw new Error(`Selected subject "${effectiveSubjectId}" does not belong to exam "${effectiveExamId}".`);
+      }
+    }
+
+    // Validate Test Type
+    if (patch.testType) {
+      const validTypes = FACULTY_TEST_TYPES.map(t => t.value);
+      if (!validTypes.includes(patch.testType)) {
+        throw new Error(`Invalid Test Type "${patch.testType}". Must be one of: ${validTypes.join(', ')}.`);
+      }
+    }
+
+    // Validate Assessment Method if provided
+    if (patch.assessmentMethod !== undefined && patch.assessmentMethod !== null && patch.assessmentMethod !== '') {
+      const v = validateAssessmentMethod(patch.assessmentMethod);
+      if (!v.valid) {
+        throw new Error(v.errors[0]?.message || 'Select a valid assessment method.');
+      }
+    }
+
+    const now = new Date().toISOString();
+    const date = (patch.scheduling?.date ?? patch.date ?? existing.scheduling?.date ?? existing.date ?? '').trim();
+    const startTime = (patch.scheduling?.startTime ?? patch.startTime ?? patch.time ?? existing.scheduling?.startTime ?? existing.time ?? '').trim().replace(' IST', '');
+    const durationMinutes = Number(patch.scheduling?.durationMinutes ?? patch.durationMinutes ?? existing.scheduling?.durationMinutes ?? existing.durationMinutes) || 45;
+    const timezone = patch.scheduling?.timezone ?? patch.timezone ?? existing.scheduling?.timezone ?? 'Asia/Kolkata';
+
+    let targetStatus = existing.status;
+    if (patch.status) {
+      const norm = patch.status.toUpperCase();
+      if (norm === 'UPCOMING') {
+        if (!date || !startTime) {
+          throw new Error('Date and Start Time are required to schedule as Upcoming.');
+        }
+        targetStatus = FACULTY_TEST_STATUS.UPCOMING;
+      } else if (norm === 'DRAFT') {
+        targetStatus = FACULTY_TEST_STATUS.DRAFT;
+      } else if (norm === 'CANCELLED') {
+        targetStatus = FACULTY_TEST_STATUS.CANCELLED;
+      }
+    }
+
+    const examObj = catalogService.getExamById(effectiveExamId);
+
+    const updated = {
+      ...existing,
+      name: patch.name ? patch.name.trim() : existing.name,
+      title: patch.name ? patch.name.trim() : existing.title,
+      examId: effectiveExamId,
+      examTrack: effectiveExamId,
+      courseId: effectiveExamId,
+      course: examObj?.name || existing.course,
+      subjectId: effectiveSubjectId && effectiveSubjectId !== 'all' ? effectiveSubjectId : null,
+      testType: patch.testType || existing.testType || 'SUBJECT_TEST',
+      assessmentMethod: patch.assessmentMethod !== undefined ? (patch.assessmentMethod || null) : (existing.assessmentMethod || null),
+      status: targetStatus,
+      description: patch.description !== undefined ? patch.description.trim() : existing.description,
+      instructions: patch.instructions !== undefined ? patch.instructions : existing.instructions,
+      cohort: patch.cohort || patch.batchTier || existing.cohort || existing.batchTier,
+      batch: patch.cohort || patch.batchTier || existing.batch || existing.batchTier,
+      batchTier: patch.cohort || patch.batchTier || existing.batchTier || existing.batch,
+      scheduling: {
+        date,
+        startTime,
+        durationMinutes,
+        timezone
+      },
+      date: date || existing.date,
+      time: startTime ? `${startTime} IST` : existing.time,
+      duration: `${durationMinutes} mins`,
+      durationMinutes,
+      durationSeconds: durationMinutes * 60,
+      formattedWindow: date && startTime ? `${date} • ${startTime} IST` : existing.formattedWindow,
+      // IMMUTABLE PRESERVED FIELDS
+      id: existing.id,
+      code: existing.code,
+      facultyId: existing.facultyId || faculty?.id,
+      facultyName: existing.facultyName || faculty?.name,
+      updatedAt: now
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return updated;
+  }
+
+  duplicateFacultyTest(id, requestingFaculty = null) {
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+    const source = this.getTestById(id);
+    if (!source) {
+      throw new Error(`Source test with ID "${id}" not found.`);
+    }
+
+    const assignedExams = faculty ? (faculty.assignedExams || []) : [source.examId || source.examTrack];
+    const testExam = source.examId || source.examTrack;
+    if (!assignedExams.includes(testExam)) {
+      throw new Error(`Unauthorized: Cannot duplicate test for unassigned exam "${testExam}".`);
+    }
+
+    const now = new Date().toISOString();
+    const newId = `ft-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const newCode = generateFacultyTestCode(this.tests);
+
+    const sourceQuestionIds = Array.isArray(source.content?.questionIds)
+      ? source.content.questionIds
+      : (Array.isArray(source.questionIds) ? source.questionIds : []);
+    const uniqueQIds = Array.from(new Set(sourceQuestionIds));
+
+    const sourceStructure = source.structure || createDefaultTestStructure(source);
+    const clonedStructure = {
+      ...JSON.parse(JSON.stringify(sourceStructure)),
+      units: (sourceStructure.units || []).map(u => ({
+        ...u,
+        id: generateUnitId(),
+        configuration: normalizeUnitConfiguration(u.configuration)
+      }))
+    };
+
+    const duplicated = {
+      ...JSON.parse(JSON.stringify(source)),
+      id: newId,
+      name: `${source.name || source.title} (Copy)`,
+      title: `${source.name || source.title} (Copy)`,
+      code: newCode,
+      facultyId: faculty.id,
+      facultyName: faculty.name,
+      status: FACULTY_TEST_STATUS.DRAFT,
+      structure: clonedStructure,
+      questionTypeConfig: source.questionTypeConfig
+        ? JSON.parse(JSON.stringify(source.questionTypeConfig))
+        : { ...DEFAULT_TEST_QUESTION_TYPE_CONFIG },
+      // Reset scheduling
+      scheduling: {
+        date: '',
+        startTime: '',
+        durationMinutes: source.durationMinutes || 45,
+        timezone: 'Asia/Kolkata'
+      },
+      date: 'Upcoming',
+      time: '18:00 IST',
+      formattedWindow: 'Draft Schedule',
+      createdAt: now,
+      updatedAt: now,
+      // Do NOT copy student attempts, results, or execution state
+      attempts: undefined,
+      results: undefined,
+      submissions: [],
+      content: {
+        questionIds: [...uniqueQIds],
+        questionCount: uniqueQIds.length
+      },
+      questionIds: [...uniqueQIds],
+      questionCount: uniqueQIds.length,
+      totalQuestions: uniqueQIds.length,
+      questions: []
+    };
+    delete duplicated.attempts;
+    delete duplicated.results;
+
+    this.tests = [duplicated, ...this.tests];
+    this.saveTests();
+    return duplicated;
+  }
+
+  cancelFacultyTest(id, requestingFaculty = null) {
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+    const index = this.tests.findIndex(t => t.id === id);
+    if (index === -1) {
+      throw new Error(`Test with ID "${id}" not found.`);
+    }
+
+    const existing = this.tests[index];
+    const currentStatus = getNormalizedFacultyStatus(existing);
+    if (currentStatus === FACULTY_TEST_STATUS.LIVE || currentStatus === FACULTY_TEST_STATUS.COMPLETED) {
+      throw new Error(`Cannot cancel a test in ${currentStatus} status.`);
+    }
+    if (currentStatus === FACULTY_TEST_STATUS.CANCELLED) {
+      return existing;
+    }
+
+    const updated = {
+      ...existing,
+      status: FACULTY_TEST_STATUS.CANCELLED,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return updated;
+  }
+
+  /**
+   * Phase 2: Content Assembly — Retrieves questions referenced by a Faculty Test.
+   * @param {string} testId
+   * @param {object|null} requestingFaculty
+   * @returns {Array<object>}
+   */
+  getFacultyTestQuestions(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+    if (test.facultyId && faculty && test.facultyId !== faculty.id) {
+      throw new Error(`Unauthorized: Cannot access questions of another faculty member's test.`);
+    }
+
+    const qIds = Array.isArray(test.content?.questionIds)
+      ? test.content.questionIds
+      : (Array.isArray(test.questionIds) ? test.questionIds : []);
+
+    return questionService.getQuestionsByIds(qIds);
+  }
+
+  /**
+   * Phase 2: Content Assembly — Adds a single question to a Faculty Test.
+   * @param {string} testId
+   * @param {string|number} questionId
+   * @param {object|null} requestingFaculty
+   * @returns {object} Updated test
+   */
+  addQuestionToFacultyTest(testId, questionId, requestingFaculty = null) {
+    return this.addQuestionsToFacultyTest(testId, [questionId], requestingFaculty);
+  }
+
+  /**
+   * Phase 2: Content Assembly — Atomically adds multiple questions to a Faculty Test.
+   * @param {string} testId
+   * @param {Array<string|number>} questionIds
+   * @param {object|null} requestingFaculty
+   * @returns {object} Updated test
+   */
+  addQuestionsToFacultyTest(testId, questionIds, requestingFaculty = null) {
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+
+    // Ownership check
+    if (test.facultyId && faculty && test.facultyId !== faculty.id) {
+      throw new Error(`Unauthorized: Cannot edit another faculty member's test.`);
+    }
+
+    // Exam RBAC check
+    const testExam = test.examId || test.examTrack || test.courseId;
+    const assignedExams = faculty ? (faculty.assignedExams || []) : [testExam];
+    if (!assignedExams.includes(testExam)) {
+      throw new Error(`Unauthorized: Faculty is not assigned to Exam "${testExam}".`);
+    }
+
+    // Lifecycle guard: only DRAFT and UPCOMING are editable
+    const currentStatus = getNormalizedFacultyStatus(test);
+    if (currentStatus === FACULTY_TEST_STATUS.LIVE) {
+      throw new Error('This Test is no longer editable because it is currently Live.');
+    }
+    if (currentStatus === FACULTY_TEST_STATUS.COMPLETED) {
+      throw new Error('This Test is no longer editable because it is Completed.');
+    }
+    if (currentStatus === FACULTY_TEST_STATUS.CANCELLED) {
+      throw new Error('This Test is no longer editable because it is Cancelled.');
+    }
+
+    if (!Array.isArray(questionIds) || questionIds.length === 0) {
+      throw new Error('No question IDs provided to add.');
+    }
+
+    // Check for duplicates within input
+    const inputSet = new Set(questionIds.map(String));
+    if (inputSet.size !== questionIds.length) {
+      throw new Error('DUPLICATE_QUESTION: Input contains duplicate question IDs.');
+    }
+
+    const currentQIds = Array.isArray(test.content?.questionIds)
+      ? [...test.content.questionIds]
+      : (Array.isArray(test.questionIds) ? [...test.questionIds] : []);
+
+    const existingSet = new Set(currentQIds.map(String));
+
+    // Atomic pre-validation of all questions before any mutation
+    const validQuestionsToAdd = [];
+    for (const rawId of questionIds) {
+      const qId = String(rawId);
+      if (existingSet.has(qId)) {
+        throw new Error(`DUPLICATE_QUESTION: Question "${qId}" is already attached to this test.`);
+      }
+
+      const q = questionService.getQuestionById(qId);
+      if (!q) {
+        throw new Error(`INVALID_QUESTION_REFERENCE: Question "${qId}" not found in Question Bank.`);
+      }
+
+      const comp = checkQuestionCompatibility(q, test);
+      if (!comp.compatible) {
+        throw new Error(`${comp.error}: Question "${qId}" is incompatible with test scope.`);
+      }
+
+      validQuestionsToAdd.push(qId);
+    }
+
+    // Apply mutation
+    const updatedQIds = [...currentQIds, ...validQuestionsToAdd];
+    const now = new Date().toISOString();
+
+    const updated = {
+      ...test,
+      content: {
+        questionIds: updatedQIds,
+        questionCount: updatedQIds.length
+      },
+      questionIds: updatedQIds,
+      questionCount: updatedQIds.length,
+      totalQuestions: updatedQIds.length,
+      updatedAt: now
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return updated;
+  }
+
+  /**
+   * Phase 2: Content Assembly — Removes a question reference from a Faculty Test.
+   * Does NOT delete the question from the Question Bank (questionService).
+   * @param {string} testId
+   * @param {string|number} questionId
+   * @param {object|null} requestingFaculty
+   * @returns {object} Updated test
+   */
+  removeQuestionFromFacultyTest(testId, questionId, requestingFaculty = null) {
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+
+    // Ownership check
+    if (test.facultyId && faculty && test.facultyId !== faculty.id) {
+      throw new Error(`Unauthorized: Cannot edit another faculty member's test.`);
+    }
+
+    // Lifecycle guard
+    const currentStatus = getNormalizedFacultyStatus(test);
+    if (currentStatus === FACULTY_TEST_STATUS.LIVE || currentStatus === FACULTY_TEST_STATUS.COMPLETED || currentStatus === FACULTY_TEST_STATUS.CANCELLED) {
+      throw new Error(`This Test is no longer editable because it is in ${currentStatus} status.`);
+    }
+
+    const currentQIds = Array.isArray(test.content?.questionIds)
+      ? test.content.questionIds
+      : (Array.isArray(test.questionIds) ? test.questionIds : []);
+
+    const targetId = String(questionId);
+    const updatedQIds = currentQIds.filter(id => String(id) !== targetId);
+
+    const now = new Date().toISOString();
+    const updated = {
+      ...test,
+      content: {
+        questionIds: updatedQIds,
+        questionCount: updatedQIds.length
+      },
+      questionIds: updatedQIds,
+      questionCount: updatedQIds.length,
+      totalQuestions: updatedQIds.length,
+      updatedAt: now
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return updated;
+  }
+
+  /**
+   * Phase 2: Content Assembly — Reorders questions in a Faculty Test.
+   * Enforces exact set permutation check so reordering cannot silently add or remove questions.
+   * @param {string} testId
+   * @param {Array<string|number>} questionIds
+   * @param {object|null} requestingFaculty
+   * @returns {object} Updated test
+   */
+  reorderFacultyTestQuestions(testId, questionIds, requestingFaculty = null) {
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+
+    // Ownership check
+    if (test.facultyId && faculty && test.facultyId !== faculty.id) {
+      throw new Error(`Unauthorized: Cannot edit another faculty member's test.`);
+    }
+
+    // Lifecycle guard
+    const currentStatus = getNormalizedFacultyStatus(test);
+    if (currentStatus === FACULTY_TEST_STATUS.LIVE || currentStatus === FACULTY_TEST_STATUS.COMPLETED || currentStatus === FACULTY_TEST_STATUS.CANCELLED) {
+      throw new Error(`This Test is no longer editable because it is in ${currentStatus} status.`);
+    }
+
+    if (!Array.isArray(questionIds)) {
+      throw new Error('INVALID_REORDER: Question IDs must be an array.');
+    }
+
+    const currentQIds = (test.content?.questionIds || test.questionIds || []).map(String);
+    const newQIds = questionIds.map(String);
+
+    if (currentQIds.length !== newQIds.length) {
+      throw new Error('INVALID_REORDER: Submitted question count does not match current test question count.');
+    }
+
+    const currentSet = new Set(currentQIds);
+    const newSet = new Set(newQIds);
+
+    if (newSet.size !== newQIds.length) {
+      throw new Error('INVALID_REORDER: Duplicate IDs found in reorder list.');
+    }
+
+    for (const id of newQIds) {
+      if (!currentSet.has(id)) {
+        throw new Error(`INVALID_REORDER: Submitted ID "${id}" is not part of the current test questions.`);
+      }
+    }
+
+    const now = new Date().toISOString();
+    const updated = {
+      ...test,
+      content: {
+        questionIds: newQIds,
+        questionCount: newQIds.length
+      },
+      questionIds: newQIds,
+      questionCount: newQIds.length,
+      totalQuestions: newQIds.length,
+      updatedAt: now
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return updated;
+  }
+
+  /**
+   * Phase 2: Content Assembly — Validates test question content integrity and target criteria.
+   * @param {string} testId
+   * @param {object|null} requestingFaculty
+   * @returns {{ valid: boolean, questionCount: number, errors: string[], warnings: string[] }}
+   */
+  validateFacultyTestContent(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      return {
+        valid: false,
+        questionCount: 0,
+        errors: ['TEST_NOT_FOUND'],
+        warnings: []
+      };
+    }
+
+    const errors = [];
+    const warnings = [];
+
+    const qIds = Array.isArray(test.content?.questionIds)
+      ? test.content.questionIds
+      : (Array.isArray(test.questionIds) ? test.questionIds : []);
+
+    if (qIds.length === 0) {
+      errors.push('NO_QUESTIONS');
+    } else {
+      for (const qId of qIds) {
+        const q = questionService.getQuestionById(qId);
+        if (!q) {
+          errors.push(`INVALID_QUESTION_REFERENCE: Question "${qId}" not found in Question Bank.`);
+          continue;
+        }
+        const comp = checkQuestionCompatibility(q, test);
+        if (!comp.compatible) {
+          errors.push(`${comp.error}: Question "${qId}" is incompatible with test scope.`);
+        }
+
+        // Phase 4: Non-blocking warning if question type is not permitted by test questionTypeConfig
+        if (test.questionTypeConfig && Array.isArray(test.questionTypeConfig.allowedTypes) && test.questionTypeConfig.allowedTypes.length > 0) {
+          const canonType = questionTypeService.normalizeQuestionTypeId(q.type);
+          const normalizedAllowed = questionTypeService.normalizeQuestionTypeIds(test.questionTypeConfig.allowedTypes);
+          if (canonType && !normalizedAllowed.includes(canonType)) {
+            warnings.push(`QUESTION_TYPE_NOT_ALLOWED: Question "${qId}" has type "${q.type}" which is not currently allowed by this Test configuration.`);
+          }
+        }
+      }
+    }
+
+    const target = test.targetQuestions;
+    if (target && qIds.length !== target) {
+      const diff = Math.abs(target - qIds.length);
+      if (qIds.length < target) {
+        warnings.push(`Target: ${target} questions. Selected: ${qIds.length} questions. ${diff} more questions are needed to reach the target.`);
+      } else {
+        warnings.push(`Target: ${target} questions. Selected: ${qIds.length} questions. ${diff} questions over target.`);
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      questionCount: qIds.length,
+      errors,
+      warnings
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // PHASE 4: RULES — BLUEPRINT + SCORING + TIMING + NAVIGATION (FACULTY)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Phase 4: Retrieves Rules configuration for a Faculty Test.
+   * Returns test.rules if present, otherwise returns null (caller creates defaults).
+   * @param {string} testId
+   * @param {object|null} requestingFaculty
+   * @returns {object|null}
+   */
+  getFacultyTestRules(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) throw new Error(`Faculty test "${testId}" not found.`);
+    return test.rules ? JSON.parse(JSON.stringify(test.rules)) : null;
+  }
+
+  /**
+   * Phase 4: Saves Rules configuration for a Faculty Test.
+   * Validates faculty ownership scope before persisting.
+   * @param {string} testId
+   * @param {object} rules - Full rules object
+   * @param {object|null} requestingFaculty
+   * @returns {object} updated test
+   */
+  saveFacultyTestRules(testId, rules, requestingFaculty = null) {
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) throw new Error(`Faculty test "${testId}" not found.`);
+
+    const test = this.tests[index];
+
+    // Ownership scope check: faculty must belong to the test's exam track
+    if (faculty) {
+      const assignedExams = faculty.assignedExams || [];
+      const testExam = test.examId || test.examTrack || test.courseId;
+      if (testExam && testExam !== 'all' && assignedExams.length > 0 && !assignedExams.includes(testExam)) {
+        throw new Error(`Unauthorized: Faculty is not assigned to exam "${testExam}".`);
+      }
+    }
+
+    const updated = {
+      ...test,
+      rules: { ...rules },
+      updatedAt: new Date().toISOString()
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return JSON.parse(JSON.stringify(updated));
+  }
+
+  getFacultyScopedTests(filters = {}, requestingFaculty = null) {
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+    const assignedExams = faculty?.assignedExams || ['neet-pg', 'usmle', 'plab'];
+
+    let result = this.tests.filter(t => {
+      const exam = t.examId || t.examTrack || t.courseId;
+      return !exam || exam === 'all' || assignedExams.includes(exam);
+    });
+
+    if (filters.examId && filters.examId !== 'all') {
+      result = result.filter(t => (t.examId || t.examTrack || t.courseId) === filters.examId);
+    }
+
+    if (filters.subjectId && filters.subjectId !== 'all') {
+      result = result.filter(t => t.subjectId === filters.subjectId);
+    }
+
+    if (filters.testType && filters.testType !== 'all') {
+      result = result.filter(t => t.testType === filters.testType);
+    }
+
+    if (filters.status && filters.status !== 'all') {
+      const target = filters.status.toUpperCase();
+      result = result.filter(t => getNormalizedFacultyStatus(t) === target);
+    }
+
+    if (filters.search && filters.search.trim()) {
+      const q = filters.search.toLowerCase().trim();
+      result = result.filter(t => (t.name || t.title || '').toLowerCase().includes(q));
+    }
+
+    return result;
+  }
+
+  getFacultySummaryStats(requestingFaculty = null) {
+    const scopedTests = this.getFacultyScopedTests({}, requestingFaculty);
+    const total = scopedTests.length;
+    let draft = 0;
+    let upcoming = 0;
+    let live = 0;
+    let completed = 0;
+    let cancelled = 0;
+
+    scopedTests.forEach(t => {
+      const st = getNormalizedFacultyStatus(t);
+      if (st === FACULTY_TEST_STATUS.DRAFT) draft++;
+      else if (st === FACULTY_TEST_STATUS.UPCOMING) upcoming++;
+      else if (st === FACULTY_TEST_STATUS.LIVE) live++;
+      else if (st === FACULTY_TEST_STATUS.COMPLETED) completed++;
+      else if (st === FACULTY_TEST_STATUS.CANCELLED) cancelled++;
+    });
+
+    return {
+      total,
+      draft,
+      upcoming,
+      live,
+      completed,
+      cancelled
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // PHASE 2: FACULTY TEST STRUCTURE BUILDER METHODS
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Helper to verify faculty ownership and exam assignment scope.
+   * Throws Unauthorized if faculty does not have access.
+   */
+  _verifyFacultyTestAccess(test, requestingFaculty = null) {
+    const faculty = requestingFaculty || peopleService.getCurrentFacultyProfile();
+    if (test.facultyId && faculty && test.facultyId !== faculty.id) {
+      throw new Error(`Unauthorized: Cannot access another faculty member's test.`);
+    }
+
+    const testExam = test.examId || test.examTrack || test.courseId;
+    const assignedExams = faculty ? (faculty.assignedExams || []) : (testExam ? [testExam] : []);
+    if (testExam && !assignedExams.includes(testExam)) {
+      throw new Error(`Unauthorized: Faculty is not assigned to Exam "${testExam}".`);
+    }
+
+    return faculty;
+  }
+
+  /**
+   * Helper to verify test is in an editable lifecycle state for structure modifications.
+   * Editable: DRAFT, UPCOMING.
+   * Locked: LIVE, COMPLETED, CANCELLED.
+   */
+  _verifyFacultyStructureEditable(test) {
+    const currentStatus = getNormalizedFacultyStatus(test);
+    if (currentStatus === FACULTY_TEST_STATUS.LIVE || currentStatus === FACULTY_TEST_STATUS.COMPLETED || currentStatus === FACULTY_TEST_STATUS.CANCELLED) {
+      throw new Error(`LIFECYCLE_LOCKED: Test structure cannot be modified while status is "${currentStatus}". Structure is editable only in DRAFT and UPCOMING.`);
+    }
+  }
+
+  /**
+   * Phase 2: Test Structure Builder — Retrieves structure for a Faculty Test.
+   * Auto-initializes legacy tests missing structure safely without mutating other fields.
+   */
+  /**
+   * Phase 2: Get Exam Pattern / Stage for a Faculty Test.
+   */
+  getFacultyTestExamPattern(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    return test.examPattern || null;
+  }
+
+  /**
+   * Phase 2: Update Exam Pattern / Stage for a Faculty Test.
+   */
+  updateFacultyTestExamPattern(testId, examPattern, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) throw new Error(`Faculty Test with ID "${testId}" not found.`);
+
+    const test = this.tests[index];
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    if (!examPattern || !examPattern.stageId) {
+      throw new Error('INVALID_STAGE: A valid Exam Stage must be selected.');
+    }
+
+    const testExam = test.examId || test.examTrack || test.courseId;
+    const stages = getExamStages(testExam);
+    const validStage = stages.find(s => s.id === examPattern.stageId);
+    if (!validStage) {
+      throw new Error(`INVALID_STAGE: Stage "${examPattern.stageId}" does not belong to Exam "${testExam}".`);
+    }
+
+    const now = new Date().toISOString();
+    const updated = {
+      ...test,
+      examPattern: {
+        patternId: examPattern.patternId || validStage.patternId || null,
+        stageId: validStage.id,
+        stageName: validStage.name
+      },
+      updatedAt: now
+    };
+
+    // Filter out invalid subjects in curriculumScope if stage changed
+    if (updated.curriculumScope && Array.isArray(updated.curriculumScope.subjects)) {
+      const allowedSubjects = getStageSubjects(testExam, validStage.id);
+      const allowedSubjectIds = new Set(allowedSubjects.map(s => s.id));
+      const filteredSubjects = updated.curriculumScope.subjects.filter(sub => allowedSubjectIds.has(sub.subjectId));
+      updated.curriculumScope = {
+        ...updated.curriculumScope,
+        subjects: filteredSubjects
+      };
+    }
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return updated.examPattern;
+  }
+
+  /**
+   * Phase 2: Get Curriculum Scope for a Faculty Test.
+   */
+  getFacultyTestCurriculumScope(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    return test.curriculumScope || null;
+  }
+
+  /**
+   * Phase 2: Update Curriculum Scope for a Faculty Test with RBAC.
+   * Faculty is strictly restricted to their assigned subjects.
+   */
+  updateFacultyTestCurriculumScope(testId, curriculumScope, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) throw new Error(`Faculty Test with ID "${testId}" not found.`);
+
+    const test = this.tests[index];
+    const faculty = this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    const stageId = test.examPattern?.stageId;
+    if (!stageId) {
+      throw new Error('STAGE_REQUIRED: An Exam Stage must be selected in Step 1 before defining Curriculum Scope.');
+    }
+
+    const testExam = test.examId || test.examTrack || test.courseId;
+    const validation = validateCurriculumScope(curriculumScope, testExam, stageId, faculty?.assignedSubjects);
+    if (!validation.valid) {
+      const firstError = validation.errors[0];
+      throw new Error(`${firstError.code}: ${firstError.message}`);
+    }
+
+    const now = new Date().toISOString();
+    const updated = {
+      ...test,
+      curriculumScope: validation.normalizedScope,
+      updatedAt: now
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return updated.curriculumScope;
+  }
+
+  /**
+   * Phase 2: Check if Faculty test structure is ready
+   */
+  isFacultyStructureReady(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) return false;
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    return isStructureReady(test);
+  }
+
+  /**
+   * Phase 2: Test Structure Builder — Retrieves structure for a Faculty Test.
+   * Auto-initializes legacy tests missing structure safely without mutating other fields.
+   */
+  getFacultyTestStructure(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+
+    if (!test.structure || (!Array.isArray(test.structure.units) && !Array.isArray(test.structure.sections))) {
+      test.structure = createDefaultTestStructure(test);
+      this.saveTests();
+    } else {
+      const normalized = normalizeTestStructure(test.structure);
+      test.structure = normalized;
+      this.saveTests();
+    }
+
+    return JSON.parse(JSON.stringify(test.structure));
+  }
+
+  /**
+   * Phase 2: Test Structure Builder — Updates full structure for a Faculty Test.
+   * Enforces Ownership, Exam Assignment, Faculty Subject Scope Isolation, and Lifecycle Guards.
+   */
+  updateFacultyTestStructure(testId, candidateStructure, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+    const faculty = this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    const testExam = test.examId || test.examTrack || test.courseId;
+    const stageId = test.examPattern?.stageId || null;
+    const curriculumScope = test.curriculumScope || null;
+    const testAllowedTypes = (test.questionTypeConfig && test.questionTypeConfig.allowedTypes) || null;
+
+    const validation = validateTestStructureHierarchy(
+      candidateStructure,
+      testExam,
+      stageId,
+      curriculumScope,
+      faculty?.assignedSubjects,
+      testAllowedTypes
+    );
+    if (!validation.valid) {
+      const firstError = validation.errors[0];
+      throw new Error(`${firstError.code}: ${firstError.message}`);
+    }
+
+    const normalizedStructure = normalizeTestStructure(candidateStructure);
+
+    const updated = {
+      ...test,
+      structure: normalizedStructure,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return normalizedStructure;
+  }
+
+  /**
+   * Phase 2: Test Structure Builder — Adds a new unit to a Faculty Test.
+   */
+  addFacultyTestStructureUnit(testId, unitData, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+    const faculty = this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    if (!test.structure || !Array.isArray(test.structure.units) || test.structure.units.length === 0) {
+      test.structure = createDefaultTestStructure(test);
+    }
+
+    if (!unitData || !unitData.name || !unitData.name.trim()) {
+      throw new Error('EMPTY_UNIT_NAME: Unit name cannot be empty.');
+    }
+
+    const newUnit = {
+      id: unitData.id || generateUnitId(),
+      name: unitData.name.trim(),
+      code: (unitData.code || '').trim().toUpperCase(),
+      order: test.structure.units.length,
+      description: (unitData.description || '').trim(),
+      examMapping: unitData.examMapping || { type: null, id: null },
+      configuration: normalizeUnitConfiguration(unitData.configuration)
+    };
+
+    const newUnits = [...test.structure.units, newUnit];
+    const candidateMode = newUnits.length > 1 ? STRUCTURE_MODES.MULTI_UNIT : test.structure.mode;
+
+    const candidateStructure = {
+      mode: candidateMode,
+      unitType: test.structure.unitType || UNIT_TYPES.SECTION,
+      units: newUnits
+    };
+
+    const testExam = test.examId || test.examTrack || test.courseId;
+    const validation = validateStructure(candidateStructure, testExam, faculty?.assignedSubjects);
+    if (!validation.valid) {
+      const firstError = validation.errors[0];
+      throw new Error(`${firstError.code}: ${firstError.message}`);
+    }
+
+    const updated = {
+      ...test,
+      structure: candidateStructure,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return newUnit;
+  }
+
+  /**
+   * Phase 2: Test Structure Builder — Updates an existing unit in a Faculty Test.
+   */
+  updateFacultyTestStructureUnit(testId, unitId, updates, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+    const faculty = this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    if (!test.structure || !Array.isArray(test.structure.units)) {
+      test.structure = createDefaultTestStructure(test);
+    }
+
+    const uIndex = test.structure.units.findIndex(u => u.id === unitId);
+    if (uIndex === -1) {
+      throw new Error(`Unit with ID "${unitId}" not found in test.`);
+    }
+
+    const existingUnit = test.structure.units[uIndex];
+    const updatedUnit = {
+      ...existingUnit,
+      name: updates.name !== undefined ? updates.name.trim() : existingUnit.name,
+      code: updates.code !== undefined ? updates.code.trim().toUpperCase() : existingUnit.code,
+      description: updates.description !== undefined ? updates.description.trim() : existingUnit.description,
+      examMapping: updates.examMapping !== undefined ? updates.examMapping : existingUnit.examMapping,
+      configuration: updates.configuration !== undefined 
+        ? normalizeUnitConfiguration({ ...(existingUnit.configuration || {}), ...updates.configuration })
+        : normalizeUnitConfiguration(existingUnit.configuration),
+      id: existingUnit.id,
+      order: existingUnit.order
+    };
+
+    const updatedUnits = [...test.structure.units];
+    updatedUnits[uIndex] = updatedUnit;
+
+    const candidateStructure = {
+      ...test.structure,
+      units: updatedUnits
+    };
+
+    const testExam = test.examId || test.examTrack || test.courseId;
+    const validation = validateStructure(candidateStructure, testExam, faculty?.assignedSubjects);
+    if (!validation.valid) {
+      const firstError = validation.errors[0];
+      throw new Error(`${firstError.code}: ${firstError.message}`);
+    }
+
+    const updated = {
+      ...test,
+      structure: candidateStructure,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return updatedUnit;
+  }
+
+  /**
+   * Phase 2: Test Structure Builder — Removes a unit from a Faculty Test.
+   * Strictly preserves test.content.questionIds!
+   */
+  removeFacultyTestStructureUnit(testId, unitId, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    if (!test.structure || !Array.isArray(test.structure.units)) {
+      test.structure = createDefaultTestStructure(test);
+    }
+
+    if (test.structure.units.length <= 1) {
+      throw new Error('CANNOT_DELETE_LAST_UNIT: Test must contain at least one structure unit.');
+    }
+
+    const targetExists = test.structure.units.some(u => u.id === unitId);
+    if (!targetExists) {
+      throw new Error(`Unit with ID "${unitId}" not found in test.`);
+    }
+
+    // Filter and re-index sequentially while keeping remaining unit IDs stable
+    const remainingUnits = test.structure.units
+      .filter(u => u.id !== unitId)
+      .map((u, idx) => ({ ...u, order: idx }));
+
+    const updatedStructure = {
+      ...test.structure,
+      mode: remainingUnits.length === 1 ? STRUCTURE_MODES.SINGLE_UNIT : test.structure.mode,
+      units: remainingUnits
+    };
+
+    const updated = {
+      ...test,
+      structure: updatedStructure,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return true;
+  }
+
+  /**
+   * Phase 2: Test Structure Builder — Reorders units in a Faculty Test.
+   * Preserves stable unit IDs; only updates `order`.
+   */
+  reorderFacultyTestStructureUnits(testId, orderedUnitIds, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    if (!test.structure || !Array.isArray(test.structure.units)) {
+      test.structure = createDefaultTestStructure(test);
+    }
+
+    const currentUnits = test.structure.units;
+    if (!Array.isArray(orderedUnitIds) || orderedUnitIds.length !== currentUnits.length) {
+      throw new Error('INVALID_ORDER: Submitted unit order does not match existing units count.');
+    }
+
+    const currentIdSet = new Set(currentUnits.map(u => u.id));
+    const newIdSet = new Set(orderedUnitIds);
+    if (newIdSet.size !== orderedUnitIds.length || ![...newIdSet].every(id => currentIdSet.has(id))) {
+      throw new Error('INVALID_ORDER: Permutation mismatch in reordered unit IDs.');
+    }
+
+    const unitMap = new Map(currentUnits.map(u => [u.id, u]));
+    const reorderedUnits = orderedUnitIds.map((id, idx) => {
+      const u = unitMap.get(id);
+      return { ...u, order: idx };
+    });
+
+    const updatedStructure = {
+      ...test.structure,
+      units: reorderedUnits
+    };
+
+    const updated = {
+      ...test,
+      structure: updatedStructure,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return reorderedUnits;
+  }
+
+  /**
+   * Phase 2: Test Structure Builder — Validates a Faculty Test's structure.
+   */
+  validateFacultyTestStructure(testId, candidateStructure = null, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      return {
+        valid: false,
+        errors: [{ code: 'TEST_NOT_FOUND', message: `Test "${testId}" not found.` }],
+        warnings: []
+      };
+    }
+
+    const faculty = this._verifyFacultyTestAccess(test, requestingFaculty);
+    const structure = candidateStructure || test.structure || createDefaultTestStructure(test);
+    const testExam = test.examId || test.examTrack || test.courseId;
+    return validateStructure(structure, testExam, faculty?.assignedSubjects);
+  }
+
+  // ---------------------------------------------------------------------------
+  // PHASE 3: FACULTY SECTION / BLOCK CONFIGURATION METHODS
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Phase 3: Retrieves a unit's configuration for a Faculty Test.
+   * Auto-initializes default configuration if absent.
+   */
+  getFacultyTestUnitConfiguration(testId, unitId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+
+    if (!test.structure || !Array.isArray(test.structure.units) || test.structure.units.length === 0) {
+      test.structure = createDefaultTestStructure(test);
+      this.saveTests();
+    }
+
+    const unit = test.structure.units.find(u => u.id === unitId);
+    if (!unit) {
+      throw new Error(`INVALID_UNIT: Unit with ID "${unitId}" not found in test.`);
+    }
+
+    if (!unit.configuration) {
+      unit.configuration = normalizeUnitConfiguration(unit.configuration);
+      this.saveTests();
+    }
+
+    return JSON.parse(JSON.stringify(normalizeUnitConfiguration(unit.configuration)));
+  }
+
+  /**
+   * Phase 3: Updates a unit's configuration for a Faculty Test.
+   * Enforces:
+   * 1. Ownership & Exam Assignment
+   * 2. Lifecycle Guards (DRAFT, UPCOMING editable; LIVE, COMPLETED, CANCELLED locked)
+   * 3. Faculty Subject Scope Isolation (only assigned subjects allowed)
+   */
+  updateFacultyTestUnitConfiguration(testId, unitId, configurationUpdates, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+    const faculty = this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    if (!test.structure || !Array.isArray(test.structure.units)) {
+      test.structure = createDefaultTestStructure(test);
+    }
+
+    const uIndex = test.structure.units.findIndex(u => u.id === unitId);
+    if (uIndex === -1) {
+      throw new Error(`INVALID_UNIT: Unit with ID "${unitId}" not found in test.`);
+    }
+
+    const currentUnit = test.structure.units[uIndex];
+    const testExam = test.examId || test.examTrack || test.courseId;
+
+    // Validate incoming updates before normalization
+    const updateValidation = validateUnitConfiguration(configurationUpdates, testExam, faculty?.assignedSubjects);
+    if (!updateValidation.valid) {
+      const firstError = updateValidation.errors[0];
+      throw new Error(`${firstError.code}: ${firstError.message}`);
+    }
+
+    const candidateConfig = normalizeUnitConfiguration({
+      ...(currentUnit.configuration || DEFAULT_UNIT_CONFIGURATION),
+      ...(configurationUpdates || {})
+    });
+
+    const validation = validateUnitConfiguration(candidateConfig, testExam, faculty?.assignedSubjects);
+    if (!validation.valid) {
+      const firstError = validation.errors[0];
+      throw new Error(`${firstError.code}: ${firstError.message}`);
+    }
+
+    test.structure.units[uIndex].configuration = candidateConfig;
+    test.updatedAt = new Date().toISOString();
+
+    this.tests[index] = test;
+    this.saveTests();
+    return JSON.parse(JSON.stringify(candidateConfig));
+  }
+
+  /**
+   * Phase 3: Sets subjects for a unit in a Faculty Test.
+   */
+  setFacultyTestUnitSubjects(testId, unitId, subjectIds, requestingFaculty = null) {
+    return this.updateFacultyTestUnitConfiguration(testId, unitId, { subjectIds }, requestingFaculty);
+  }
+
+  /**
+   * Phase 3: Validates a unit's configuration for a Faculty Test.
+   */
+  validateFacultyTestUnitConfiguration(testId, unitId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      return {
+        valid: false,
+        errors: [{ code: 'TEST_NOT_FOUND', message: `Test "${testId}" not found.` }],
+        warnings: []
+      };
+    }
+
+    const faculty = this._verifyFacultyTestAccess(test, requestingFaculty);
+
+    if (!test.structure || !Array.isArray(test.structure.units)) {
+      return {
+        valid: false,
+        errors: [{ code: 'NO_STRUCTURE', message: 'Test has no structure units.' }],
+        warnings: []
+      };
+    }
+
+    const unit = test.structure.units.find(u => u.id === unitId);
+    if (!unit) {
+      return {
+        valid: false,
+        errors: [{ code: 'INVALID_UNIT', message: `Unit "${unitId}" not found.` }],
+        warnings: []
+      };
+    }
+
+    const testExam = test.examId || test.examTrack || test.courseId;
+    const config = normalizeUnitConfiguration(unit.configuration);
+    return validateUnitConfiguration(config, testExam, faculty?.assignedSubjects);
+  }
+
+  /**
+   * Phase 3: Test-level configuration validator across all units for Faculty.
+   */
+  validateFacultyTestConfiguration(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      return {
+        valid: false,
+        errors: [{ code: 'TEST_NOT_FOUND', message: `Test "${testId}" not found.` }],
+        warnings: [],
+        units: []
+      };
+    }
+
+    const faculty = this._verifyFacultyTestAccess(test, requestingFaculty);
+    const structure = test.structure || createDefaultTestStructure(test);
+    const units = structure.units || [];
+    const testExam = test.examId || test.examTrack || test.courseId;
+
+    const unitReports = [];
+    const allErrors = [];
+    const allWarnings = [];
+
+    units.forEach(u => {
+      const config = normalizeUnitConfiguration(u.configuration);
+      const res = validateUnitConfiguration(config, testExam, faculty?.assignedSubjects);
+
+      const hasAssignedSubjects = Array.isArray(config.subjectIds) && config.subjectIds.length > 0;
+      const hasQuestionCount = config.questionCount !== null && config.questionCount !== undefined;
+      const isConfigured = res.valid && (hasAssignedSubjects || hasQuestionCount);
+
+      if (!res.valid) {
+        res.errors.forEach(err => {
+          allErrors.push({ ...err, unitId: u.id, unitName: u.name });
+        });
+      }
+
+      if (res.warnings && res.warnings.length > 0) {
+        res.warnings.forEach(w => {
+          allWarnings.push({ ...w, unitId: u.id, unitName: u.name });
+        });
+      }
+
+      unitReports.push({
+        unitId: u.id,
+        unitName: u.name,
+        code: u.code,
+        valid: res.valid,
+        isConfigured,
+        errors: res.errors,
+        warnings: res.warnings
+      });
+    });
+
+    return {
+      valid: allErrors.length === 0,
+      errors: allErrors,
+      warnings: allWarnings,
+      units: unitReports
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // PHASE 4: FACULTY QUESTION TYPE SYSTEM METHODS
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Phase 4: Retrieves Test-level Question Type configuration for a Faculty Test.
+   * Auto-initializes if missing.
+   * @param {string} testId
+   * @param {object|null} requestingFaculty
+   * @returns {object}
+   */
+  getFacultyTestQuestionTypeConfig(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+
+    if (!test.questionTypeConfig) {
+      test.questionTypeConfig = { ...DEFAULT_TEST_QUESTION_TYPE_CONFIG };
+      this.saveTests();
+    }
+
+    return JSON.parse(JSON.stringify(test.questionTypeConfig));
+  }
+
+  /**
+   * Phase 4: Updates Test-level Question Type configuration for a Faculty Test.
+   * Enforces faculty ownership, exam scope, and lifecycle guards (DRAFT, UPCOMING allowed).
+   * @param {string} testId
+   * @param {object} configUpdates
+   * @param {object|null} requestingFaculty
+   * @returns {object}
+   */
+  updateFacultyTestQuestionTypeConfig(testId, configUpdates, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    const testExam = test.examId || test.examTrack || test.courseId;
+    const currentConfig = test.questionTypeConfig || DEFAULT_TEST_QUESTION_TYPE_CONFIG;
+    const candidateConfig = {
+      mode: configUpdates?.mode || currentConfig.mode || QUESTION_TYPE_INHERITANCE_MODES.EXPLICIT,
+      allowedTypes: configUpdates?.allowedTypes !== undefined ? configUpdates.allowedTypes : currentConfig.allowedTypes
+    };
+
+    const validation = questionTypeService.validateTestQuestionTypeConfig(candidateConfig, testExam);
+    if (!validation.valid) {
+      const firstError = validation.errors[0];
+      throw new Error(`${firstError.code}: ${firstError.message}`);
+    }
+
+    const normalizedTypes = questionTypeService.normalizeQuestionTypeIds(candidateConfig.allowedTypes);
+    const finalConfig = {
+      mode: candidateConfig.mode,
+      allowedTypes: normalizedTypes
+    };
+
+    test.questionTypeConfig = finalConfig;
+    test.updatedAt = new Date().toISOString();
+
+    this.tests[index] = test;
+    this.saveTests();
+    return JSON.parse(JSON.stringify(finalConfig));
+  }
+
+  /**
+   * Phase 4: Retrieves effective and configured Question Types for a specific Faculty unit.
+   * @param {string} testId
+   * @param {string} unitId
+   * @param {object|null} requestingFaculty
+   * @returns {object}
+   */
+  getFacultyUnitQuestionTypes(testId, unitId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+
+    const structure = this.getFacultyTestStructure(testId, requestingFaculty);
+    const unit = structure.units.find(u => u.id === unitId);
+    if (!unit) {
+      throw new Error(`INVALID_UNIT: Unit with ID "${unitId}" not found in test.`);
+    }
+
+    const testConfig = this.getFacultyTestQuestionTypeConfig(testId, requestingFaculty);
+    const effectiveTypes = questionTypeService.resolveEffectiveUnitQuestionTypes(unit, testConfig);
+
+    const unitConfig = unit.configuration || {};
+    const qtConfig = unitConfig.questionTypeConfig || {
+      mode: QUESTION_TYPE_INHERITANCE_MODES.INHERIT,
+      allowedTypes: []
+    };
+
+    return {
+      unitId,
+      unitName: unit.name,
+      mode: qtConfig.mode || QUESTION_TYPE_INHERITANCE_MODES.INHERIT,
+      configuredTypes: Array.isArray(qtConfig.allowedTypes) ? [...qtConfig.allowedTypes] : [],
+      effectiveTypes
+    };
+  }
+
+  /**
+   * Phase 4: Updates supported Question Types for a specific Faculty Section/Unit.
+   * Enforces subset rule: section allowedTypes ⊆ test allowedTypes.
+   * @param {string} testId
+   * @param {string} unitId
+   * @param {Array<string>} questionTypeIds
+   * @param {object|null} requestingFaculty
+   * @param {string} mode - 'INHERIT' | 'EXPLICIT'
+   * @returns {object}
+   */
+  updateFacultyUnitQuestionTypes(testId, unitId, questionTypeIds, requestingFaculty = null, mode = QUESTION_TYPE_INHERITANCE_MODES.EXPLICIT) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    if (!test.structure || !Array.isArray(test.structure.units)) {
+      test.structure = createDefaultTestStructure(test);
+    }
+
+    const uIndex = test.structure.units.findIndex(u => u.id === unitId);
+    if (uIndex === -1) {
+      throw new Error(`INVALID_UNIT: Unit with ID "${unitId}" not found in test.`);
+    }
+
+    const currentUnit = test.structure.units[uIndex];
+    const testConfig = this.getFacultyTestQuestionTypeConfig(testId, requestingFaculty);
+
+    const candidateSectionConfig = {
+      mode,
+      allowedTypes: Array.isArray(questionTypeIds) ? questionTypeIds : []
+    };
+
+    const validation = questionTypeService.validateSectionQuestionTypeConfig(
+      candidateSectionConfig,
+      testConfig.allowedTypes,
+      currentUnit.name
+    );
+
+    if (!validation.valid) {
+      const firstError = validation.errors[0];
+      throw new Error(`${firstError.code}: ${firstError.message}`);
+    }
+
+    const normalizedTypes = questionTypeService.normalizeQuestionTypeIds(candidateSectionConfig.allowedTypes);
+    const finalSectionQtConfig = {
+      mode,
+      allowedTypes: normalizedTypes
+    };
+
+    const currentConfig = currentUnit.configuration || DEFAULT_UNIT_CONFIGURATION;
+    test.structure.units[uIndex].configuration = {
+      ...currentConfig,
+      questionTypes: normalizedTypes,
+      questionTypeConfig: finalSectionQtConfig
+    };
+    test.updatedAt = new Date().toISOString();
+
+    this.tests[index] = test;
+    this.saveTests();
+    return JSON.parse(JSON.stringify(finalSectionQtConfig));
+  }
+
+  /**
+   * Phase 4: Whole-test Question Type validator for Faculty Tests.
+   * @param {string} testId
+   * @param {object|null} requestingFaculty
+   * @returns {object}
+   */
+  validateFacultyQuestionTypeConfig(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      return {
+        valid: false,
+        errors: [{ code: 'TEST_NOT_FOUND', message: `Test "${testId}" not found.` }],
+        warnings: [],
+        units: []
+      };
+    }
+
+    const faculty = this._verifyFacultyTestAccess(test, requestingFaculty);
+    const testExam = test.examId || test.examTrack || test.courseId;
+
+    const testConfig = test.questionTypeConfig || DEFAULT_TEST_QUESTION_TYPE_CONFIG;
+    const testValidation = questionTypeService.validateTestQuestionTypeConfig(testConfig, testExam);
+
+    const allErrors = [...testValidation.errors];
+    const allWarnings = [...testValidation.warnings];
+    const unitReports = [];
+
+    const structure = test.structure || createDefaultTestStructure(test);
+    const units = structure.units || [];
+
+    units.forEach(u => {
+      const config = u.configuration || {};
+      const qtConfig = config.questionTypeConfig || {
+        mode: QUESTION_TYPE_INHERITANCE_MODES.INHERIT,
+        allowedTypes: []
+      };
+
+      const unitRes = questionTypeService.validateSectionQuestionTypeConfig(
+        qtConfig,
+        testConfig.allowedTypes,
+        u.name
+      );
+
+      const effectiveTypes = questionTypeService.resolveEffectiveUnitQuestionTypes(u, testConfig);
+
+      if (!unitRes.valid) {
+        unitRes.errors.forEach(err => {
+          allErrors.push({ ...err, unitId: u.id, unitName: u.name });
+        });
+      }
+
+      if (unitRes.warnings && unitRes.warnings.length > 0) {
+        unitRes.warnings.forEach(w => {
+          allWarnings.push({ ...w, unitId: u.id, unitName: u.name });
+        });
+      }
+
+      unitReports.push({
+        unitId: u.id,
+        unitName: u.name,
+        code: u.code,
+        mode: qtConfig.mode || QUESTION_TYPE_INHERITANCE_MODES.INHERIT,
+        configuredTypes: qtConfig.allowedTypes || [],
+        effectiveTypes,
+        valid: unitRes.valid,
+        errors: unitRes.errors,
+        warnings: unitRes.warnings
+      });
+    });
+
+    return {
+      valid: allErrors.length === 0,
+      errors: allErrors,
+      warnings: allWarnings,
+      testConfig,
+      units: unitReports
+    };
+  }
+
+  /**
+   * Phase 4: Save Rules for a Faculty Test
+   * @param {string} testId
+   * @param {object} rules
+   * @param {object|null} requestingFaculty
+   * @returns {object} updated test
+   */
+  saveFacultyTestRules(testId, rules, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    const updated = {
+      ...test,
+      rules,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return updated;
+  }
+
+  /**
+   * Phase 4: Get Rules for a Faculty Test
+   * @param {string} testId
+   * @param {object|null} requestingFaculty
+   * @returns {object|null}
+   */
+  getFacultyTestRules(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    return test.rules || null;
+  }
+
+  /**
+   * Phase 5: Commits a question set and build metadata to a Faculty Test.
+   * @param {string} testId
+   * @param {Array<string>} questionIds
+   * @param {object} buildMeta
+   * @param {object|null} requestingFaculty
+   * @returns {object} updated test
+   */
+  applyFacultyTestBuild(testId, questionIds = [], buildMeta = {}, requestingFaculty = null) {
+    const index = this.tests.findIndex(t => t.id === testId);
+    if (index === -1) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+
+    const test = this.tests[index];
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    this._verifyFacultyStructureEditable(test);
+
+    const cleanIds = Array.from(new Set(questionIds.map(String)));
+    const now = new Date().toISOString();
+
+    const updated = {
+      ...test,
+      content: {
+        ...(test.content || {}),
+        questionIds: cleanIds,
+        questionCount: cleanIds.length
+      },
+      questionIds: cleanIds,
+      questionCount: cleanIds.length,
+      build: {
+        mode: buildMeta.mode || 'BLUEPRINT',
+        generatedAt: buildMeta.generatedAt || now,
+        generatedBy: buildMeta.generatedBy || (requestingFaculty?.name || 'Faculty'),
+        source: buildMeta.source || buildMeta.mode || 'BLUEPRINT'
+      },
+      updatedAt: now
+    };
+
+    this.tests[index] = updated;
+    this.saveTests();
+    return updated;
+  }
+
+  /**
+   * Phase 5: Get build state for a Faculty Test
+   * @param {string} testId
+   * @param {object|null} requestingFaculty
+   * @returns {object|null}
+   */
+  getFacultyTestBuild(testId, requestingFaculty = null) {
+    const test = this.getTestById(testId);
+    if (!test) {
+      throw new Error(`Faculty Test with ID "${testId}" not found.`);
+    }
+    this._verifyFacultyTestAccess(test, requestingFaculty);
+    return test.build || null;
+  }
+
   subscribe(callback) {
+    if (typeof window === 'undefined') return () => {};
     const handler = () => callback(this.tests, this.attempts);
     window.addEventListener('medprep-cbt-tests-updated', handler);
     window.addEventListener('medprep-cbt-attempts-updated', handler);

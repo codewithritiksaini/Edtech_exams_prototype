@@ -3,6 +3,8 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { ChevronRight, Home, Layers, BookOpen, FolderTree, FileText, Sparkles } from 'lucide-react';
 import { catalogService } from '../../services/catalogService';
 import { curriculumService } from '../../services/curriculumService';
+import { adminTestService } from '../../services/adminTestService';
+import { cbtTestService } from '../../services/cbtTestService';
 
 export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null }) {
   const location = useLocation();
@@ -275,17 +277,59 @@ export default function Breadcrumbs({ basePath = 'admin', customCrumbs = null })
     }
   } else if (segments.includes('tests')) {
     crumbs.push({
-      label: 'Assessments & Tests',
+      label: rootSegment === 'admin' ? 'Test Management' : (rootSegment === 'faculty' ? 'Faculty Tests' : 'Assessments & Tests'),
       path: `/${rootSegment}/tests`
     });
-    if (testId) {
+    if (segments.includes('create')) {
       crumbs.push({
-        label: `Test ID: ${testId}`,
-        path: `/${rootSegment}/tests/${testId}`
+        label: 'Create Test',
+        path: null
       });
-      if (segments.includes('questions')) {
+    } else if (params.id || testId) {
+      const activeTestId = params.id || testId;
+      let testName = `Test: ${activeTestId}`;
+      if (rootSegment === 'admin') {
+        const testObj = adminTestService.getTest(activeTestId);
+        if (testObj) testName = testObj.name || testObj.code;
+      } else if (rootSegment === 'faculty') {
+        const testObj = cbtTestService.getTestById(activeTestId);
+        if (testObj) testName = testObj.name || testObj.title || testObj.code;
+      }
+      crumbs.push({
+        label: testName,
+        path: (segments.includes('edit') || segments.includes('questions') || segments.includes('results') || segments.includes('structure'))
+          ? `/${rootSegment}/tests/${activeTestId}`
+          : null
+      });
+      if (segments.includes('edit')) {
         crumbs.push({
-          label: 'Question Bank Authoring',
+          label: 'Edit Test',
+          path: null
+        });
+      } else if (segments.includes('structure')) {
+        crumbs.push({
+          label: 'Test Structure Builder',
+          path: null
+        });
+      } else if (segments.includes('questions')) {
+        if (segments.includes('create') || segments.includes('author')) {
+          crumbs.push({
+            label: 'Questions',
+            path: `/${rootSegment}/tests/${activeTestId}/questions`
+          });
+          crumbs.push({
+            label: 'Author New Question',
+            path: null
+          });
+        } else {
+          crumbs.push({
+            label: 'Questions',
+            path: null
+          });
+        }
+      } else if (segments.includes('results')) {
+        crumbs.push({
+          label: 'Results & Scorecard',
           path: null
         });
       }
