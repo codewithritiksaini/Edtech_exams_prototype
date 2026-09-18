@@ -715,12 +715,19 @@ class AdminTestService {
       throw new Error(`Admin Test with ID "${testId}" not found.`);
     }
 
+    let changed = false;
     if (!test.structure || (!Array.isArray(test.structure.units) && !Array.isArray(test.structure.sections))) {
       test.structure = createDefaultTestStructure(test);
-      this.save();
+      changed = true;
     } else {
       const normalized = normalizeTestStructure(test.structure);
-      test.structure = normalized;
+      if (JSON.stringify(test.structure) !== JSON.stringify(normalized)) {
+        test.structure = normalized;
+        changed = true;
+      }
+    }
+
+    if (changed) {
       this.save();
     }
 
