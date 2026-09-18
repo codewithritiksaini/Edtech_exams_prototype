@@ -23,6 +23,15 @@ import AdminPackagesPage from './pages/admin/AdminPackagesPage';
 import AdminFacultyPage from './pages/admin/AdminFacultyPage';
 import AdminStudentsPage from './pages/admin/AdminStudentsPage';
 import AdminTestsPage from './pages/admin/AdminTestsPage';
+import AdminTestCreatePage from './pages/admin/AdminTestCreatePage';
+import AdminTestDetailPage from './pages/admin/AdminTestDetailPage';
+import AdminTestEditPage from './pages/admin/AdminTestEditPage';
+import AdminTestStructurePage from './pages/admin/AdminTestStructurePage';
+import AdminTestContentPage from './pages/admin/AdminTestContentPage';
+import AdminTestQuestionTypesPage from './pages/admin/AdminTestQuestionTypesPage';
+import AdminTestRulesPage from './pages/admin/AdminTestRulesPage';
+import AdminTestBuildPage from './pages/admin/AdminTestBuildPage';
+import AdminTestReviewPage from './pages/admin/AdminTestReviewPage';
 import AdminLiveSessionsPage from './pages/admin/AdminLiveSessionsPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminSamplePapersPage from './pages/admin/AdminSamplePapersPage';
@@ -36,6 +45,16 @@ import FacultyContentStudioPage from './pages/faculty/FacultyContentStudioPage';
 import FacultyDirectUploadPage from './pages/faculty/FacultyDirectUploadPage';
 import FacultyLiveSessionsPage from './pages/faculty/FacultyLiveSessionsPage';
 import FacultyTestsPage from './pages/faculty/FacultyTestsPage';
+import FacultyTestCreatePage from './pages/faculty/FacultyTestCreatePage';
+import FacultyTestDetailPage from './pages/faculty/FacultyTestDetailPage';
+import FacultyTestEditPage from './pages/faculty/FacultyTestEditPage';
+import FacultyTestStructurePage from './pages/faculty/FacultyTestStructurePage';
+import FacultyTestContentPage from './pages/faculty/FacultyTestContentPage';
+import FacultyTestQuestionTypesPage from './pages/faculty/FacultyTestQuestionTypesPage';
+import FacultyTestQuestionsPage from './pages/faculty/FacultyTestQuestionsPage';
+import FacultyTestRulesPage from './pages/faculty/FacultyTestRulesPage';
+import FacultyTestBuildPage from './pages/faculty/FacultyTestBuildPage';
+import FacultyTestReviewPage from './pages/faculty/FacultyTestReviewPage';
 import FacultyStudentsPage from './pages/faculty/FacultyStudentsPage';
 import FacultyStudentDetailPage from './pages/faculty/FacultyStudentDetailPage';
 import FacultyDoubtsPage from './pages/faculty/FacultyDoubtsPage';
@@ -208,6 +227,16 @@ export default function App() {
             <Route path="/admin/faculty" element={<AdminFacultyPage />} />
             <Route path="/admin/students" element={<AdminStudentsPage />} />
             <Route path="/admin/tests" element={<AdminTestsPage />} />
+            <Route path="/admin/tests/create" element={<AdminTestCreatePage />} />
+            <Route path="/admin/tests/:id" element={<AdminTestDetailPage />} />
+            <Route path="/admin/tests/:id/edit" element={<AdminTestEditPage />} />
+            <Route path="/admin/tests/:id/structure" element={<AdminTestStructurePage />} />
+            <Route path="/admin/tests/:id/structure/:unitId" element={<AdminTestStructurePage />} />
+            <Route path="/admin/tests/:id/content" element={<AdminTestContentPage />} />
+            <Route path="/admin/tests/:id/question-types" element={<AdminTestQuestionTypesPage />} />
+            <Route path="/admin/tests/:id/rules" element={<AdminTestRulesPage />} />
+            <Route path="/admin/tests/:id/build" element={<AdminTestBuildPage />} />
+            <Route path="/admin/tests/:id/review" element={<AdminTestReviewPage />} />
             <Route path="/admin/questions" element={<QuestionBankPage />} />
             <Route path="/admin/questions/new" element={<QuestionEditorPage />} />
             <Route path="/admin/questions/:questionId/edit" element={<QuestionEditorPage />} />
@@ -265,12 +294,24 @@ export default function App() {
             <Route path="/faculty/upload" element={<FacultyDirectUploadPage />} />
             <Route path="/faculty/live-sessions" element={<FacultyLiveSessionsPage />} />
             <Route path="/faculty/tests" element={<FacultyTestsPage />} />
+            <Route path="/faculty/tests/create" element={<FacultyTestCreatePage />} />
+            <Route path="/faculty/tests/:id" element={<FacultyTestDetailPage />} />
+            <Route path="/faculty/tests/:id/edit" element={<FacultyTestEditPage />} />
+            <Route path="/faculty/tests/:id/structure" element={<FacultyTestStructurePage />} />
+            <Route path="/faculty/tests/:id/structure/:unitId" element={<FacultyTestStructurePage />} />
+            <Route path="/faculty/tests/:id/content" element={<FacultyTestContentPage />} />
+            <Route path="/faculty/tests/:id/question-types" element={<FacultyTestQuestionTypesPage />} />
+            <Route path="/faculty/tests/:id/rules" element={<FacultyTestRulesPage />} />
+            <Route path="/faculty/tests/:id/build" element={<FacultyTestBuildPage />} />
+            <Route path="/faculty/tests/:id/review" element={<FacultyTestReviewPage />} />
             <Route path="/faculty/questions" element={<QuestionBankPage />} />
             <Route path="/faculty/questions/new" element={<QuestionEditorPage />} />
             <Route path="/faculty/questions/:questionId/edit" element={<QuestionEditorPage />} />
             <Route path="/faculty/questions/:questionId/preview" element={<QuestionPreviewPage />} />
             <Route path="/faculty/sample-papers" element={<FacultySamplePapersPage />} />
-            <Route path="/faculty/tests/:testId/questions" element={<FacultyQuestionAuthoringPage />} />
+            <Route path="/faculty/tests/:id/questions" element={<FacultyTestQuestionsPage />} />
+            <Route path="/faculty/tests/:id/questions/create" element={<FacultyQuestionAuthoringPage />} />
+            <Route path="/faculty/tests/:testId/questions/author" element={<FacultyQuestionAuthoringPage />} />
             <Route path="/faculty/tests/:testId/results" element={<FacultyTestResultsPage />} />
             <Route path="/faculty/students" element={<FacultyStudentsPage />} />
             <Route path="/faculty/students/:studentId" element={<FacultyStudentDetailPage />} />

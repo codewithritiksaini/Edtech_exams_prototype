@@ -6,7 +6,74 @@
 import { PROTOTYPE_STORAGE_KEYS, getStoredData, setStoredData } from '../utils/examStorage.js';
 import { validateQuestion, detectDuplicateIds } from '../utils/examValidation.js';
 import { DEMO_QUESTIONS } from '../data/exam/examDemoData.js';
+import { sampleCbtQuestionBank } from '../data/cbtQuestionBankData.js';
 import { curriculumService } from './curriculumService.js';
+
+export function normalizeCbtQuestions(cbtQuestions = sampleCbtQuestionBank) {
+  const subjectMap = {
+    1: 'Medicine', 2: 'Medicine', 3: 'Medicine', 4: 'Medicine',
+    5: 'Surgery', 6: 'Medicine', 7: 'Medicine', 8: 'Pharmacology',
+    9: 'Pharmacology', 10: 'Pediatrics', 11: 'Medicine', 12: 'Medicine',
+    13: 'Pharmacology', 14: 'Medicine', 15: 'Medicine', 16: 'Surgery',
+    17: 'Medicine', 18: 'Pediatrics', 19: 'Medicine', 20: 'Pediatrics'
+  };
+  const diffMap = {
+    1: 'easy', 2: 'medium', 3: 'hard', 4: 'medium',
+    5: 'hard', 6: 'medium', 7: 'medium', 8: 'hard',
+    9: 'medium', 10: 'medium', 11: 'easy', 12: 'medium',
+    13: 'hard', 14: 'hard', 15: 'medium', 16: 'hard',
+    17: 'medium', 18: 'medium', 19: 'easy', 20: 'medium'
+  };
+  const topicMap = {
+    1: 'Cardiology', 2: 'Cardiology', 3: 'Critical Care', 4: 'Cardiology',
+    5: 'Trauma & Emergency', 6: 'Infectious Disease', 7: 'Cardiology', 8: 'Cardiology',
+    9: 'Toxicology', 10: 'Cardiology', 11: 'Cardiology', 12: 'Cardiology',
+    13: 'Oncology', 14: 'Cardiology', 15: 'Cardiology', 16: 'Vascular Surgery',
+    17: 'Cardiology', 18: 'Neonatology', 19: 'Nephrology', 20: 'Cardiology'
+  };
+
+  return cbtQuestions.map((q, idx) => {
+    const qNum = q.id || idx + 1;
+    const id = `q-cbt-${String(qNum).padStart(2, '0')}`;
+    return {
+      id,
+      type: 'single_choice',
+      content: {
+        vignette: q.vignette || '',
+        prompt: q.question || ''
+      },
+      responseSchema: {
+        options: (q.options || []).map((opt, oIdx) => ({
+          id: opt.key || opt.id || String.fromCharCode(65 + oIdx),
+          text: opt.text || ''
+        }))
+      },
+      answer: {
+        correct: [q.correct || 'A']
+      },
+      scoring: {
+        marks: 4,
+        negativeMarks: -1
+      },
+      metadata: {
+        subject: subjectMap[qNum] || 'Medicine',
+        topic: topicMap[qNum] || 'Cardiology',
+        difficulty: diffMap[qNum] || 'medium',
+        tags: ['CBT', 'Clinical Vignette', 'High-Yield'],
+        examId: 'neet-pg'
+      },
+      explanation: q.explanation || '',
+      status: 'published',
+      createdAt: '2026-09-16T10:00:00.000Z',
+      updatedAt: '2026-09-16T10:00:00.000Z'
+    };
+  });
+}
+
+export const ALL_CANONICAL_QUESTIONS = [
+  ...DEMO_QUESTIONS,
+  ...normalizeCbtQuestions(sampleCbtQuestionBank)
+];
 
 class QuestionService {
   constructor() {
@@ -66,8 +133,8 @@ class QuestionService {
   }
 
   resetToDefaults() {
-    setStoredData(this.storageKey, [...DEMO_QUESTIONS]);
-    return [...DEMO_QUESTIONS];
+    setStoredData(this.storageKey, [...ALL_CANONICAL_QUESTIONS]);
+    return [...ALL_CANONICAL_QUESTIONS];
   }
 
   /**
@@ -75,9 +142,22 @@ class QuestionService {
    * @returns {Array<object>}
    */
   getQuestions() {
-    const questions = getStoredData(this.storageKey, DEMO_QUESTIONS);
-    detectDuplicateIds(questions, 'questionService.getQuestions');
-    return Array.isArray(questions) ? questions : [];
+    const questions = getStoredData(this.storageKey, ALL_CANONICAL_QUESTIONS);
+    const defaultMap = new Map(ALL_CANONICAL_QUESTIONS.map(q => [String(q.id), q]));
+    const storedIds = new Set((Array.isArray(questions) ? questions : []).map(q => String(q.id)));
+    let merged = Array.isArray(questions) ? [...questions] : [];
+    let added = false;
+    for (const [id, defQ] of defaultMap) {
+      if (!storedIds.has(id)) {
+        merged.push(defQ);
+        added = true;
+      }
+    }
+    if (added) {
+      setStoredData(this.storageKey, merged);
+    }
+    detectDuplicateIds(merged, 'questionService.getQuestions');
+    return merged;
   }
 
   /**
