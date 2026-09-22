@@ -184,7 +184,7 @@ export default function AssessmentCard({
             className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Award className="w-3.5 h-3.5 text-emerald-600" />
-            <span>View Result →</span>
+            <span>View Result &amp; Review →</span>
           </button>
         ) : (
           // Expired

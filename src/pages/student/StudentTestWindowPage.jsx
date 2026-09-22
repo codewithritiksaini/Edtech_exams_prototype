@@ -421,11 +421,19 @@ export default function StudentTestWindowPage() {
                 Retake Assessment
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => navigate(`/student/tests/${test.id}/result`)}
+              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition-all shadow-md shadow-brand-600/20 cursor-pointer flex items-center gap-1.5"
+            >
+              <Award className="w-4 h-4" />
+              <span>View Result &amp; Review</span>
+            </button>
             <Link
               to="/student/tests"
-              className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-md shadow-cyan-600/20 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
             >
-              Back to Tests Dashboard
+              Back to Tests
             </Link>
           </div>
         </div>

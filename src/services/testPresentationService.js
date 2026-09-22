@@ -47,11 +47,21 @@ class TestPresentationService {
 
     const questionIds = test.content?.questionIds || test.questionIds || [];
     if (!Array.isArray(questionIds) || questionIds.length === 0) {
+      if (Array.isArray(test.questions) && test.questions.length > 0) {
+        return test.questions.map((q, index) => this.getQuestionForDelivery(q, index, targetAudience));
+      }
       return [];
     }
 
     const allQuestions = questionService.getQuestions();
     const map = new Map(allQuestions.map(q => [String(q.id), q]));
+    if (Array.isArray(test.questions)) {
+      test.questions.forEach(q => {
+        if (q && q.id && !map.has(String(q.id))) {
+          map.set(String(q.id), q);
+        }
+      });
+    }
 
     return questionIds.map((id, index) => {
       const found = map.get(String(id));
@@ -107,7 +117,7 @@ class TestPresentationService {
     // Standardize options
     const rawOptions = rawQuestion.responseSchema?.options || rawQuestion.options || [];
     const formattedOptions = (Array.isArray(rawOptions) ? rawOptions : []).map((opt, oIdx) => {
-      const id = opt.id || String.fromCharCode(65 + oIdx);
+      const id = opt.id || opt.key || String.fromCharCode(65 + oIdx);
       const text = typeof opt === 'string' ? opt : (opt.text || opt.title || opt.statement || `Option ${id}`);
       return {
         id: String(id),
@@ -144,7 +154,7 @@ class TestPresentationService {
 
     if (!isStudent) {
       // Author / Preview metadata
-      const rawCorrect = rawQuestion.answer?.correct || rawQuestion.correctAnswer || rawQuestion.correctOptionId || [];
+      const rawCorrect = rawQuestion.answer?.correct || rawQuestion.correct || rawQuestion.correctAnswer || rawQuestion.correctOptionId || [];
       const correctAnswers = Array.isArray(rawCorrect) ? rawCorrect : (rawCorrect ? [rawCorrect] : []);
       const textAnswer = rawQuestion.answer?.textAnswer || (correctAnswers.length > 0 ? String(correctAnswers[0]) : '');
       result.correctAnswers = correctAnswers;
@@ -318,7 +328,7 @@ class TestPresentationService {
       testName: test.name,
       testCode: test.code,
       description: test.description || '',
-      instructions: test.instructions || '',
+      instructions: Array.isArray(test.instructions) ? test.instructions.join('\n') : (test.instructions || ''),
       examName: exam?.name || test.examId || 'General Medical Licensing',
       testType: test.testType || 'MOCK_EXAM',
       assessmentMethod: test.assessmentMethod || 'CBT',

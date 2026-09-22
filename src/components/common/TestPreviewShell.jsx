@@ -228,7 +228,7 @@ export default function TestPreviewShell({
 
       {/* Conditional: Instructions Gateway Preview vs Questions Preview */}
       {previewTab === 'instructions' ? (
-        <div className="flex-1 bg-slate-950">
+        <div className="flex-1 bg-slate-100">
           <StudentTestInstructionsPage
             previewMode={true}
             previewTest={previewModel.test}

@@ -85,6 +85,7 @@ import AdminTestPreviewPage from './pages/admin/AdminTestPreviewPage';
 import FacultyTestPreviewPage from './pages/faculty/FacultyTestPreviewPage';
 import StudentTestInstructionsPage from './pages/student/StudentTestInstructionsPage';
 import StudentTestWindowPage from './pages/student/StudentTestWindowPage';
+import StudentTestResultPage from './pages/student/StudentTestResultPage';
 import { authService, USER_ROLES } from './services/authService';
 
 function QuestionBankRedirect() {
@@ -195,6 +196,22 @@ export default function App() {
           <Route 
             path="/test/:testId" 
             element={<StudentTestInstructionsPage />} 
+          />
+          <Route 
+            path="/student/tests/:testId/result" 
+            element={<StudentTestResultPage />} 
+          />
+          <Route 
+            path="/student/tests/:testId/review" 
+            element={<StudentTestResultPage />} 
+          />
+          <Route 
+            path="/test/:testId/result" 
+            element={<StudentTestResultPage />} 
+          />
+          <Route 
+            path="/test/:testId/review" 
+            element={<StudentTestResultPage />} 
           />
           <Route 
             path="/prototype/exam-data" 

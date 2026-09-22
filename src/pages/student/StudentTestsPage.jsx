@@ -389,10 +389,11 @@ export default function StudentTestsPage() {
                     ) : isCompleted ? (
                       // Case 4: Completed -> View Result & Read-Only Review
                       <button
-                        onClick={() => navigate(`/test/${test.id}`)}
+                        onClick={() => navigate(`/student/tests/${test.id}/result`)}
                         className="w-full sm:w-48 py-2.5 px-3 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
                       >
-                        <span>View Result & Review</span>
+                        <Award className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>View Result &amp; Review</span>
                         <ArrowRight className="w-3.5 h-3.5 shrink-0" />
                       </button>
                     ) : (
