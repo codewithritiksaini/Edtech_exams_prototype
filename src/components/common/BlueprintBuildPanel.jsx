@@ -31,7 +31,6 @@ export default function BlueprintBuildPanel({
   const [deficitTargetSubject, setDeficitTargetSubject] = useState('');
   const blueprint = test.rules?.blueprint || {
     mode: BLUEPRINT_MODES.WEIGHTED,
-    difficultyDistribution: { easy: 30, medium: 50, hard: 20 },
     subjectDistribution: []
   };
 
@@ -149,30 +148,28 @@ export default function BlueprintBuildPanel({
           </div>
         </div>
 
-        {/* Difficulty Distribution Overview */}
-        <div className="space-y-2">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
-            Target Difficulty Distribution
-          </label>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-              <span className="text-[10px] font-bold text-emerald-700 uppercase block">Easy</span>
-              <span className="text-base font-black text-emerald-900">
-                {blueprint.difficultyDistribution?.easy ?? 30}%
-              </span>
-            </div>
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-              <span className="text-[10px] font-bold text-amber-700 uppercase block">Medium</span>
-              <span className="text-base font-black text-amber-900">
-                {blueprint.difficultyDistribution?.medium ?? 50}%
-              </span>
-            </div>
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl">
-              <span className="text-[10px] font-bold text-rose-700 uppercase block">Hard</span>
-              <span className="text-base font-black text-rose-900">
-                {blueprint.difficultyDistribution?.hard ?? 20}%
-              </span>
-            </div>
+        {/* Blueprint Targets & Canonical Roster Status */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl text-center">
+            <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">Target Questions</span>
+            <span className="text-xl font-black text-indigo-950 mt-0.5 block">{totalTarget}</span>
+            <span className="text-[10px] text-indigo-600/80 font-medium">Configured in Foundation</span>
+          </div>
+
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Current Roster</span>
+            <span className="text-xl font-black text-slate-900 mt-0.5 block">
+              {(test.content?.questionIds || []).length}
+            </span>
+            <span className="text-[10px] text-slate-500 font-medium">Authored or attached</span>
+          </div>
+
+          <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl text-center">
+            <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">Slots to Fulfill</span>
+            <span className="text-xl font-black text-amber-950 mt-0.5 block">
+              {Math.max(0, totalTarget - (test.content?.questionIds || []).length)}
+            </span>
+            <span className="text-[10px] text-amber-700/80 font-medium">Automatic deficit fill</span>
           </div>
         </div>
       </div>

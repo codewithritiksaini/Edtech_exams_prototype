@@ -19,7 +19,8 @@ import {
   Calendar,
   Sparkles,
   ChevronRight,
-  Radio
+  Radio,
+  Play
 } from 'lucide-react';
 import { 
   adminTestService, 
@@ -461,6 +462,15 @@ export default function AdminTestsPage() {
                           {/* Actions */}
                           <td className="py-4 px-5 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5">
+                              {/* Preview Assessment */}
+                              <Link
+                                to={`/admin/tests/${test.id}/preview`}
+                                title="Preview Assessment"
+                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                              >
+                                <Play className="w-4 h-4" />
+                              </Link>
+
                               {/* View / Configure Workspace */}
                               <Link
                                 to={`/admin/tests/${test.id}`}

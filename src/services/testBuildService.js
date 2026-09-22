@@ -178,58 +178,42 @@ export function generateQuestionsFromBlueprint({
     };
   }
 
-  // 7. Deterministic Selection
-  const selectedSet = new Set();
-  const selectedQuestions = [];
+  // Seed with already attached questions in canonical roster if any (deficit fulfillment)
+  const existingRosterIds = (test.content?.questionIds || []).map(String);
+  existingRosterIds.forEach(id => {
+    const q = sortedPool.find(item => String(item.id) === id) || questionService.getQuestionById(id);
+    if (q && !selectedSet.has(String(q.id))) {
+      selectedSet.add(String(q.id));
+      selectedQuestions.push(q);
+    }
+  });
 
-  // A. Fulfill explicit subject distribution targets first
+  // A. Fulfill explicit subject distribution targets
   for (const [subjName, targetCount] of requiredSubjectCounts.entries()) {
-    let taken = 0;
+    let currentInSubject = selectedQuestions.filter(q => {
+      const qs = (q.metadata?.subject || '').trim().toLowerCase();
+      return qs === subjName.toLowerCase() || qs.includes(subjName.toLowerCase()) || subjName.toLowerCase().includes(qs);
+    }).length;
+
     for (const q of sortedPool) {
-      if (taken >= targetCount) break;
+      if (currentInSubject >= targetCount || selectedQuestions.length >= effectiveTarget) break;
       if (selectedSet.has(String(q.id))) continue;
 
       const qSubj = (q.metadata?.subject || '').trim().toLowerCase();
       if (qSubj === subjName.toLowerCase() || qSubj.includes(subjName.toLowerCase()) || subjName.toLowerCase().includes(qSubj)) {
         selectedSet.add(String(q.id));
         selectedQuestions.push(q);
-        taken++;
+        currentInSubject++;
       }
     }
   }
 
-  // B. Fulfill remaining quota towards effectiveTarget respecting difficulty weighting
-  const remainingNeeded = effectiveTarget - selectedQuestions.length;
-  if (remainingNeeded > 0) {
-    const diffWeights = activeBlueprint.difficultyDistribution || { easy: 30, medium: 50, hard: 20 };
-    const easyTarget = Math.round((diffWeights.easy / 100) * remainingNeeded);
-    const hardTarget = Math.round((diffWeights.hard / 100) * remainingNeeded);
-    const mediumTarget = remainingNeeded - easyTarget - hardTarget;
-
-    const pickByDiff = (diffKey, count) => {
-      let picked = 0;
-      const candidates = difficultyMap[diffKey] || [];
-      for (const q of candidates) {
-        if (picked >= count || selectedQuestions.length >= effectiveTarget) break;
-        if (!selectedSet.has(String(q.id))) {
-          selectedSet.add(String(q.id));
-          selectedQuestions.push(q);
-          picked++;
-        }
-      }
-    };
-
-    pickByDiff('easy', easyTarget);
-    pickByDiff('hard', hardTarget);
-    pickByDiff('medium', mediumTarget);
-
-    // Fallback: if difficulty bins did not completely fill remaining quota, pick any remaining eligible
-    for (const q of sortedPool) {
-      if (selectedQuestions.length >= effectiveTarget) break;
-      if (!selectedSet.has(String(q.id))) {
-        selectedSet.add(String(q.id));
-        selectedQuestions.push(q);
-      }
+  // B. Fulfill remaining quota towards effectiveTarget without difficulty weighting
+  for (const q of sortedPool) {
+    if (selectedQuestions.length >= effectiveTarget) break;
+    if (!selectedSet.has(String(q.id))) {
+      selectedSet.add(String(q.id));
+      selectedQuestions.push(q);
     }
   }
 

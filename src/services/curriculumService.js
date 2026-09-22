@@ -2051,6 +2051,14 @@ class CurriculumService {
     return this.modules.find(m => m.id === id) || null;
   }
 
+  getChapters(subjectId = null, examId = null) {
+    return this.getModules(subjectId, examId);
+  }
+
+  getChapterById(id) {
+    return this.getModuleById(id);
+  }
+
   saveModule(data) {
     const existingIndex = this.modules.findIndex(m => m.id === data.id);
     if (existingIndex !== -1) {

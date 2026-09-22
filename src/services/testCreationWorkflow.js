@@ -66,33 +66,9 @@ export const TEST_CREATION_PHASES = [
     ]
   },
   {
-    id: 'content',
+    id: 'rules',
     number: 3,
     phaseNumber: 3,
-    label: 'Content',
-    title: 'Content',
-    shortLabel: 'Content',
-    shortDesc: 'Question Types + Question Bank',
-    desc: 'Configure question types and select questions for the Test.',
-    description: 'Configure question types and select questions for the Test.',
-    badgeClass: 'bg-purple-50 text-purple-700 border-purple-200',
-    capabilities: [
-      'Question Type System (Permitted Clinical Formats)',
-      'Section Question Type Inheritance',
-      'Question Bank (Scope by Exam/Subject/System)',
-      'Item Metadata & Clinical Rationale Review'
-    ],
-    subCapabilities: [
-      'Question Type System (Permitted Clinical Formats)',
-      'Section Question Type Inheritance',
-      'Question Bank (Scope by Exam/Subject/System)',
-      'Item Metadata & Clinical Rationale Review'
-    ]
-  },
-  {
-    id: 'rules',
-    number: 4,
-    phaseNumber: 4,
     label: 'Rules',
     title: 'Rules',
     shortLabel: 'Rules',
@@ -101,46 +77,46 @@ export const TEST_CREATION_PHASES = [
     description: 'Configure blueprint rules, scoring, timing, and candidate navigation.',
     badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
     capabilities: [
-      'Question Blueprint & Difficulty Distributions',
+      'Question Blueprint & Subject Quotas',
       'Scoring, Negative Marking & Cutoff Thresholds',
       'Timing Modes (Per-Section vs Overall) & Break Rules',
       'Navigation Restrictions (Linear vs Free Jump)'
     ],
     subCapabilities: [
-      'Question Blueprint & Difficulty Distributions',
+      'Question Blueprint & Subject Quotas',
       'Scoring, Negative Marking & Cutoff Thresholds',
       'Timing Modes (Per-Section vs Overall) & Break Rules',
       'Navigation Restrictions (Linear vs Free Jump)'
     ]
   },
   {
-    id: 'generate',
-    number: 5,
-    phaseNumber: 5,
-    label: 'Generate / Build',
-    title: 'Generate / Build',
-    shortLabel: 'Generate / Build',
-    shortDesc: 'Assemble Test (Manual / Blueprint)',
-    desc: 'Generate or assemble the final question set.',
-    description: 'Generate or assemble the final question set.',
+    id: 'build',
+    number: 4,
+    phaseNumber: 4,
+    label: 'Content & Build',
+    title: 'Content & Build',
+    shortLabel: 'Content & Build',
+    shortDesc: 'Manual Build + Upload + Blueprint Generation',
+    desc: 'Author, upload, or generate the test question roster.',
+    description: 'Author, upload, or generate the test question roster.',
     badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200',
     capabilities: [
-      'Manual Question Assembly (Upload PDF/DOCX or Author Manually)',
-      'Blueprint-Driven Auto-Generation',
-      'Deficit Resolution & Gap Fulfillment',
-      'Question Roster Ordering & Management'
+      'Manual Question Authoring (Embedded Question Type)',
+      'Document Upload (PDF / DOCX)',
+      'Rules-Driven Blueprint Auto-Generation',
+      'Unified Test Question Roster Management'
     ],
     subCapabilities: [
-      'Manual Question Assembly (Upload PDF/DOCX or Author Manually)',
-      'Blueprint-Driven Auto-Generation',
-      'Deficit Resolution & Gap Fulfillment',
-      'Question Roster Ordering & Management'
+      'Manual Question Authoring (Embedded Question Type)',
+      'Document Upload (PDF / DOCX)',
+      'Rules-Driven Blueprint Auto-Generation',
+      'Unified Test Question Roster Management'
     ]
   },
   {
     id: 'review-publish',
-    number: 6,
-    phaseNumber: 6,
+    number: 5,
+    phaseNumber: 5,
     label: 'Review & Publish',
     title: 'Review & Publish',
     shortLabel: 'Review & Publish',
@@ -174,11 +150,11 @@ export const OLD_PHASE_TO_NEW_PHASE = {
   1: 'foundation',
   2: 'structure',
   3: 'structure',
-  4: 'content',
-  5: 'content',
+  4: 'rules',
+  5: 'rules',
   6: 'rules',
   7: 'rules',
-  8: 'generate',
+  8: 'build',
   9: 'review-publish',
   10: 'review-publish',
   11: null, // Advanced Test Types (post-creation capability)
@@ -218,7 +194,7 @@ export function getCreationPhaseById(phaseId) {
 }
 
 /**
- * Helper to retrieve phase definition by number (1 to 6).
+ * Helper to retrieve phase definition by number (1 to 5).
  * @param {number} phaseNumber
  * @returns {object|null}
  */
@@ -228,7 +204,7 @@ export function getCreationPhaseByNumber(phaseNumber) {
 }
 
 /**
- * Translates an old phase number (1 to 12) to the new 6-phase definition.
+ * Translates an old phase number to the new 5-phase definition.
  * @param {number} oldPhaseNumber
  * @returns {object|null}
  */
@@ -257,13 +233,14 @@ export function getPhaseRoute(phase, testId, role = 'admin') {
       return base;
     case 'structure':
       return `${base}/structure`;
-    case 'content':
-      return `${base}/content`;
     case 'rules':
       return `${base}/rules`;
+    case 'build':
+    case 'content':
     case 'generate':
-      return `${base}/generate`;
+      return `${base}/build`;
     case 'review-publish':
+    case 'review':
       return `${base}/review`;
     default:
       return base;

@@ -7,6 +7,7 @@ import {
   MoveUp, 
   MoveDown, 
   Eye, 
+  Edit3,
   CheckCircle2, 
   AlertCircle, 
   RotateCcw,
@@ -18,6 +19,7 @@ import {
 import ManualQuestionModal from './ManualQuestionModal.jsx';
 import UploadQuestionsModal from './UploadQuestionsModal.jsx';
 import QuestionPreviewModal from './QuestionPreviewModal.jsx';
+import { questionTypeService } from '../../services/questionTypeService.js';
 
 export default function ManualBuildWorkspace({
   test = {},
@@ -28,11 +30,13 @@ export default function ManualBuildWorkspace({
   onRemoveQuestion,
   onReorderQuestions,
   onClearAll,
+  onQuestionUpdated,
   isLocked = false
 }) {
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [previewQuestion, setPreviewQuestion] = useState(null);
+  const [editingQuestion, setEditingQuestion] = useState(null);
 
   const handleMove = (index, direction) => {
     if (isLocked) return;
@@ -118,7 +122,7 @@ export default function ManualBuildWorkspace({
             <button
               type="button"
               onClick={onClearAll}
-              className="text-xs font-semibold text-rose-600 hover:text-rose-800 flex items-center gap-1 self-start sm:self-auto"
+              className="text-xs font-semibold text-rose-600 hover:text-rose-800 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" /> Clear All Questions
             </button>
@@ -168,88 +172,118 @@ export default function ManualBuildWorkspace({
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {attachedQuestions.map((q, idx) => (
-              <div
-                key={q.id || idx}
-                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 transition-colors"
-              >
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                    {idx + 1}
-                  </span>
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                        {q.id}
-                      </span>
-                      {q.metadata?.subject && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">
-                          {q.metadata.subject}
+            {attachedQuestions.map((q, idx) => {
+              const typeDef = questionTypeService.getQuestionTypeById(q.type);
+              const typeLabel = typeDef?.shortName || questionTypeService.getQuestionTypeShortName(q.type);
+              const difficulty = (q.metadata?.difficulty || 'medium').toLowerCase();
+
+              return (
+                <div
+                  key={q.id || idx}
+                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 transition-colors"
+                >
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                          {q.id}
                         </span>
-                      )}
-                      {q.metadata?.difficulty && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                          q.metadata.difficulty === 'hard'
-                            ? 'bg-rose-50 text-rose-700'
-                            : q.metadata.difficulty === 'medium'
-                            ? 'bg-amber-50 text-amber-700'
-                            : 'bg-emerald-50 text-emerald-700'
+
+                        {/* Question Type Pill */}
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                          {typeLabel}
+                        </span>
+
+                        {/* Subject Pill */}
+                        {q.metadata?.subject && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            {q.metadata.subject}
+                          </span>
+                        )}
+
+                        {/* Chapter / Topic Pill */}
+                        {q.metadata?.topic && (
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                            {q.metadata.topic}
+                          </span>
+                        )}
+
+                        {/* Difficulty Pill (Descriptive metadata) */}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${
+                          difficulty === 'hard'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : difficulty === 'medium'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         }`}>
-                          {q.metadata.difficulty}
+                          {difficulty}
                         </span>
-                      )}
+                      </div>
+
+                      <p className="text-xs font-semibold text-slate-900 line-clamp-2">
+                        {q.content?.prompt || q.question || 'Question prompt'}
+                      </p>
                     </div>
-                    <p className="text-xs font-semibold text-slate-900 line-clamp-2">
-                      {q.content?.prompt || q.question || 'Question prompt'}
-                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewQuestion(q)}
+                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                      title="Preview Question"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+
+                    {!isLocked && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setEditingQuestion(q)}
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                          title="Edit Question"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMove(idx, -1)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded-lg transition-colors cursor-pointer"
+                          title="Move Up"
+                        >
+                          <MoveUp className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={idx === attachedQuestions.length - 1}
+                          onClick={() => handleMove(idx, 1)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded-lg transition-colors cursor-pointer"
+                          title="Move Down"
+                        >
+                          <MoveDown className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onRemoveQuestion(q.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                          title="Remove Question from Test"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
-
-                <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewQuestion(q)}
-                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-                    title="Preview Question"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-
-                  {!isLocked && (
-                    <>
-                      <button
-                        type="button"
-                        disabled={idx === 0}
-                        onClick={() => handleMove(idx, -1)}
-                        className="p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded-lg transition-colors"
-                        title="Move Up"
-                      >
-                        <MoveUp className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={idx === attachedQuestions.length - 1}
-                        onClick={() => handleMove(idx, 1)}
-                        className="p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded-lg transition-colors"
-                        title="Move Down"
-                      >
-                        <MoveDown className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => onRemoveQuestion(q.id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
-                        title="Remove Question from Test"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -261,6 +295,19 @@ export default function ManualBuildWorkspace({
         test={test}
         onQuestionCreated={handleQuestionCreated}
       />
+
+      {editingQuestion && (
+        <ManualQuestionModal
+          isOpen={Boolean(editingQuestion)}
+          onClose={() => setEditingQuestion(null)}
+          test={test}
+          initialQuestion={editingQuestion}
+          onQuestionUpdated={(updatedQ) => {
+            if (onQuestionUpdated) onQuestionUpdated(updatedQ);
+            setEditingQuestion(null);
+          }}
+        />
+      )}
 
       <UploadQuestionsModal
         isOpen={isUploadModalOpen}
