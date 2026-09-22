@@ -691,9 +691,11 @@ class CbtTestService {
     }
 
     return rawTests.map((t, idx) => {
-      const qIds = Array.isArray(t.content?.questionIds)
+      const qIds = (Array.isArray(t.content?.questionIds) && t.content.questionIds.length > 0)
         ? t.content.questionIds
-        : (Array.isArray(t.questionIds) ? t.questionIds : []);
+        : (Array.isArray(t.questionIds) && t.questionIds.length > 0
+          ? t.questionIds
+          : (Array.isArray(t.questions) ? t.questions.map(q => String(q.id)) : []));
       const uniqueQIds = Array.from(new Set(qIds));
 
       return {

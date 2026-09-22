@@ -230,30 +230,66 @@ class TestReadinessService {
     }
 
     // =========================================================================
-    // LAYER 3: CONTENT VALIDATION
+    // LAYER 3: RULES VALIDATION
     // =========================================================================
-    const questionTypeConfig = test.questionTypeConfig || {};
-    const allowedTypes = questionTypeConfig.allowedTypes || DEFAULT_TEST_ALLOWED_QUESTION_TYPES;
-
-    if (!Array.isArray(allowedTypes) || allowedTypes.length === 0) {
-      addError(
-        VALIDATION_PHASES.CONTENT,
-        'NO_QUESTION_TYPES_CONFIGURED',
-        'At least one permitted question type must be enabled.',
-        `${basePath}/content`
+    const rules = test.rules || {};
+    if (!rules.savedAt && !test.scoringAndTiming) {
+      addWarning(
+        VALIDATION_PHASES.RULES,
+        'DEFAULT_RULES_IN_USE',
+        'Test is using default scoring, timing, and navigation rules without explicit review.',
+        `${basePath}/rules`
       );
     }
 
-    const questionIds = test.content?.questionIds || test.questionIds || [];
-    if (!Array.isArray(questionIds) || questionIds.length === 0) {
+    // 3.1 Scoring rules
+    const scoring = rules.scoring || { marksPerCorrect: test.marksPerCorrect || 4, marksPerIncorrect: test.marksPerIncorrect !== undefined ? test.marksPerIncorrect : -1 };
+    const marksCorrect = scoring.marksPerCorrect ?? scoring.correct;
+    if (marksCorrect !== undefined && Number(marksCorrect) <= 0) {
       addError(
-        VALIDATION_PHASES.CONTENT,
+        VALIDATION_PHASES.RULES,
+        'INVALID_SCORING_MARKS',
+        'Marks awarded for correct answers must be greater than 0.',
+        `${basePath}/rules`
+      );
+    }
+    const marksIncorrect = scoring.marksPerIncorrect ?? scoring.incorrect;
+    if (marksIncorrect !== undefined && Number(marksIncorrect) > 0) {
+      addWarning(
+        VALIDATION_PHASES.RULES,
+        'POSITIVE_NEGATIVE_MARK',
+        'Negative marking is configured with a positive penalty value.',
+        `${basePath}/rules`
+      );
+    }
+
+    // 3.2 Navigation rules
+    const navigation = rules.navigation;
+    if (navigation && navigation.mode && !['FREE', 'LINEAR'].includes(navigation.mode)) {
+      addError(
+        VALIDATION_PHASES.RULES,
+        'INVALID_NAVIGATION_MODE',
+        `Unrecognized candidate navigation mode "${navigation.mode}".`,
+        `${basePath}/rules`
+      );
+    }
+
+    // =========================================================================
+    // LAYER 4: CONTENT & BUILD VALIDATION
+    // =========================================================================
+    const questionIds = test.content?.questionIds || test.questionIds || [];
+    const build = test.build || {};
+    const actualCount = questionIds.length;
+
+    if (!Array.isArray(questionIds) || actualCount === 0) {
+      addError(
+        VALIDATION_PHASES.BUILD,
         'NO_QUESTIONS_ATTACHED',
-        'Test has no questions attached. Questions must be selected or generated.',
-        `${basePath}/content`
+        'Test has no questions attached. Questions must be authored, uploaded, or generated from Blueprint.',
+        `${basePath}/build`
       );
     } else {
-      // Check for duplicate question IDs
+      // 4.1 Check for duplicate question IDs
       const seenIds = new Set();
       const duplicateIds = [];
       questionIds.forEach(id => {
@@ -266,109 +302,49 @@ class TestReadinessService {
 
       if (duplicateIds.length > 0) {
         addError(
-          VALIDATION_PHASES.CONTENT,
+          VALIDATION_PHASES.BUILD,
           'DUPLICATE_QUESTION_IDS',
-          `Duplicate question IDs detected in test content: ${duplicateIds.join(', ')}.`,
-          `${basePath}/content`
+          `Duplicate question IDs detected in test roster: ${duplicateIds.join(', ')}.`,
+          `${basePath}/build`
         );
       }
 
-      // Check compatibility of questions with allowed question types
+      // 4.2 Validate individual question entities and types
       const allPoolQuestions = questionService.getQuestions();
       const poolMap = new Map(allPoolQuestions.map(q => [String(q.id), q]));
 
-      let incompatibleCount = 0;
+      let missingQuestionsCount = 0;
+      let invalidTypeCount = 0;
+
       questionIds.forEach(id => {
         const qObj = poolMap.get(String(id));
-        if (qObj && qObj.type && allowedTypes.length > 0 && !allowedTypes.includes(qObj.type)) {
-          incompatibleCount++;
+        if (!qObj) {
+          missingQuestionsCount++;
+        } else if (qObj.type && !questionTypeService.isValidQuestionTypeId(qObj.type)) {
+          invalidTypeCount++;
         }
       });
 
-      if (incompatibleCount > 0) {
+      if (missingQuestionsCount > 0) {
         addWarning(
-          VALIDATION_PHASES.CONTENT,
-          'INCOMPATIBLE_QUESTION_TYPES',
-          `${incompatibleCount} attached question(s) use formats not included in the test's permitted question types.`,
-          `${basePath}/question-types`
+          VALIDATION_PHASES.BUILD,
+          'QUESTIONS_NOT_RESOLVED',
+          `${missingQuestionsCount} question ID(s) in the test roster could not be resolved from storage.`,
+          `${basePath}/build`
         );
       }
-    }
 
-    // =========================================================================
-    // LAYER 4: RULES VALIDATION
-    // =========================================================================
-    const rules = test.rules || {};
-    if (!rules.savedAt && !test.scoringAndTiming) {
-      addWarning(
-        VALIDATION_PHASES.RULES,
-        'DEFAULT_RULES_IN_USE',
-        'Test is using default scoring, timing, and navigation rules without explicit review.',
-        `${basePath}/rules`
-      );
-    }
-
-    // 4.1 Scoring rules
-    const scoring = rules.scoring || { correct: test.marksPerCorrect || 4, incorrect: test.marksPerIncorrect !== undefined ? test.marksPerIncorrect : -1 };
-    if (scoring.correct !== undefined && Number(scoring.correct) <= 0) {
-      addError(
-        VALIDATION_PHASES.RULES,
-        'INVALID_SCORING_MARKS',
-        'Marks awarded for correct answers must be greater than 0.',
-        `${basePath}/rules`
-      );
-    }
-    if (scoring.incorrect !== undefined && Number(scoring.incorrect) > 0) {
-      addWarning(
-        VALIDATION_PHASES.RULES,
-        'POSITIVE_NEGATIVE_MARK',
-        'Negative marking is configured with a positive penalty value.',
-        `${basePath}/rules`
-      );
-    }
-
-    // 4.2 Blueprint rules
-    const blueprint = rules.blueprint;
-    if (blueprint && blueprint.mode === 'CUSTOM' && blueprint.difficultyDistribution) {
-      const { easy = 0, medium = 0, hard = 0 } = blueprint.difficultyDistribution;
-      const totalPct = Number(easy) + Number(medium) + Number(hard);
-      if (totalPct !== 100) {
+      if (invalidTypeCount > 0) {
         addError(
-          VALIDATION_PHASES.RULES,
-          'INVALID_DIFFICULTY_SUM',
-          `Blueprint difficulty distribution sums to ${totalPct}%, but must equal exactly 100%.`,
-          `${basePath}/rules`
+          VALIDATION_PHASES.BUILD,
+          'INVALID_QUESTION_TYPE',
+          `${invalidTypeCount} question(s) specify unrecognized platform question types.`,
+          `${basePath}/build`
         );
       }
-    }
 
-    // 4.3 Navigation rules
-    const navigation = rules.navigation;
-    if (navigation && navigation.mode && !['FREE', 'LINEAR'].includes(navigation.mode)) {
-      addError(
-        VALIDATION_PHASES.RULES,
-        'INVALID_NAVIGATION_MODE',
-        `Unrecognized candidate navigation mode "${navigation.mode}".`,
-        `${basePath}/rules`
-      );
-    }
-
-    // =========================================================================
-    // LAYER 5: BUILD VALIDATION
-    // =========================================================================
-    const build = test.build;
-    const actualCount = questionIds.length;
-
-    if (actualCount === 0) {
-      addError(
-        VALIDATION_PHASES.BUILD,
-        'UNBUILT_TEST',
-        'Test question set has not been assembled or generated.',
-        `${basePath}/build`
-      );
-    } else {
-      // Check target question count if configured
-      const targetCount = Number(test.targetQuestions || (blueprint?.totalQuestions) || 0);
+      // 4.3 Check target question count if configured
+      const targetCount = Number(test.targetQuestions || rules.blueprint?.totalQuestions || 0);
       if (targetCount > 0 && actualCount !== targetCount) {
         addWarning(
           VALIDATION_PHASES.BUILD,

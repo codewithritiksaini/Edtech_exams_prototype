@@ -1,11 +1,11 @@
 // =============================================================================
-// TEST RULES SERVICE — PHASE 4 ORCHESTRATION
+// TEST RULES SERVICE — PHASE 3 ORCHESTRATION
 // Blueprint + Scoring + Timing + Navigation
 //
 // Provides:
 //   - createDefaultRules(test)  → default rules object
 //   - validateRules(rules, test) → { valid, errors, warnings }
-//   - isRulesReady(rules)        → boolean (Phase 4 complete)
+//   - isRulesReady(rules)        → boolean (Phase 3 complete)
 //   - saveAdminTestRules(id, rules)
 //   - getAdminTestRules(id)
 //   - saveFacultyTestRules(id, rules, faculty)
@@ -57,9 +57,8 @@ export const BREAK_POLICIES = {
 export function createDefaultBlueprint(test = {}) {
   return {
     mode: BLUEPRINT_MODES.WEIGHTED,
-    difficultyDistribution: { easy: 30, medium: 50, hard: 20 },
     subjectDistribution: [],     // [{ subjectId, subjectName, targetCount }]
-    perSectionOverrides: {}      // { unitId: { difficultyDistribution } }
+    perSectionOverrides: {}      // { unitId: {} }
   };
 }
 
@@ -154,16 +153,8 @@ export function validateBlueprint(blueprint, test = {}) {
     errors.push(`Blueprint mode "${blueprint.mode}" is invalid. Must be one of: ${validModes.join(', ')}.`);
   }
 
-  if (blueprint.mode !== BLUEPRINT_MODES.NONE) {
-    const { easy = 0, medium = 0, hard = 0 } = blueprint.difficultyDistribution || {};
-    const total = Number(easy) + Number(medium) + Number(hard);
-    if (total !== 100) {
-      errors.push(`Difficulty distribution must sum to 100%. Currently: ${total}%.`);
-    }
-    if (Number(easy) < 0 || Number(medium) < 0 || Number(hard) < 0) {
-      errors.push('Difficulty distribution values cannot be negative.');
-    }
-  }
+  // Target difficulty distribution has been removed from Blueprint.
+  // Difficulty is held on individual questions as descriptive metadata only.
 
   // Warn if no subject distribution set in STRICT mode
   if (blueprint.mode === BLUEPRINT_MODES.STRICT) {
@@ -358,7 +349,7 @@ export function validateRules(rules, test = {}) {
 }
 
 /**
- * Returns true if Phase 4 is considered "Ready" (no blocking errors).
+ * Returns true if Phase 3 is considered "Ready" (no blocking errors).
  * @param {object} rules
  * @param {object} test
  * @returns {boolean}

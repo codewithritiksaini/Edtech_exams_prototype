@@ -19,7 +19,8 @@ import {
   BookOpen,
   Layers,
   ChevronRight,
-  HelpCircle
+  HelpCircle,
+  Play
 } from 'lucide-react';
 import { 
   cbtTestService, 
@@ -491,6 +492,15 @@ export default function FacultyTestsPage() {
                             title="Manage Questions"
                           >
                             <FileText className="w-4 h-4" />
+                          </Link>
+
+                          {/* Preview Assessment */}
+                          <Link
+                            to={`/faculty/tests/${test.id}/preview`}
+                            className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                            title="Preview Assessment Delivery"
+                          >
+                            <Play className="w-4 h-4" />
                           </Link>
 
                           {/* View Details */}

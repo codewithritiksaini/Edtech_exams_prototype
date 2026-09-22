@@ -348,7 +348,7 @@ export default function StudentDashboardPage() {
   };
 
   const handleViewTestResult = (test) => {
-    navigate(`/test/${test.id}`);
+    navigate(`/student/tests/${test.id}/result`);
   };
 
   return (

@@ -32,7 +32,7 @@ export const QUESTION_TYPE_REGISTRY = [
       clinicalStem: true,
       textInput: false
     },
-    aliases: ['single_choice', 'sba', 'mcq', 'single_best_answer']
+    aliases: ['single_choice', 'sba', 'single_best_answer']
   },
   {
     id: QUESTION_TYPES.MULTIPLE_CHOICE,
@@ -49,7 +49,7 @@ export const QUESTION_TYPE_REGISTRY = [
       clinicalStem: true,
       textInput: false
     },
-    aliases: ['multiple_choice', 'multi_select', 'multiple_response']
+    aliases: ['multiple_choice', 'multi_select', 'multiple_response', 'mcq']
   },
   {
     id: QUESTION_TYPES.TRUE_FALSE,
@@ -195,6 +195,10 @@ class QuestionTypeService {
     // Check direct ID match
     const exact = this.registry.find(t => t.id === clean);
     if (exact) return exact.id;
+
+    // Check shortName match (e.g. SBA, MCQ, EMQ)
+    const byShortName = this.registry.find(t => t.shortName && t.shortName.toUpperCase() === clean);
+    if (byShortName) return byShortName.id;
 
     // Check aliases
     const aliased = this.registry.find(t => 
@@ -495,6 +499,263 @@ class QuestionTypeService {
     const normalizedExplicit = this.normalizeQuestionTypeIds(explicitTypes);
     return normalizedExplicit.length > 0 ? normalizedExplicit : testTypes;
   }
+
+  getQuestionTypes() {
+    return this.getAllQuestionTypes();
+  }
+
+  getQuestionType(type) {
+    return this.getQuestionTypeById(type);
+  }
+
+  getQuestionTypeSchema(type) {
+    return getQuestionTypeSchema(type);
+  }
+
+  validateQuestionByType(question) {
+    return validateQuestionByType(question);
+  }
 }
 
 export const questionTypeService = new QuestionTypeService();
+
+export function getQuestionTypes() {
+  return questionTypeService.getAllQuestionTypes();
+}
+
+export function getQuestionType(type) {
+  return questionTypeService.getQuestionTypeById(type);
+}
+
+export function getQuestionTypeSchema(type) {
+  const def = questionTypeService.getQuestionTypeById(type);
+  if (!def) {
+    return {
+      id: type || 'SINGLE_BEST_ANSWER',
+      name: 'Single Best Answer',
+      shortName: 'SBA',
+      capabilities: { options: true, singleCorrectAnswer: true, multipleCorrectAnswers: false, media: false, clinicalStem: true, textInput: false },
+      defaultOptions: [
+        { id: 'A', text: '' },
+        { id: 'B', text: '' },
+        { id: 'C', text: '' },
+        { id: 'D', text: '' }
+      ],
+      allowCustomOptions: true,
+      minOptions: 2,
+      maxOptions: 6,
+      multiSelect: false,
+      requiresTextAnswer: false,
+      requiresMedia: false,
+      requiresVignette: false
+    };
+  }
+
+  const id = def.id;
+
+  switch (id) {
+    case QUESTION_TYPES.SINGLE_BEST_ANSWER:
+      return {
+        id,
+        name: def.name,
+        shortName: def.shortName,
+        capabilities: def.capabilities,
+        defaultOptions: [
+          { id: 'A', text: '' },
+          { id: 'B', text: '' },
+          { id: 'C', text: '' },
+          { id: 'D', text: '' }
+        ],
+        allowCustomOptions: true,
+        minOptions: 2,
+        maxOptions: 6,
+        multiSelect: false,
+        requiresTextAnswer: false,
+        requiresMedia: false,
+        requiresVignette: false
+      };
+    case QUESTION_TYPES.MULTIPLE_CHOICE:
+      return {
+        id,
+        name: def.name,
+        shortName: def.shortName,
+        capabilities: def.capabilities,
+        defaultOptions: [
+          { id: 'A', text: '' },
+          { id: 'B', text: '' },
+          { id: 'C', text: '' },
+          { id: 'D', text: '' }
+        ],
+        allowCustomOptions: true,
+        minOptions: 2,
+        maxOptions: 8,
+        multiSelect: true,
+        requiresTextAnswer: false,
+        requiresMedia: false,
+        requiresVignette: false
+      };
+    case QUESTION_TYPES.TRUE_FALSE:
+      return {
+        id,
+        name: def.name,
+        shortName: def.shortName,
+        capabilities: def.capabilities,
+        defaultOptions: [
+          { id: 'A', text: 'True' },
+          { id: 'B', text: 'False' }
+        ],
+        allowCustomOptions: false,
+        minOptions: 2,
+        maxOptions: 2,
+        multiSelect: false,
+        requiresTextAnswer: false,
+        requiresMedia: false,
+        requiresVignette: false
+      };
+    case QUESTION_TYPES.EXTENDED_MATCHING:
+      return {
+        id,
+        name: def.name,
+        shortName: def.shortName,
+        capabilities: def.capabilities,
+        defaultOptions: [
+          { id: 'A', text: '' },
+          { id: 'B', text: '' },
+          { id: 'C', text: '' },
+          { id: 'D', text: '' },
+          { id: 'E', text: '' }
+        ],
+        allowCustomOptions: true,
+        minOptions: 3,
+        maxOptions: 10,
+        multiSelect: false,
+        requiresTextAnswer: false,
+        requiresMedia: false,
+        requiresVignette: true
+      };
+    case QUESTION_TYPES.CLINICAL_CASE:
+      return {
+        id,
+        name: def.name,
+        shortName: def.shortName,
+        capabilities: def.capabilities,
+        defaultOptions: [
+          { id: 'A', text: '' },
+          { id: 'B', text: '' },
+          { id: 'C', text: '' },
+          { id: 'D', text: '' }
+        ],
+        allowCustomOptions: true,
+        minOptions: 2,
+        maxOptions: 6,
+        multiSelect: false,
+        requiresTextAnswer: false,
+        requiresMedia: false,
+        requiresVignette: true
+      };
+    case QUESTION_TYPES.IMAGE_BASED:
+      return {
+        id,
+        name: def.name,
+        shortName: def.shortName,
+        capabilities: def.capabilities,
+        defaultOptions: [
+          { id: 'A', text: '' },
+          { id: 'B', text: '' },
+          { id: 'C', text: '' },
+          { id: 'D', text: '' }
+        ],
+        allowCustomOptions: true,
+        minOptions: 2,
+        maxOptions: 6,
+        multiSelect: false,
+        requiresTextAnswer: false,
+        requiresMedia: true,
+        requiresVignette: false
+      };
+    case QUESTION_TYPES.SHORT_ANSWER:
+      return {
+        id,
+        name: def.name,
+        shortName: def.shortName,
+        capabilities: def.capabilities,
+        defaultOptions: [],
+        allowCustomOptions: false,
+        minOptions: 0,
+        maxOptions: 0,
+        multiSelect: false,
+        requiresTextAnswer: true,
+        requiresMedia: false,
+        requiresVignette: false
+      };
+    default:
+      return {
+        id,
+        name: def.name,
+        shortName: def.shortName,
+        capabilities: def.capabilities,
+        defaultOptions: [
+          { id: 'A', text: '' },
+          { id: 'B', text: '' }
+        ],
+        allowCustomOptions: true,
+        minOptions: 2,
+        maxOptions: 6,
+        multiSelect: false,
+        requiresTextAnswer: false,
+        requiresMedia: false,
+        requiresVignette: false
+      };
+  }
+}
+
+export function validateQuestionByType(question) {
+  const errors = [];
+  if (!question || typeof question !== 'object') {
+    return { valid: false, errors: ['Question must be an object.'] };
+  }
+
+  const type = questionTypeService.normalizeQuestionTypeId(question.type);
+  if (!type) {
+    errors.push(`Invalid or missing question type "${question.type}".`);
+    return { valid: false, errors };
+  }
+
+  const schema = getQuestionTypeSchema(type);
+  const prompt = question.content?.prompt?.trim();
+  if (!prompt) {
+    errors.push('Question prompt / stem is required.');
+  }
+
+  if (schema.requiresTextAnswer) {
+    const textAnswer = question.answer?.correct?.[0] || question.answer?.textAnswer;
+    if (!textAnswer || !String(textAnswer).trim()) {
+      errors.push('Accepted answer/keywords are required for short answer questions.');
+    }
+  } else {
+    const options = question.responseSchema?.options || [];
+    if (options.length < schema.minOptions) {
+      errors.push(`At least ${schema.minOptions} options are required for ${schema.name}.`);
+    }
+    const emptyOpts = options.filter(o => !o.text || !o.text.trim());
+    if (emptyOpts.length > 0) {
+      errors.push('All options must have non-empty text.');
+    }
+    const correctAnswers = question.answer?.correct || [];
+    if (!Array.isArray(correctAnswers) || correctAnswers.length === 0) {
+      errors.push('At least one correct answer must be selected.');
+    }
+  }
+
+  if (schema.requiresMedia) {
+    const mediaUrl = question.content?.mediaUrl || question.mediaUrl;
+    if (!mediaUrl || !mediaUrl.trim()) {
+      errors.push('Image or media URL is required for Image-Based questions.');
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}

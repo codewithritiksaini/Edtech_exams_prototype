@@ -18,9 +18,8 @@ import {
 const ICON_MAP = {
   foundation: FileText,
   structure: Layers,
-  content: HelpCircle,
   rules: Sliders,
-  generate: Cpu,
+  build: Cpu,
   'review-publish': CheckCircle
 };
 
@@ -30,8 +29,8 @@ export default function TestConfigurationStepper({
   role = 'admin',
   completedSteps = []
 }) {
-  // Normalize legacy step number if passed > 6
-  const normalizedStep = currentStep > 6 
+  // Normalize legacy step number if passed > 5
+  const normalizedStep = currentStep > 5 
     ? (TEST_CREATION_PHASES.find(p => p.id === OLD_PHASE_TO_NEW_PHASE[currentStep])?.number || 1)
     : currentStep;
 
@@ -43,10 +42,10 @@ export default function TestConfigurationStepper({
       <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
-            6-Phase Test Pipeline
+            5-Phase Test Pipeline
           </span>
           <span className="text-xs text-slate-500 font-medium">
-            Step {normalizedStep} of 6: <strong>{TEST_CREATION_PHASES.find(p => p.number === normalizedStep)?.title || ''}</strong>
+            Step {normalizedStep} of 5: <strong>{TEST_CREATION_PHASES.find(p => p.number === normalizedStep)?.title || ''}</strong>
           </span>
         </div>
         <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50/70 border border-indigo-100 px-2.5 py-0.5 rounded-full">
@@ -54,22 +53,21 @@ export default function TestConfigurationStepper({
         </span>
       </div>
 
-      {/* Horizontal 6-Phase Stepper Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
+      {/* Horizontal 5-Phase Stepper Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
         {TEST_CREATION_PHASES.map((phase) => {
           const isCompleted = phase.number < normalizedStep || completedSteps.includes(phase.number);
           const isCurrent = phase.number === normalizedStep;
-          const isLocked = false; // All 6 phases are implemented
+          const isLocked = false; // All 5 phases are implemented
           const Icon = ICON_MAP[phase.id] || FileText;
 
           let targetLink = null;
           if (testId) {
             if (phase.number === 1) targetLink = `/${baseRoute}/tests/${testId}`;
             if (phase.number === 2) targetLink = `/${baseRoute}/tests/${testId}/structure`;
-            if (phase.number === 3) targetLink = `/${baseRoute}/tests/${testId}/content`;
-            if (phase.number === 4) targetLink = `/${baseRoute}/tests/${testId}/rules`;
-            if (phase.number === 5) targetLink = `/${baseRoute}/tests/${testId}/build`;
-            if (phase.number === 6) targetLink = `/${baseRoute}/tests/${testId}/review`;
+            if (phase.number === 3) targetLink = `/${baseRoute}/tests/${testId}/rules`;
+            if (phase.number === 4) targetLink = `/${baseRoute}/tests/${testId}/build`;
+            if (phase.number === 5) targetLink = `/${baseRoute}/tests/${testId}/review`;
           }
 
           const cardContent = (

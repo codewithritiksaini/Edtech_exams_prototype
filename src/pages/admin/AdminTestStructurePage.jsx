@@ -221,10 +221,10 @@ export default function AdminTestStructurePage() {
 
           <div className="flex items-center gap-3">
             <Link
-              to={`/admin/tests/${test.id}/content`}
+              to={`/admin/tests/${test.id}/rules`}
               className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
             >
-              <span>Next: Content</span>
+              <span>Next: Rules</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>

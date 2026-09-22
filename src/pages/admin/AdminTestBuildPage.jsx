@@ -189,13 +189,13 @@ export default function AdminTestBuildPage() {
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           <Link to={`/admin/tests/${id}`} className="hover:text-indigo-600 transition-colors truncate max-w-xs">{test.name}</Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-slate-800">Phase 5: Generate / Build</span>
+          <span className="text-slate-800">Phase 4: Content &amp; Build</span>
         </div>
         <span className="text-xs text-slate-400 font-mono">ID: {id}</span>
       </div>
 
-      {/* Top 6-Phase Navigation */}
-      <TestConfigurationStepper currentStep={5} testId={id} role="admin" />
+      {/* Top 5-Phase Navigation */}
+      <TestConfigurationStepper currentStep={4} testId={id} role="admin" />
 
       {/* Main Header Banner: Test Identity */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6">
@@ -214,8 +214,8 @@ export default function AdminTestBuildPage() {
                   {getAssessmentMethodLabel(test.assessmentMethod)}
                 </span>
               )}
-              <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200">
-                Phase 5: Generate / Build
+              <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                Phase 4: Content &amp; Build
               </span>
               {isLocked && (
                 <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
@@ -253,20 +253,20 @@ export default function AdminTestBuildPage() {
         </div>
       </div>
 
-      {/* Full-Width Phase 5 Workspace: Generate / Build */}
+      {/* Full-Width Phase 4 Workspace: Content & Build */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
-        {/* Phase 5 Header */}
+        {/* Phase 4 Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-cyan-50 border border-cyan-100 text-cyan-700 flex items-center justify-center font-bold text-xs">
-              05
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
+              04
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Phase 5: Generate / Build
+                Phase 4: Content &amp; Build
               </h2>
               <p className="text-xs text-slate-500">
-                Assemble the Test Question Set
+                Author and assemble the canonical Test Question Roster
               </p>
             </div>
           </div>
@@ -346,6 +346,10 @@ export default function AdminTestBuildPage() {
             onRemoveQuestion={handleRemoveQuestionManual}
             onReorderQuestions={handleReorderManual}
             onClearAll={handleClearAll}
+            onQuestionUpdated={() => {
+              setTest(adminTestService.getTest(id));
+              showToast('Question updated successfully.');
+            }}
             isLocked={isLocked}
           />
         )}

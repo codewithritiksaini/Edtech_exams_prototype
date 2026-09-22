@@ -81,6 +81,11 @@ import ExamDataPreviewPage from './pages/prototype/ExamDataPreviewPage';
 import QuestionBankPage from './pages/QuestionBankPage';
 import QuestionEditorPage from './pages/QuestionEditorPage';
 import QuestionPreviewPage from './pages/QuestionPreviewPage';
+import AdminTestPreviewPage from './pages/admin/AdminTestPreviewPage';
+import FacultyTestPreviewPage from './pages/faculty/FacultyTestPreviewPage';
+import StudentTestInstructionsPage from './pages/student/StudentTestInstructionsPage';
+import StudentTestWindowPage from './pages/student/StudentTestWindowPage';
+import StudentTestResultPage from './pages/student/StudentTestResultPage';
 import { authService, USER_ROLES } from './services/authService';
 
 function QuestionBankRedirect() {
@@ -167,9 +172,46 @@ export default function App() {
             path="/live-session/:sessionId" 
             element={<StudentLiveRoomPage />} 
           />
+          {/* Dedicated Full-Screen Assessment Preview & Delivery Routes */}
+          <Route 
+            path="/admin/tests/:id/preview" 
+            element={<AdminTestPreviewPage />} 
+          />
+          <Route 
+            path="/faculty/tests/:id/preview" 
+            element={<FacultyTestPreviewPage />} 
+          />
+          <Route 
+            path="/student/tests/:testId/start" 
+            element={<StudentTestInstructionsPage />} 
+          />
+          <Route 
+            path="/student/tests/:testId/window" 
+            element={<StudentTestWindowPage />} 
+          />
+          <Route 
+            path="/student/tests/:testId" 
+            element={<StudentTestInstructionsPage />} 
+          />
           <Route 
             path="/test/:testId" 
-            element={<TestExperiencePage />} 
+            element={<StudentTestInstructionsPage />} 
+          />
+          <Route 
+            path="/student/tests/:testId/result" 
+            element={<StudentTestResultPage />} 
+          />
+          <Route 
+            path="/student/tests/:testId/review" 
+            element={<StudentTestResultPage />} 
+          />
+          <Route 
+            path="/test/:testId/result" 
+            element={<StudentTestResultPage />} 
+          />
+          <Route 
+            path="/test/:testId/review" 
+            element={<StudentTestResultPage />} 
           />
           <Route 
             path="/prototype/exam-data" 
@@ -232,10 +274,10 @@ export default function App() {
             <Route path="/admin/tests/:id/edit" element={<AdminTestEditPage />} />
             <Route path="/admin/tests/:id/structure" element={<AdminTestStructurePage />} />
             <Route path="/admin/tests/:id/structure/:unitId" element={<AdminTestStructurePage />} />
-            <Route path="/admin/tests/:id/content" element={<AdminTestContentPage />} />
-            <Route path="/admin/tests/:id/question-types" element={<AdminTestQuestionTypesPage />} />
             <Route path="/admin/tests/:id/rules" element={<AdminTestRulesPage />} />
             <Route path="/admin/tests/:id/build" element={<AdminTestBuildPage />} />
+            <Route path="/admin/tests/:id/content" element={<AdminTestBuildPage />} />
+            <Route path="/admin/tests/:id/question-types" element={<AdminTestBuildPage />} />
             <Route path="/admin/tests/:id/review" element={<AdminTestReviewPage />} />
             <Route path="/admin/questions" element={<QuestionBankPage />} />
             <Route path="/admin/questions/new" element={<QuestionEditorPage />} />
@@ -288,8 +330,10 @@ export default function App() {
             <Route path="/faculty/subjects/:subjectId/modules/:moduleId/lectures/:lectureId/content" element={<FacultyContentStudioPage />} />
 
             {/* Operational Management Sub-Pages */}
+            <Route path="/faculty/direct-upload" element={<FacultyDirectUploadPage />} />
             <Route path="/faculty/schedule" element={<FacultySchedulePage />} />
             <Route path="/faculty/schedule/:examId" element={<FacultySchedulePage />} />
+            <Route path="/faculty/schedule-classes" element={<FacultySchedulePage />} />
             <Route path="/faculty/availability" element={<FacultyAvailabilityPage />} />
             <Route path="/faculty/upload" element={<FacultyDirectUploadPage />} />
             <Route path="/faculty/live-sessions" element={<FacultyLiveSessionsPage />} />
@@ -299,10 +343,10 @@ export default function App() {
             <Route path="/faculty/tests/:id/edit" element={<FacultyTestEditPage />} />
             <Route path="/faculty/tests/:id/structure" element={<FacultyTestStructurePage />} />
             <Route path="/faculty/tests/:id/structure/:unitId" element={<FacultyTestStructurePage />} />
-            <Route path="/faculty/tests/:id/content" element={<FacultyTestContentPage />} />
-            <Route path="/faculty/tests/:id/question-types" element={<FacultyTestQuestionTypesPage />} />
             <Route path="/faculty/tests/:id/rules" element={<FacultyTestRulesPage />} />
             <Route path="/faculty/tests/:id/build" element={<FacultyTestBuildPage />} />
+            <Route path="/faculty/tests/:id/content" element={<FacultyTestBuildPage />} />
+            <Route path="/faculty/tests/:id/question-types" element={<FacultyTestBuildPage />} />
             <Route path="/faculty/tests/:id/review" element={<FacultyTestReviewPage />} />
             <Route path="/faculty/questions" element={<QuestionBankPage />} />
             <Route path="/faculty/questions/new" element={<QuestionEditorPage />} />

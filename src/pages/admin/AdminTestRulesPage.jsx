@@ -180,13 +180,13 @@ export default function AdminTestRulesPage() {
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           <Link to={`/admin/tests/${id}`} className="hover:text-indigo-600 transition-colors truncate max-w-xs">{test.name}</Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-slate-800">Phase 4: Rules</span>
+          <span className="text-slate-800">Phase 3: Rules</span>
         </div>
         <span className="text-xs text-slate-400 font-mono">ID: {id}</span>
       </div>
 
-      {/* Top 6-Phase Navigation */}
-      <TestConfigurationStepper currentStep={4} testId={id} role="admin" />
+      {/* Top 5-Phase Navigation */}
+      <TestConfigurationStepper currentStep={3} testId={id} role="admin" />
 
       {/* Main Header Banner: Test Identity */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6">
@@ -206,7 +206,7 @@ export default function AdminTestRulesPage() {
                 </span>
               )}
               <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
-                Phase 4: Rules
+                Phase 3: Rules
               </span>
               {isLocked && (
                 <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
@@ -244,17 +244,17 @@ export default function AdminTestRulesPage() {
         </div>
       </div>
 
-      {/* Full-Width Phase 4 Workspace: Rules */}
+      {/* Full-Width Phase 3 Workspace: Rules */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
-        {/* Phase 4 Header */}
+        {/* Phase 3 Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center font-bold text-xs">
-              04
+              03
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Phase 4: Rules
+                Phase 3: Rules
               </h2>
               <p className="text-xs text-slate-500">
                 Blueprint, Scoring, Timing &amp; Navigation
@@ -357,11 +357,11 @@ export default function AdminTestRulesPage() {
         {/* Phase Footer Navigation */}
         <div className="flex items-center justify-between pt-6 border-t border-slate-100">
           <Link
-            to={`/admin/tests/${id}/content`}
+            to={`/admin/tests/${id}/structure`}
             className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-2xs"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Previous: Content</span>
+            <span>Previous: Structure</span>
           </Link>
 
           <div className="flex items-center gap-3">
@@ -394,7 +394,7 @@ export default function AdminTestRulesPage() {
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed pointer-events-none'
               }`}
             >
-              <span>Next: Generate / Build</span>
+              <span>Next: Content &amp; Build</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>

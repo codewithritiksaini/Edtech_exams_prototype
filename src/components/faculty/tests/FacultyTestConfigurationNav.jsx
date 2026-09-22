@@ -21,8 +21,8 @@ export default function FacultyTestConfigurationNav({
   testId = null,
   completedSteps = []
 }) {
-  // Normalize legacy step number if passed > 6
-  const normalizedStep = currentStep > 6
+  // Normalize legacy step number if passed > 5
+  const normalizedStep = currentStep > 5
     ? (TEST_CREATION_PHASES.find(p => p.id === OLD_PHASE_TO_NEW_PHASE[currentStep])?.number || 1)
     : currentStep;
 
@@ -32,19 +32,19 @@ export default function FacultyTestConfigurationNav({
       <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
-            Faculty 6-Phase Pipeline
+            Faculty 5-Phase Pipeline
           </span>
           <span className="text-xs text-slate-500 font-medium">
-            Step {normalizedStep} of 6: <strong>{TEST_CREATION_PHASES.find(p => p.number === normalizedStep)?.title || ''}</strong>
+            Step {normalizedStep} of 5: <strong>{TEST_CREATION_PHASES.find(p => p.number === normalizedStep)?.title || ''}</strong>
           </span>
         </div>
         <div className="flex items-center gap-3">
           {testId && (
             <Link
-              to={`/faculty/tests/${testId}/content`}
+              to={`/faculty/tests/${testId}/build`}
               className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
             >
-              <span>Content Hub</span>
+              <span>Content &amp; Build</span>
               <ArrowUpRight className="w-3 h-3" />
             </Link>
           )}
@@ -54,8 +54,8 @@ export default function FacultyTestConfigurationNav({
         </div>
       </div>
 
-      {/* Horizontal 6-Phase Stepper Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
+      {/* Horizontal 5-Phase Stepper Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
         {TEST_CREATION_PHASES.map((phase) => {
           const isCompleted = phase.number < normalizedStep || completedSteps.includes(phase.number);
           const isCurrent = phase.number === normalizedStep;
@@ -65,10 +65,9 @@ export default function FacultyTestConfigurationNav({
           if (testId) {
             if (phase.number === 1) targetLink = `/faculty/tests/${testId}`;
             if (phase.number === 2) targetLink = `/faculty/tests/${testId}/structure`;
-            if (phase.number === 3) targetLink = `/faculty/tests/${testId}/content`;
-            if (phase.number === 4) targetLink = `/faculty/tests/${testId}/rules`;
-            if (phase.number === 5) targetLink = `/faculty/tests/${testId}/build`;
-            if (phase.number === 6) targetLink = `/faculty/tests/${testId}/review`;
+            if (phase.number === 3) targetLink = `/faculty/tests/${testId}/rules`;
+            if (phase.number === 4) targetLink = `/faculty/tests/${testId}/build`;
+            if (phase.number === 5) targetLink = `/faculty/tests/${testId}/review`;
           }
 
           const cardContent = (

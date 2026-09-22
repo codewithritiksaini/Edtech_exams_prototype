@@ -192,13 +192,13 @@ export default function FacultyTestBuildPage() {
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           <Link to={`/faculty/tests/${id}`} className="hover:text-indigo-600 transition-colors truncate max-w-xs">{test.name || test.title}</Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-slate-800">Phase 5: Generate / Build</span>
+          <span className="text-slate-800">Phase 4: Content &amp; Build</span>
         </div>
         <span className="text-xs text-slate-400 font-mono">ID: {id}</span>
       </div>
 
-      {/* Top 6-Phase Navigation */}
-      <FacultyTestConfigurationNav currentStep={5} testId={id} />
+      {/* Top 5-Phase Navigation */}
+      <FacultyTestConfigurationNav currentStep={4} testId={id} />
 
       {/* Main Header Banner: Test Identity */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6">
@@ -217,8 +217,8 @@ export default function FacultyTestBuildPage() {
                   {getAssessmentMethodLabel(test.assessmentMethod)}
                 </span>
               )}
-              <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200">
-                Phase 5: Generate / Build
+              <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                Phase 4: Content &amp; Build
               </span>
               {isLocked && (
                 <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
@@ -256,20 +256,20 @@ export default function FacultyTestBuildPage() {
         </div>
       </div>
 
-      {/* Full-Width Phase 5 Workspace: Generate / Build */}
+      {/* Full-Width Phase 4 Workspace: Content & Build */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
-        {/* Phase 5 Header */}
+        {/* Phase 4 Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-cyan-50 border border-cyan-100 text-cyan-700 flex items-center justify-center font-bold text-xs">
-              05
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
+              04
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Phase 5: Generate / Build
+                Phase 4: Content &amp; Build
               </h2>
               <p className="text-xs text-slate-500">
-                Assemble the Assessment Question Set
+                Author and assemble the canonical Assessment Question Roster
               </p>
             </div>
           </div>
@@ -363,6 +363,10 @@ export default function FacultyTestBuildPage() {
             onRemoveQuestion={handleRemoveQuestionManual}
             onReorderQuestions={handleReorderManual}
             onClearAll={handleClearAll}
+            onQuestionUpdated={() => {
+              setTest(cbtTestService.getTestById(id));
+              showToast('Question updated successfully.');
+            }}
             isLocked={isLocked}
           />
         )}
@@ -373,7 +377,7 @@ export default function FacultyTestBuildPage() {
             to={`/faculty/tests/${id}/rules`}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors order-2 sm:order-1"
           >
-            <ArrowLeft className="w-4 h-4" /> Previous: Phase 4 (Rules)
+            <ArrowLeft className="w-4 h-4" /> Previous: Rules
           </Link>
 
           <div className="flex items-center gap-3 self-end sm:self-center order-1 sm:order-2">
@@ -396,7 +400,7 @@ export default function FacultyTestBuildPage() {
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed pointer-events-none'
               }`}
             >
-              Next: Phase 6 (Review &amp; Publish)
+              Next: Review &amp; Publish
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
